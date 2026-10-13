@@ -1,62 +1,45 @@
-# Bayang — Definite Project Concept
+# Bayang — The Living Ledger
 
-**Working title:** Bayang: The Vanishing Caravans  
 **Hackathon track:** Create a New Kind of Experience  
-**Core idea:** A choice-driven, tabletop-RPG-style campaign that teaches beginners to reason with data by solving story cases.
+**Core idea:** Turn a learner's dataset into a replayable, choice-driven tabletop-style analytics mystery.
 
-## One-sentence pitch
+## Pitch
 
-Bayang turns introductory data analytics into a fantasy investigation: learners question characters, inspect evidence, and make consequential choices while an AMD-hosted AI game master adapts the story and coaching to how they play.
+Bayang turns a small CSV into a new story world. Players choose which records to inspect, uncover evidence, ask an in-world learning guide for limited help, and make a case. An AMD-hosted Head Referee knows the verified answer and shapes the world, but it never receives the player's messages. A separate AMD-hosted Field Guide sees only the player's method questions and has no access to the dataset or answer.
 
-## The user and need
+## User and need
 
-- **Primary user:** someone learning introductory data analytics in a bootcamp, class, or self-guided course.
-- **Need:** practice interpreting data and choosing evidence in context, instead of only memorizing formulas or reading charts.
-- **Buyer hypothesis:** bootcamps and educators who want short, engaging applied exercises. The hackathon demo will illustrate this use case; it will not claim proven learning gains or confirmed demand.
+- **Primary user:** a beginner practicing data analysis in a bootcamp, classroom, or self-guided course.
+- **Need:** practice interpreting evidence and selecting the right measure in a memorable, low-stakes setting.
+- **Buyer hypothesis:** educators and bootcamps that want short applied exercises. This is a hypothesis to validate, not a proven learning outcome or confirmed market.
 
-## The first quest
+## What the player does
 
-The guild must decide which caravan route has the higher observed loss rate. The ledger shows:
+1. Choose a sample dataset or upload a CSV with `group`, `events`, and `opportunities` columns.
+2. Bayang validates and profiles it. The player sees a sealed dossier with the group names but not the figures.
+3. AMD's Head Referee receives the verified aggregate profile and creates a case: a setting, cast, stakes, investigation paths, challenge, and possible endings.
+4. The player chooses at least two of three investigations: inspect event counts, journey/opportunity counts, or calculated rates. Each reveals a different view of the real dataset.
+5. The player can spend limited Lantern Sparks asking the Field Guide about the method. The guide does not receive the dataset or the Head Referee's scenario.
+6. The player commits to a group and evidence type. Python checks the result deterministically and reveals the ending.
 
-| Route | Lost caravans | Trips | Loss rate |
-|---|---:|---:|---:|
-| North Road | 12 | 300 | 4% |
-| Marsh Road | 4 | 40 | 10% |
+## Learning objective
 
-The North Road has more losses in total, while the Marsh Road has the higher loss rate per trip. The learner discovers why comparing raw counts alone can mislead when the group sizes differ. They finish by choosing a conclusion and citing the numerator and denominator that support it.
+The first skill is knowing when a total count and a rate answer different questions. For example, a sample ledger has 12 events in 300 opportunities on one route (4%) and 4 in 40 on another (10%). The first has more events overall; the second has the higher event rate. Bayang accepts other valid CSVs too, including cases where the total and rate point to the same group; the story adapts to the pattern instead of rejecting or inventing a conflict.
 
-## How it plays
+## Why this is a new experience
 
-1. **Choose a play style:** Apprentice mode provides more scaffolding; Pathfinder mode starts with a less guided investigation. Both use the same evidence and learning objective.
-2. **Enter the scene:** a guildmaster presents the question; a caravan captain and a ledger keeper offer different perspectives.
-3. **Investigate:** the player asks questions, inspects the ledger, and switches between total losses and loss rate.
-4. **Make a case:** the player selects a conclusion and the evidence supporting it. The app checks the arithmetic and reasoning criteria.
-5. **Transfer the skill:** a short new case asks the learner to compare rates with different group sizes.
+This is not a chatbot wrapped around a fixed worksheet. The dataset changes the story seed, AMD generates a different world and cast, the player chooses an investigation order, and the resulting evidence changes what the player can conclude. Apprentice provides two Field Guide questions and more explicit evidence notes; Pathfinder provides one question and lighter guidance. Different inputs and player paths should be shown in the hackathon demo.
 
-This borrows tabletop RPG structure—character roles, a quest, NPCs, clues, and consequences—while keeping the first build to one complete case rather than a sprawling campaign.
+## AMD's role and quality controls
 
-## What AMD does
+Bayang uses an open model served by AMD Token Factory on AMD Radeon Cloud. The Head Referee receives the verified aggregate rows, authors a dataset-specific quest, and keeps a private answer note on the server. The application validates the response shape and independently calculates every rate, clue, and verdict. Generated narrative cannot change numeric evidence or scoring.
 
-An open-weight language model served on AMD Developer Cloud acts as the game master. It responds to player choices, voices characters, and selects or phrases the next hint based on the learner's progress. This makes the story responsive during play.
+The Field Guide has a separate system prompt and endpoint call. Its request contains the player's method question and only its own short conversation history; it does not contain the dataset, answer key, or Head Referee messages. Free-form player text is never passed to the Head Referee. With no API key, Bayang clearly labels its local preview instead of claiming live generation.
 
-The application keeps campaign state, facts, arithmetic, and answer checks deterministic. The model cannot change the dataset, invent evidence, or decide whether a numeric answer is correct. The demo will make the live AMD-backed generation path visible and record request latency and token usage.
+Only aggregates, not the original CSV upload, are sent to AMD for story generation. The product is an educational demo; use synthetic or non-sensitive data. Track actual request latency and usage before making a cost claim.
 
-## First-build boundary
+## Demo and submission
 
-**Included:** one quest, one small fixed dataset, two guidance styles, a few NPC interactions, an interactive comparison, an evidence-backed conclusion, and one transfer question.
+Show at least two different datasets creating different worlds and evidence, then compare Apprentice and Pathfinder. Explain which parts AI generated, how deterministic calculations preserve correctness, the observed cost per generated experience, the intended educator/bootcamp user, and the buyer hypothesis. The AMD workload must be visible and meaningful in the working product.
 
-**Deferred:** multiple chapters, multiplayer, custom user-uploaded datasets, accounts, voice acting, complex dice or combat systems, fine-tuning, and LMS integrations.
-
-## Success for the demo
-
-- A reviewer can complete the quest and see how the learner's mode or choices change the experience.
-- The learner can explain why the higher count and higher rate point to different routes.
-- Numeric results and answer checks are reproducible.
-- The game master uses an open model running on AMD infrastructure during the live experience.
-- The submission describes latency and per-session inference cost, and presents bootcamps or educators as the initial buyer hypothesis.
-
-## Technology starting point
-
-Reuse Bayang's lightweight Python server and static browser interface. Render the ledger and comparison with HTML/SVG. Keep the dataset and scoring rules in application code; call the AMD-hosted model through a server-side endpoint so credentials stay out of the browser. Start with inference only; no training or fine-tuning is needed for the first quest.
-
-The New Experience brief asks for an adaptive experience and a demonstration across at least two audiences, situations, or inputs. Bayang's Apprentice and Pathfinder modes provide that comparison through the same story and evidence. See the [official ACT III brief](https://lablab.ai/ai-hackathons/amd-developer-hackathon-act-iii).
+The hackathon submission includes the project descriptions and tags, working prototype, public GitHub repository with runnable README, application URL, cover image, demo video, and pitch slides. See the [official hackathon brief](https://lablab.ai/ai-hackathons/amd-developer-hackathon-act-iii).

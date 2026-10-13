@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#131b18">
+  <title>Bayang — The Living Ledger</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Bayang home"><span class="brand-mark">B</span><span>BAYANG<span class="brand-dot">.</span></span></a>
+      <div class="top-meta"><span class="season">A LIVING DATA QUEST <i></i> FIELD NOTES</span><span id="model-status" class="model-badge"><b></b> Connecting to the story engine</span></div>
+    </header>
+
+    <main>
+      <section class="intro">
+        <div class="intro-copy">
+          <p class="eyebrow"><span class="eyebrow-line"></span> A CAMPAIGN THAT GROWS FROM YOUR DATA</p>
+          <h1>Every ledger<br>opens a <em>world.</em></h1>
+          <p class="intro-text">Choose where to investigate. Find the evidence. Ask your field guide for a nudge. The hidden referee knows the truth, but never hears from you.</p>
+          <div class="lesson-chip"><span class="chip-icon">↗</span><span>LEARN BY PLAYING</span><strong>Counts &amp; rates</strong></div>
+        </div>
+        <div class="map-art dynamic-map" aria-label="A map of the current adventure">
+          <div class="map-grid"></div><div class="map-orbit orbit-a"></div><div class="map-orbit orbit-b"></div>
+          <div class="map-center"><span class="map-seal">✳</span><span id="map-title">UNCHARTED COUNTRY</span></div>
+          <div id="map-routes" class="map-routes"><span>Choose a ledger to draw the roads</span></div>
+          <div class="map-caption"><span id="map-caption-left">THE WORLD IS UNWRITTEN</span><span>✳ &nbsp; DATA BECOMES STORY</span></div>
+        </div>
+      </section>
+
+      <section class="workspace" aria-label="Quest workspace">
+        <nav class="steps" aria-label="Quest steps"><div class="step active" data-step="1"><span>01</span> SEED THE WORLD</div><div class="step-line"></div><div class="step" data-step="2"><span>02</span> INVESTIGATE</div><div class="step-line"></div><div class="step" data-step="3"><span>03</span> MAKE YOUR CASE</div></nav>
+        <div class="workspace-grid">
+          <aside class="case-panel">
+            <div class="panel-heading"><div><p class="eyebrow">THE CAMPAIGN SEED</p><h2>Bring a ledger</h2></div><span class="file-icon">▤</span></div>
+            <p class="panel-copy">Bayang turns a small dataset into a one-off investigation. Your figures stay sealed until you uncover them.</p>
+            <label class="field-label" for="dataset-select">CHOOSE A SAMPLE</label>
+            <select id="dataset-select" class="select-input"><option value="">Loading examples…</option></select>
+            <label class="upload-button" for="csv-upload"><span>＋</span> Or bring your own CSV <small>.csv · up to 100 KB</small></label><input id="csv-upload" type="file" accept=".csv,text/csv" hidden>
+            <div id="error-box" class="notice error" role="alert" hidden></div>
+            <div id="profile-card" class="profile-card" hidden>
+              <div class="profile-title"><span class="live-dot"></span><span>SEALED DOSSIER</span><button id="change-data" class="text-button" type="button">Change</button></div>
+              <p id="case-summary" class="case-summary"></p><div id="profile-groups" class="profile-groups"></div>
+              <div class="sealed-note">Counts and answer stay hidden until you investigate.</div>
+            </div>
+            <div class="mode-block"><label class="field-label">CHOOSE YOUR GUIDE STYLE</label><div class="mode-options" role="group" aria-label="Guidance style"><button class="mode-option selected" data-mode="apprentice" type="button"><span class="mode-glyph">✦</span><span><b>Apprentice</b><small>Two Lantern Sparks</small></span></button><button class="mode-option" data-mode="pathfinder" type="button"><span class="mode-glyph">⌁</span><span><b>Pathfinder</b><small>One subtle nudge</small></span></button></div></div>
+            <button id="begin-button" class="primary-button" type="button" disabled>Generate this world <span>→</span></button>
+          </aside>
+
+          <section class="quest-panel" aria-live="polite">
+            <div id="empty-state" class="empty-state"><div class="seal">✳</div><p class="eyebrow">YOUR ADVENTURE, YOUR EVIDENCE</p><h2>No two ledgers<br>lead to the same world.</h2><p>Choose or upload a dataset. Bayang's AMD-powered referee will shape its labels and patterns into a fresh investigation.</p><div class="empty-rule"><span>✦</span></div><span class="empty-foot">THE REFEREE KNOWS THE ANSWER. IT NEVER HEARS YOUR QUESTIONS.</span></div>
+            <div id="loading-state" class="loading-state" hidden><div class="spinner"></div><p>The world is taking shape…</p></div>
+            <div id="quest-content" hidden>
+              <section class="quest-hero">
+                <div class="quest-kicker"><span class="quest-tag">THE CASE</span><span id="quest-source" class="source-tag"></span></div>
+                <p id="quest-setting" class="quest-setting"></p><h2 id="quest-title" class="quest-title"></h2><p id="quest-premise" class="quest-premise"></p>
+                <div class="stakes"><span>THE STAKES</span><p id="quest-stakes"></p></div>
+              </section>
+              <div class="character-grid" id="characters"></div>
+
+              <section class="investigation-section">
+                <div class="section-heading"><div><p class="eyebrow">CHOOSE YOUR NEXT MOVE</p><h3>Investigate the scene</h3></div><span id="investigation-progress" class="progress-pill">0 / 3 found</span></div>
+                <p class="section-copy">Pick an inquiry. Each opens a different page of the ledger; visit at least two before deciding.</p>
+                <div id="investigations" class="investigations"></div>
+                <div id="evidence-board" class="evidence-board" aria-live="polite"></div>
+              </section>
+
+              <section class="guide-panel">
+                <div class="guide-header"><div class="guide-avatar">✦</div><div><p class="eyebrow">YOUR PLAYER-SIDE LLM</p><h3>The Field Guide</h3><span id="guide-subtitle">A companion for method questions, not answers.</span></div><span id="guide-sparks" class="spark-count">✧ ✧</span></div>
+                <div id="guide-messages" class="guide-messages" aria-live="polite"></div>
+                <div class="guide-prompts"><button type="button" data-question="How do I compare groups with different amounts of traffic?">How do I compare different traffic?</button><button type="button" data-question="What does a rate tell me that a count does not?">What does a rate tell me?</button></div>
+                <form id="guide-form" class="guide-form"><label class="sr-only" for="guide-question">Ask the Field Guide a method question</label><textarea id="guide-question" maxlength="700" rows="2" placeholder="Ask about the method…" required></textarea><button id="guide-send" type="submit">Ask <span>→</span></button></form>
+              </section>
+
+              <section id="decision" class="decision locked">
+                <div class="decision-head"><span class="decision-step">FINAL DEDUCTION</span><span id="decision-question" class="decision-question"></span></div>
+                <p id="decision-hint" class="decision-hint">Investigate at least two records to unlock your verdict.</p>
+                <div id="answer-options" class="answer-options"></div>
+                <div class="evidence-options"><span>YOUR EVIDENCE</span><button class="evidence-choice selected" data-evidence="rate" type="button">Events per opportunity <small>RATE</small></button><button class="evidence-choice" data-evidence="count" type="button">Total events <small>COUNT</small></button></div>
+                <button id="submit-answer" class="primary-button answer-button" type="button" disabled>Commit your finding <span>→</span></button>
+                <div id="answer-result" class="answer-result" hidden></div>
+                <div id="ending" class="ending" hidden></div>
+              </section>
+              <div id="transfer-card" class="transfer-card" hidden><span class="eyebrow">THE SKILL TRAVELS</span><h3>Carry your method forward.</h3><p>A new dataset grows a new world. Your next story will follow its own evidence.</p><button id="next-case" class="secondary-button" type="button">Seed another world <span>↗</span></button></div>
+            </div>
+          </section>
+        </div>
+        <footer class="workspace-footer"><span>THE HEAD REFEREE IS SEALED. THE EVIDENCE IS VERIFIED.</span><span>POWERED BY AMD <i>✳</i></span></footer>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
