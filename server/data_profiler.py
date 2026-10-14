@@ -47,13 +47,28 @@ def profile_csv(source: str) -> dict:
         highest_rate = max(row["rate"] for row in rows)
         highest_count_groups = [row["group"] for row in rows if row["events"] == highest_count]
         highest_rate_groups = [row["group"] for row in rows if abs(row["rate"] - highest_rate) < 1e-12]
+
+        total_events = sum(r["events"] for r in rows)
+        total_opportunities = sum(r["opportunities"] for r in rows)
+        baseline_rate = (total_events / total_opportunities) if total_opportunities > 0 else 0.0
+
+        for r in rows:
+            r["rate_display"] = f"{r['rate']:.1%}"
+            diff_ratio = (r["rate"] / baseline_rate) if baseline_rate > 0 else 1.0
+            r["is_outlier"] = diff_ratio >= 1.5 or (r["group"] in highest_rate_groups and diff_ratio > 1.2)
+
+        outlier_groups = [r["group"] for r in rows if r.get("is_outlier")]
+
         return {"groups": rows, "highest_count_group": highest_count_groups[0],
                 "highest_count_groups": highest_count_groups,
                 "highest_rate_group": highest_rate_groups[0],
                 "highest_rate_groups": highest_rate_groups,
+                "outlier_groups": outlier_groups,
+                "baseline_rate": baseline_rate,
                 "ranking_differs": not set(highest_count_groups).intersection(highest_rate_groups),
                 "lesson_pattern": "count_rate_conflict" if not set(highest_count_groups).intersection(highest_rate_groups) else "count_rate_alignment",
-                "total_events": sum(r["events"] for r in rows),
-                "total_opportunities": sum(r["opportunities"] for r in rows)}
+                "total_events": total_events,
+                "total_opportunities": total_opportunities}
     except csv.Error as exc:
         raise DataError("I couldn't read that CSV. Check its commas and quotation marks.") from exc
+

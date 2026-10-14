@@ -2,6 +2,7 @@
 import json
 import os
 from pathlib import Path
+import time
 import urllib.error
 import urllib.request
 
@@ -18,7 +19,7 @@ def _live_enabled():
 def _chat(messages, *, temperature=0.7, max_tokens=1000, json_output=False):
     base = os.getenv("AMD_API_BASE_URL", "https://developer.amd.com.cn/radeon/api/v1").rstrip("/")
     endpoint = base + ("/chat/completions" if base.endswith("/v1") else "/v1/chat/completions")
-    body = {"model": os.getenv("AMD_MODEL_NAME", "DeepSeek-V4-Flash"),
+    body = {"model": os.getenv("AMD_MODEL_NAME", "Gemma-4-31B-IT"),
             "temperature": temperature, "messages": messages, "max_tokens": max_tokens,
             "reasoning_effort": "none"}
     if json_output:
@@ -61,9 +62,10 @@ def _preview_quest(profile, mode):
             {"name": "Tamsin Reed", "role": "A scout who knows the roads", "voice": "Practical; asks what each number is measured against."},
         ],
         "investigations": [
-            {"id": "counts", "title": "Open the incident ledger", "opening": "Mira lays out the event totals. Which route fills the most pages?"},
+            {"id": "counts", "title": "Open the incident ledger", "opening": "Mira lays out the raw event totals. Which route fills the most pages with recorded mishaps?"},
             {"id": "exposure", "title": "Inspect the journey registers", "opening": "Tamsin brings the traffic records. Find out how many journeys stand behind each total."},
             {"id": "rates", "title": "Compare the rate markers", "opening": "The quartermaster has prepared events-per-journey markers. Compare the routes on equal footing."},
+            {"id": "outliers", "title": "Scrutinize ledger anomalies (Outlier Lens)", "opening": "Examine the ledger for bizarre deviations, extreme ratios, and distorted averages."},
         ],
         "endings": {
             "success": "The council rings the warning bell where your evidence points. The roads are safer because you asked what the totals were measured against.",
@@ -87,14 +89,21 @@ def _validate_quest(quest, profile):
                                                   for k in ("name", "role", "voice")):
             raise ValueError("Invalid character")
     investigations = quest.get("investigations")
-    expected = {"counts", "exposure", "rates"}
-    if (not isinstance(investigations, list) or len(investigations) != len(expected)
-            or any(not isinstance(item, dict) for item in investigations)):
+    if not isinstance(investigations, list):
         raise ValueError("Invalid investigations")
-    if {item.get("id") for item in investigations} != expected:
-        raise ValueError("Invalid investigation paths")
+    # Guarantee standard toolkit investigations
+    existing_ids = {item.get("id") for item in investigations if isinstance(item, dict)}
+    required_core = {"counts", "exposure", "rates"}
+    if not required_core.issubset(existing_ids):
+        raise ValueError("Missing core investigation paths")
+    if "outliers" not in existing_ids:
+        investigations.append({
+            "id": "outliers",
+            "title": "Scrutinize ledger anomalies (Outlier Lens)",
+            "opening": "Examine the records for unusual spikes, severe outliers, and distorted rates."
+        })
     for item in investigations:
-        if any(not isinstance(item.get(k), str) or not item[k].strip() for k in ("title", "opening")):
+        if not isinstance(item, dict) or any(not isinstance(item.get(k), str) or not item[k].strip() for k in ("title", "opening")):
             raise ValueError("Invalid investigation text")
     endings = quest.get("endings")
     if not isinstance(endings, dict) or any(not isinstance(endings.get(k), str) or not endings[k].strip()
@@ -108,8 +117,11 @@ def _validate_quest(quest, profile):
 
 
 def generate_quest(profile, mode):
+    start_time = time.perf_counter()
     if not _live_enabled():
         quest = _preview_quest(profile, mode)
+        quest["latency_ms"] = max(1, int((time.perf_counter() - start_time) * 1000))
+        quest["model"] = "Local Preview Engine"
         return quest
     user_context = {
         "learner_mode": mode,
@@ -119,6 +131,7 @@ def generate_quest(profile, mode):
     raw = _chat([{"role": "system", "content": SYSTEM_PROMPT},
                  {"role": "user", "content": json.dumps(user_context, ensure_ascii=False)}],
                 temperature=0.85, max_tokens=1600, json_output=True)
+    latency_ms = max(1, int((time.perf_counter() - start_time) * 1000))
     try:
         quest = json.loads(raw)
         _validate_quest(quest, profile)
@@ -126,27 +139,36 @@ def generate_quest(profile, mode):
         raise RuntimeError("AMD returned a quest in an unexpected format. Please open the case again.") from exc
     quest["source"] = "amd-live"
     quest["mode"] = mode
+    quest["latency_ms"] = latency_ms
+    quest["model"] = os.getenv("AMD_MODEL_NAME", "Gemma-4-31B-IT")
     return quest
 
 
 def answer_guide(question, mode, history):
+    start_time = time.perf_counter()
     if not _live_enabled():
         lowered = question.casefold()
         if any(term in lowered for term in ("answer", "which route", "which group", "tell me")):
             reply = "I can't choose a route for you. Compare each route's events with its opportunities, then tell me what the rate measures."
         elif any(term in lowered for term in ("rate", "divide", "calculate", "formula", "compare")):
             reply = "A rate is events divided by opportunities. When groups have different amounts of traffic, compare those rates instead of relying on totals alone."
+        elif any(term in lowered for term in ("outlier", "anomaly", "skew", "extreme", "spike")):
+            reply = "An outlier is a record that deviates sharply from the rest. Check whether a high rate comes from genuinely dangerous conditions or an extreme journey ratio."
         else:
             reply = "Start by asking what each number counts and how many opportunities sit behind it. Which two quantities could you compare?"
         if mode == "pathfinder":
             reply = "Take a moment with the evidence: " + reply
-        return {"reply": reply, "source": "local-preview"}
+        latency_ms = max(1, int((time.perf_counter() - start_time) * 1000))
+        return {"reply": reply, "source": "local-preview", "latency_ms": latency_ms, "model": "Local Preview"}
+
     messages = [{"role": "system", "content": GUIDE_PROMPT + f"\nGuidance style: {mode}."}]
     for turn in history[-4:]:
         if turn.get("role") in ("user", "assistant") and isinstance(turn.get("content"), str):
             messages.append({"role": turn["role"], "content": turn["content"][:700]})
     messages.append({"role": "user", "content": question})
     reply = _chat(messages, temperature=0.45, max_tokens=220)
+    latency_ms = max(1, int((time.perf_counter() - start_time) * 1000))
     if not isinstance(reply, str) or not reply.strip():
         raise RuntimeError("The Field Guide did not answer. Please try again.")
-    return {"reply": reply.strip()[:900], "source": "amd-live"}
+    return {"reply": reply.strip()[:900], "source": "amd-live", "latency_ms": latency_ms, "model": os.getenv("AMD_MODEL_NAME", "Gemma-4-31B-IT")}
+

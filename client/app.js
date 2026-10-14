@@ -128,42 +128,97 @@ function renderInvestigations() {
 function renderEvidence(action, investigation, evidence) {
   const board = $("#evidence-board");
   let card = board.querySelector(`[data-evidence-id="${action}"]`);
-  if (!card) { card = document.createElement("article"); card.className = "evidence-card"; card.dataset.evidenceId = action; board.append(card); }
+  if (!card) {
+    card = document.createElement("article");
+    card.className = "evidence-card";
+    card.dataset.evidenceId = action;
+    board.append(card);
+  }
   card.replaceChildren();
-  const header = document.createElement("div"); header.className = "evidence-card-head";
-  header.append(createText("span", "evidence-stamp", "FIELD NOTE"), createText("h4", "", investigation.title));
+  const header = document.createElement("div");
+  header.className = "evidence-card-head";
+  header.append(createText("span", "evidence-stamp", "INVESTIGATION NOTE"), createText("h4", "", investigation.title));
   card.append(header, createText("p", "evidence-explanation", evidence.explanation));
-  const table = document.createElement("table"); table.className = "evidence-table";
-  const heading = document.createElement("thead"); const headerRow = document.createElement("tr");
+
+  const sortedRows = [...evidence.rows];
+  if (action === "rates" || action === "outliers") {
+    sortedRows.sort((a, b) => (b.rate || 0) - (a.rate || 0));
+  }
+
+  const table = document.createElement("table");
+  table.className = "evidence-table";
+  const heading = document.createElement("thead");
+  const headerRow = document.createElement("tr");
   const columns = action === "counts" ? [["group", "Route"], ["events", "Events"]]
     : action === "exposure" ? [["group", "Route"], ["opportunities", "Journeys"]]
-      : [["group", "Route"], ["events", "Events"], ["opportunities", "Journeys"], ["rate", "Rate"]];
+    : action === "outliers" ? [["group", "Route"], ["rate", "Rate"], ["status", "Anomaly Assessment"]]
+    : [["group", "Route"], ["events", "Events"], ["opportunities", "Journeys"], ["rate", "Rate"]];
+
   columns.forEach(([, label]) => headerRow.append(createText("th", "", label)));
-  heading.append(headerRow); table.append(heading);
+  heading.append(headerRow);
+  table.append(heading);
+
+  const maxRate = Math.max(...sortedRows.map((r) => r.rate || 0), 0.001);
   const body = document.createElement("tbody");
-  evidence.rows.forEach((row) => {
+  sortedRows.forEach((row) => {
     const tr = document.createElement("tr");
+    if (row.is_outlier) tr.className = "anomaly-row";
     columns.forEach(([key]) => {
       const cell = document.createElement("td");
-      cell.textContent = key === "rate" ? `${(row.rate * 100).toFixed(1)}%` : row[key];
+      if (key === "rate") {
+        const pct = ((row.rate || 0) * 100).toFixed(1);
+        const barWidth = Math.min(100, Math.round(((row.rate || 0) / maxRate) * 100));
+        cell.innerHTML = `<div class="rate-cell"><div class="rate-bar-track"><div class="rate-bar-fill" style="width:${barWidth}%"></div></div><span class="rate-val">${pct}%</span></div>`;
+      } else if (key === "status") {
+        if (row.is_outlier) {
+          cell.innerHTML = `<span class="anomaly-badge">ANOMALY</span> ${row.status}`;
+        } else {
+          cell.textContent = row.status;
+        }
+      } else {
+        cell.textContent = row[key];
+      }
       tr.append(cell);
     });
     body.append(tr);
   });
-  table.append(body); card.append(table);
+  table.append(body);
+  card.append(table);
+
+  if (state.mode === "apprentice") {
+    if (action === "rates") {
+      const callout = document.createElement("div");
+      callout.className = "apprentice-callout";
+      callout.innerHTML = "<strong>✦ Apprentice Insight:</strong> Notice the contrast! The route with the highest incident volume is not necessarily the most hazardous per journey. Rates adjust for traffic exposure.";
+      card.append(callout);
+    } else if (action === "outliers") {
+      const callout = document.createElement("div");
+      callout.className = "apprentice-callout";
+      callout.innerHTML = "<strong>✦ Anomaly Lens:</strong> When a route's incident rate spikes far above the baseline average, it signals an extreme anomaly that requires closer scrutiny.";
+      card.append(callout);
+    }
+  }
 }
 
 async function investigate(action, button) {
-  clearError(); button.disabled = true; button.classList.add("working");
+  clearError();
+  button.disabled = true;
+  button.classList.add("working");
   try {
     const result = await api("/api/investigate", { case_id: state.caseId, action });
     state.investigated.add(action);
     renderEvidence(action, result.investigation, result.evidence);
-    $("#investigation-progress").textContent = `${state.investigated.size} / 3 found`;
-    renderInvestigations(); updateDecisionLock();
+    const totalCount = state.quest?.investigations?.length || 4;
+    $("#investigation-progress").textContent = `${state.investigated.size} / ${totalCount} found`;
+    renderInvestigations();
+    updateDecisionLock();
     changeStep(state.investigated.size >= 2 ? 3 : 2);
     $("#evidence-board").lastElementChild?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  } catch (error) { button.disabled = false; button.classList.remove("working"); showError(error.message); }
+  } catch (error) {
+    button.disabled = false;
+    button.classList.remove("working");
+    showError(error.message);
+  }
 }
 
 function renderGuideSparks() {
@@ -171,42 +226,68 @@ function renderGuideSparks() {
   $("#guide-sparks").textContent = `${label} · ${state.guideRemaining} left`;
   $("#guide-send").disabled = state.guideRemaining <= 0;
   $("#guide-question").disabled = state.guideRemaining <= 0;
-  document.querySelectorAll(".guide-prompts button").forEach((button) => { button.disabled = state.guideRemaining <= 0; });
+  document.querySelectorAll(".guide-prompts button").forEach((button) => {
+    button.disabled = state.guideRemaining <= 0;
+  });
   if (state.guideRemaining <= 0) $("#guide-subtitle").textContent = "No sparks remain for this case.";
 }
 
-function addGuideMessage(role, text, source = "") {
+function addGuideMessage(role, text, source = "", latencyMs = null, model = "") {
   const message = createText("div", `guide-message ${role}`, "");
   message.append(createText("span", "message-label", role === "player" ? "YOU" : "FIELD GUIDE"));
   message.append(createText("p", "", text));
-  if (source) message.append(createText("span", "message-source", source === "amd-live" ? "AMD MODEL" : "LOCAL PREVIEW"));
+  if (source) {
+    let sourceLabel = source === "amd-live" ? "AMD MODEL" : "LOCAL PREVIEW";
+    if (latencyMs) sourceLabel += ` · ${latencyMs} ms`;
+    if (model && model !== "Local Preview") sourceLabel += ` · ${model}`;
+    message.append(createText("span", "message-source", sourceLabel));
+  }
   $("#guide-messages").append(message);
   message.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 function renderQuest(quest, guideRemaining) {
-  state.quest = quest; state.chosenGroup = null; state.evidence = "rate";
-  state.investigated.clear(); state.guideRemaining = guideRemaining;
-  $("#empty-state").hidden = true; $("#loading-state").hidden = true; $("#quest-content").hidden = false;
+  state.quest = quest;
+  state.chosenGroup = null;
+  state.evidence = "rate";
+  state.investigated.clear();
+  state.guideRemaining = guideRemaining;
+  $("#empty-state").hidden = true;
+  $("#loading-state").hidden = true;
+  $("#quest-content").hidden = false;
   $("#quest-setting").textContent = quest.setting;
   $("#quest-title").textContent = quest.title;
   $("#quest-premise").textContent = quest.premise;
   $("#quest-stakes").textContent = quest.stakes;
+
   const source = $("#quest-source");
   source.textContent = quest.source === "amd-live" ? `✦ AMD HEAD REFEREE · ${quest.mode.toUpperCase()}` : "LOCAL STORY PREVIEW";
   source.className = `source-tag ${quest.source === "amd-live" ? "live" : "preview"}`;
+
+  const telem = $("#quest-telemetry");
+  if (telem) {
+    if (quest.latency_ms) {
+      telem.textContent = `⚡ ${quest.latency_ms} ms · ${quest.model || "AMD"}`;
+      telem.hidden = false;
+    } else {
+      telem.hidden = true;
+    }
+  }
+
   $("#map-title").textContent = quest.setting.toUpperCase().slice(0, 35);
   $("#map-caption-left").textContent = quest.title.toUpperCase().slice(0, 34);
   renderCharacters(quest.characters);
   renderInvestigations();
-  $("#investigation-progress").textContent = "0 / 3 found";
+  $("#investigation-progress").textContent = `0 / ${quest.investigations.length} found`;
   $("#decision-question").textContent = quest.challenge;
   $("#decision-hint").textContent = state.mode === "apprentice"
     ? "Compare at least two records, then choose the route and the measure that answers the council's question."
     : "Find two records before committing to a route and the measure that supports your finding.";
-  const options = $("#answer-options"); options.replaceChildren();
+  const options = $("#answer-options");
+  options.replaceChildren();
   state.caseInfo.groups.forEach((group) => {
-    const button = createText("button", "answer-option", group); button.type = "button";
+    const button = createText("button", "answer-option", group);
+    button.type = "button";
     button.addEventListener("click", () => {
       state.chosenGroup = group;
       options.querySelectorAll("button").forEach((choice) => choice.classList.toggle("selected", choice === button));
@@ -221,12 +302,17 @@ function renderQuest(quest, guideRemaining) {
       document.querySelectorAll(".evidence-choice").forEach((choice) => choice.classList.toggle("selected", choice === button));
     };
   });
-  $("#submit-answer").disabled = true; $("#answer-result").hidden = true;
-  $("#ending").hidden = true; $("#transfer-card").hidden = true;
-  $("#evidence-board").replaceChildren(); $("#guide-messages").replaceChildren();
+  $("#submit-answer").disabled = true;
+  $("#answer-result").hidden = true;
+  $("#ending").hidden = true;
+  $("#transfer-card").hidden = true;
+  $("#evidence-board").replaceChildren();
+  $("#guide-messages").replaceChildren();
   addGuideMessage("guide", "I can help with the method, not the answer. What have the records shown you so far?");
-  renderGuideSparks(); updateDecisionLock();
-  changeStep(2); $("#quest-content").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  renderGuideSparks();
+  updateDecisionLock();
+  changeStep(2);
+  $("#quest-content").scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 function updateDecisionLock() {
@@ -239,74 +325,112 @@ function updateDecisionLock() {
 }
 
 async function startQuest() {
-  clearError(); if (!state.caseId) return;
-  $("#empty-state").hidden = true; $("#quest-content").hidden = true; $("#loading-state").hidden = false;
+  clearError();
+  if (!state.caseId) return;
+  $("#empty-state").hidden = true;
+  $("#quest-content").hidden = true;
+  $("#loading-state").hidden = false;
   $("#begin-button").disabled = true;
   try {
     const result = await api("/api/quest", { case_id: state.caseId, mode: state.mode });
     renderQuest(result.quest, result.guide_remaining);
-  } catch (error) { $("#loading-state").hidden = true; $("#empty-state").hidden = false; showError(error.message); }
-  finally { $("#begin-button").disabled = !state.caseId; }
+  } catch (error) {
+    $("#loading-state").hidden = true;
+    $("#empty-state").hidden = false;
+    showError(error.message);
+  } finally {
+    $("#begin-button").disabled = !state.caseId;
+  }
 }
 
 async function askGuide(question) {
   const trimmed = question.trim();
   if (!trimmed || state.guideRemaining <= 0) return;
-  clearError(); $("#guide-question").value = "";
+  clearError();
+  $("#guide-question").value = "";
   addGuideMessage("player", trimmed);
   $("#guide-send").disabled = true;
   try {
     const result = await api("/api/guide", { case_id: state.caseId, question: trimmed });
     state.guideRemaining = result.remaining;
-    addGuideMessage("guide", result.reply, result.source);
+    addGuideMessage("guide", result.reply, result.source, result.latency_ms, result.model);
     renderGuideSparks();
   } catch (error) {
     addGuideMessage("guide", error.message);
-  } finally { renderGuideSparks(); }
+  } finally {
+    renderGuideSparks();
+  }
 }
+
 
 async function submitAnswer() {
   if (!state.chosenGroup || state.investigated.size < 2) return;
-  const button = $("#submit-answer"); button.disabled = true; clearError();
+  const button = $("#submit-answer");
+  button.disabled = true;
+  clearError();
   try {
     const result = await api("/api/answer", {
-      case_id: state.caseId, group: state.chosenGroup, evidence: state.evidence,
+      case_id: state.caseId,
+      group: state.chosenGroup,
+      evidence: state.evidence,
     });
-    const box = $("#answer-result"); box.textContent = result.feedback;
-    box.hidden = false; box.classList.toggle("incorrect", !result.correct);
-    const ending = $("#ending"); ending.textContent = result.ending; ending.hidden = false;
+    const box = $("#answer-result");
+    box.textContent = result.feedback;
+    box.hidden = false;
+    box.classList.toggle("incorrect", !result.correct);
+    const ending = $("#ending");
+    ending.textContent = result.ending;
+    ending.hidden = false;
     changeStep(3);
     if (result.correct) $("#transfer-card").hidden = false;
     else button.disabled = false;
-  } catch (error) { showError(error.message); button.disabled = false; }
+  } catch (error) {
+    showError(error.message);
+    button.disabled = false;
+  }
 }
 
 $("#begin-button").addEventListener("click", startQuest);
 $("#submit-answer").addEventListener("click", submitAnswer);
-$("#guide-form").addEventListener("submit", (event) => { event.preventDefault(); askGuide($("#guide-question").value); });
+$("#guide-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  askGuide($("#guide-question").value);
+});
 $("#guide-question").addEventListener("keydown", (event) => {
-  if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); $("#guide-form").requestSubmit(); }
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    $("#guide-form").requestSubmit();
+  }
 });
 document.querySelectorAll(".guide-prompts button").forEach((button) => {
   button.addEventListener("click", () => askGuide(button.dataset.question));
 });
 $("#csv-upload").addEventListener("change", async (event) => {
-  const file = event.target.files?.[0]; event.target.value = "";
+  const file = event.target.files?.[0];
+  event.target.value = "";
   if (!file) return;
   if (file.size > 100_000) return showError("Choose a CSV under 100 KB.");
   $("#dataset-select").value = "";
   await loadCsv(await file.text());
 });
 $("#change-data").addEventListener("click", () => {
-  $("#dataset-select").focus(); $("#dataset-select").scrollIntoView({ behavior: "smooth", block: "center" });
+  $("#dataset-select").focus();
+  $("#dataset-select").scrollIntoView({ behavior: "smooth", block: "center" });
 });
 $("#next-case").addEventListener("click", () => {
   const current = $("#dataset-select").value;
   const next = state.samples.find((sample) => sample.id !== current);
-  if (next) { $("#dataset-select").value = next.id; loadCsv(next.csv); window.scrollTo({ top: 0, behavior: "smooth" }); }
-  else { $("#dataset-select").value = ""; $("#dataset-select").focus(); }
+  if (next) {
+    $("#dataset-select").value = next.id;
+    loadCsv(next.csv);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  } else {
+    $("#dataset-select").value = "";
+    $("#dataset-select").focus();
+  }
 });
 document.querySelectorAll(".mode-option").forEach((button) => button.addEventListener("click", () => {
+  if (state.mode === button.dataset.mode) return;
   state.mode = button.dataset.mode;
   document.querySelectorAll(".mode-option").forEach((item) => item.classList.toggle("selected", item === button));
   if (state.quest) startQuest();

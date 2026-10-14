@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parent.parent
 CASES = {}
 SAMPLES = {"caravans_a": "The North Road", "caravans_b": "The Glasswood Trail"}
 GUIDE_SPARKS = {"apprentice": 2, "pathfinder": 1}
-INVESTIGATION_IDS = {"counts", "exposure", "rates"}
+INVESTIGATION_IDS = {"counts", "exposure", "rates", "outliers"}
 
 
 def load_local_env():
@@ -45,7 +45,8 @@ def public_case_summary(profile):
 def public_quest(quest):
     """Strip the Head Referee's private note before sending a quest to the browser."""
     allowed = {"title", "setting", "premise", "stakes", "challenge",
-               "characters", "investigations", "endings", "source", "mode"}
+               "characters", "investigations", "endings", "source", "mode",
+               "latency_ms", "model"}
     return {key: value for key, value in quest.items() if key in allowed}
 
 
@@ -56,6 +57,26 @@ def investigation_evidence(profile, action, mode):
     elif action == "exposure":
         rows = [{"group": row["group"], "opportunities": row["opportunities"]} for row in profile["groups"]]
         label, explanation = "Journeys recorded", "This is the amount of exposure behind each event count."
+    elif action == "outliers":
+        baseline = profile.get("baseline_rate") or (profile["total_events"] / profile["total_opportunities"] if profile["total_opportunities"] else 0.0)
+        rows = []
+        for row in profile["groups"]:
+            ratio = (row["rate"] / baseline) if baseline > 0 else 1.0
+            is_anomaly = row.get("is_outlier", False)
+            rows.append({
+                "group": row["group"],
+                "events": row["events"],
+                "opportunities": row["opportunities"],
+                "rate": row["rate"],
+                "is_outlier": is_anomaly,
+                "status": f"Anomaly: {ratio:.1f}x baseline" if is_anomaly else "Normal range",
+            })
+        label = "Outlier & Anomaly Lens"
+        explanation = (
+            f"Regional average is {baseline:.1%}. Pinpoints routes where incident rate spikes drastically above expectation."
+            if mode == "apprentice"
+            else f"Regional average is {baseline:.1%}. Highlighting statistical deviations and high-risk anomalies."
+        )
     else:
         rows = [{"group": row["group"], "events": row["events"],
                  "opportunities": row["opportunities"], "rate": row["rate"]}
@@ -64,6 +85,7 @@ def investigation_evidence(profile, action, mode):
         explanation = ("Rate = events ÷ journeys. Compare these to judge risk per journey."
                        if mode == "apprentice" else "Compare events ÷ journeys across groups.")
     return {"label": label, "explanation": explanation, "rows": rows}
+
 
 
 def answer_case(profile, quest, payload, explored_count):
@@ -132,7 +154,7 @@ class BayangHandler(BaseHTTPRequestHandler):
             live = (os.getenv("BAYANG_MODEL_MODE", "amd").lower() == "amd"
                     and bool(os.getenv("AMD_API_KEY")))
             return self.send_json(200, {"mode": "amd-configured" if live else "preview",
-                                        "model": os.getenv("AMD_MODEL_NAME", "DeepSeek-V4-Flash")})
+                                        "model": os.getenv("AMD_MODEL_NAME", "Gemma-4-31B-IT")})
         relative = "index.html" if path in ("/", "") else path.lstrip("/")
         target = (ROOT / "client" / relative).resolve()
         if ROOT.joinpath("client").resolve() not in target.parents or not target.is_file():
