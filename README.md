@@ -30,7 +30,7 @@ Full response shape: [Interface](#interface).
 
 ## The problem
 
-A logistics team concentrates patrols on its busiest highway because it logs 40 accidents a month. Meanwhile, a mountain bypass with only 8 accidents goes unmonitored—even though only 20 vehicles crossed it (a 40% casualty rate).
+A logistics team concentrates patrols on its busiest highway because it logs 40 accidents a month. Meanwhile, a mountain bypass with only 8 accidents goes unmonitored, even though only 20 vehicles crossed it (a 40% casualty rate).
 
 This is the **exposure fallacy** (or unadjusted rate trap). Real operational data repeatedly fools human intuition:
 
@@ -43,7 +43,7 @@ Existing training tools handle this with flat multiple-choice quizzes (`"Which r
 
 LLM-based game engines try to fix this by asking an agent to invent scenarios, but unconstrained generation fails: the model hallucinates numbers that contradict the ledger, leaks the answer in the first paragraph, or crashes on invalid JSON schemas.
 
-Bayang separates the labor: **Python computes ground truth; Gemma authors the story; an autonomous loop verifies and repairs the scenario before the player ever sees it.**
+Bayang separates the labor: Python computes ground truth, Gemma authors the story, and an autonomous loop verifies and repairs the scenario before the player ever sees it.
 
 ---
 
