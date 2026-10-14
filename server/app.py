@@ -9,11 +9,16 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 from data_profiler import DataError, profile_csv
-from model_client import answer_guide, generate_quest
+from model_client import answer_guide, generate_consequence, generate_quest
 
 ROOT = Path(__file__).resolve().parent.parent
 CASES = {}
-SAMPLES = {"caravans_a": "The North Road", "caravans_b": "The Glasswood Trail"}
+SAMPLES = {
+    "caravans_a": "The North Road (Trade Caravans)",
+    "caravans_b": "The Glasswood Trail (Frontier Pass)",
+    "cloud_ops": "Apex Infrastructure (Cloud DevOps)",
+    "clinical_trials": "BioVanguard Phase II (Clinical Trials)",
+}
 GUIDE_SPARKS = {"apprentice": 2, "pathfinder": 1}
 INVESTIGATION_IDS = {"counts", "exposure", "rates", "outliers"}
 
@@ -39,14 +44,16 @@ load_local_env()
 def public_case_summary(profile):
     """Expose only group labels before the player investigates."""
     return {"groups": [row["group"] for row in profile["groups"]],
-            "group_count": len(profile["groups"])}
+            "group_count": len(profile["groups"]),
+            "ranking_differs": profile.get("ranking_differs", False)}
 
 
 def public_quest(quest):
     """Strip the Head Referee's private note before sending a quest to the browser."""
     allowed = {"title", "setting", "premise", "stakes", "challenge",
                "characters", "investigations", "endings", "source", "mode",
-               "latency_ms", "model"}
+               "latency_ms", "model", "attempts", "repaired", "tokens", "cost",
+               "verification_note", "ranking_differs"}
     return {key: value for key, value in quest.items() if key in allowed}
 
 
@@ -90,32 +97,52 @@ def investigation_evidence(profile, action, mode):
 
 def answer_case(profile, quest, payload, explored_count):
     group = payload.get("group")
-    evidence_type = payload.get("evidence")
-    if group not in {row["group"] for row in profile["groups"]} or evidence_type not in ("rate", "count"):
-        raise DataError("Choose a route and one kind of evidence.")
+    rationale = payload.get("rationale") or payload.get("evidence")
+    if rationale == "rate":
+        rationale = "risk_density"
+    elif rationale == "count":
+        rationale = "incident_volume"
+
+    valid_rationales = {"risk_density", "incident_volume", "random_variance"}
+    if group not in {row["group"] for row in profile["groups"]} or rationale not in valid_rationales:
+        raise DataError("Choose a route and an analytical rationale.")
     if explored_count < 2:
         raise DataError("Investigate at least two records before presenting your finding.")
-    correct = group in profile["highest_rate_groups"] and evidence_type == "rate"
+
+    correct = group in profile["highest_rate_groups"] and rationale == "risk_density"
+    consequence = generate_consequence(quest, profile, group, rationale, correct)
+
     if correct:
         rate = next(row["rate"] for row in profile["groups"] if row["group"] == group)
         if profile["ranking_differs"]:
             high_count = profile["highest_count_group"]
-            feedback = (f"Your finding holds: {group} has the highest event rate at {rate:.1%}. "
-                        f"{high_count} has the largest total, but it also had more journeys. The rate compares events per journey.")
+            feedback = (f"Your deduction holds: {group} carries the highest risk density at {rate:.1%}. "
+                        f"{high_count} has the largest gross count, but also much higher exposure. "
+                        "Measuring risk per journey isolates the real danger.")
         else:
-            feedback = (f"Your finding holds: {group} has the highest event rate at {rate:.1%}. "
-                        "The total and rate point to the same route here, and the rate still answers risk per journey.")
+            feedback = (f"Your deduction holds: {group} carries the highest risk density at {rate:.1%}. "
+                        "Both volume and rate peak here, but your rate-based rationale proved it rigorously.")
         ending = quest["endings"]["success"]
     else:
         high_rate = profile["highest_rate_group"]
         rate = next(row["rate"] for row in profile["groups"] if row["group"] == high_rate)
-        if evidence_type != "rate":
-            feedback = "The council needs evidence about events per journey. A raw count measures volume; it does not adjust for traffic."
+        if rationale == "incident_volume":
+            feedback = (f"The council rejected raw volume: large counts often reflect traffic density rather than danger. "
+                        f"The true hazard is {high_rate} with a {rate:.1%} incident rate.")
+        elif rationale == "random_variance":
+            feedback = (f"Dismissed as variance: the data reflects a systematic hazard, not statistical noise. "
+                        f"{high_rate} remains the most hazardous route at {rate:.1%}.")
         else:
-            feedback = f"Look again at the rates: {high_rate} has the highest event rate at {rate:.1%}. Compare events with journeys, not just totals."
+            feedback = f"Re-examine the rate distribution: {high_rate} actually carries the highest rate at {rate:.1%}."
         ending = quest["endings"]["setback"]
-    return {"correct": correct, "feedback": feedback, "ending": ending,
-            "revealed_answer": profile["highest_rate_group"] if not correct else None}
+
+    return {
+        "correct": correct,
+        "feedback": feedback,
+        "consequence": consequence,
+        "ending": ending,
+        "revealed_answer": profile["highest_rate_group"] if not correct else None
+    }
 
 
 class BayangHandler(BaseHTTPRequestHandler):

@@ -14,8 +14,9 @@ Bayang turns an uploaded or sample CSV into a short analytics campaign. The play
 |---|---|---|
 | Browser | HTML, CSS, vanilla JavaScript | Campaign UI, choices, evidence views, and guide conversation |
 | App server | Python standard library | CSV validation, private case state, endpoints, deterministic evidence and scoring |
-| Model service | AMD Token Factory OpenAI-compatible endpoint | Story-authoring Head Referee and player-facing Field Guide |
-| Model | `DeepSeek-V4-Flash` by default, configurable | Narrative generation and bounded method help |
+| Model service | AMD Token Factory / AMD Developer Cloud | Story-authoring Head Referee and player-facing Field Guide |
+| Model | Google DeepMind `Gemma-4-31B-IT` (default, configurable) | Narrative generation, world-building, and bounded method guidance |
+| Bonus Track | Google DeepMind Dedicated Prize | Eligible for dedicated prize for building with Gemma on AMD Cloud |
 | Data | CSV with `group`, `events`, `opportunities` | Small supported learning dataset |
 | Storage | In-memory case state | No account or database for the hackathon demo |
 
@@ -90,3 +91,41 @@ The parser accepts valid count/rate datasets even when the largest count and hig
 The AMD Token Factory endpoint is configured in `.env` (`AMD_API_KEY`, optional `AMD_API_BASE_URL`, `AMD_MODEL_NAME`). Keys remain server-side and are ignored by Git. The AMD-hosted model does the core creative work for each new case and bounded player-guide answers. Python does the reliable calculations. No training or fine-tuning is needed for this demo.
 
 Hackathon track brief: [AMD Developer Hackathon: ACT III](https://lablab.ai/ai-hackathons/amd-developer-hackathon-act-iii).
+
+## Unified design principle: Demo-first Investigator's Toolkit
+
+> **The model narrates what the data already proved. The player operates tools, not a chatbot.**
+
+Both the feature design notes (`thoughts.md`) and the external project evaluation (`advice.md`) converge on the same architectural and UX principle, stated here as a single binding constraint for all remaining build decisions:
+
+**Replace passive evidence reveals with 4–5 clickable in-world analytics tools. Each tool runs a deterministic backend calculation; the AMD model only generates flavor commentary on the result. Scope every tool to what fits inside the 3-minute demo script.**
+
+### What this means in practice
+
+| In-world tool | Real operation | Backend endpoint | AMD model role |
+|---|---|---|---|
+| 📜 **Inspect Ledger Samples** | `df.head()` / `df.tail()` | Reuse `/api/investigate` (counts path) | Narrates a merchant's first-hand account of top records |
+| 🔍 **Audit Registry Integrity** | Null/type check, `df.info()` | Extend `/api/investigate` (exposure path) | Describes ink smudges or missing seals on the parchment |
+| ⚡ **Outlier Lens** | IQR flag (`value > Q3 + 1.5×IQR`) | New: `/api/investigate?type=outliers` | Describes a bizarre ledger entry as a suspicious merchant note |
+| 📊 **Compare Ratios** | Group-by rate calculation | Reuse `/api/investigate` (rates path) | Frames the rate disparity as a guild abacus revelation |
+
+The Field Guide (Lantern Sparks) already fills the role of the "Skew Gauge" — it explains method without touching the data. No additional endpoint is needed for that.
+
+### The one rule that must not break
+
+The Python backend computes every number. The AMD model receives the computed result and adds narrative. Generated text that conflicts with the deterministic profile is silently discarded — the `game_engine` result is always authoritative. This is non-negotiable and already enforced by the existing game engine design.
+
+### Scope guardrails (from external evaluation)
+
+Build only what the 3-minute demo needs:
+
+- ✅ 4 investigation tools (the table above) — enough to show depth
+- ✅ Apprentice highlights the count/rate discrepancy; Pathfinder shows raw numbers only
+- ✅ Two sample datasets producing visibly different quests — the strongest demo beat
+- ❌ Skip: SVG animations, mobile layout, free-form chat, additional analytics lessons, persistent sessions
+- ❌ Skip: CSV edge-case validation — basic validation is sufficient for judging
+
+### AMD credit contingency
+
+All four tools work in local preview mode (template fallback) so the demo runs regardless of credit status. The moment AMD credit arrives: swap the template fallback for a live model call, record latency and token counts, and use that recording as proof of AMD integration in the submission.
+

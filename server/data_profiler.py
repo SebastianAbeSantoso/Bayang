@@ -55,7 +55,17 @@ def profile_csv(source: str) -> dict:
         for r in rows:
             r["rate_display"] = f"{r['rate']:.1%}"
             diff_ratio = (r["rate"] / baseline_rate) if baseline_rate > 0 else 1.0
-            r["is_outlier"] = diff_ratio >= 1.5 or (r["group"] in highest_rate_groups and diff_ratio > 1.2)
+            is_volume_anomaly = r["opportunities"] < (0.12 * total_opportunities)
+            is_rate_spike = diff_ratio >= 2.0
+            r["is_outlier"] = is_rate_spike or (is_volume_anomaly and diff_ratio >= 1.75)
+            if is_rate_spike and is_volume_anomaly:
+                r["anomaly_reason"] = f"Severe anomaly: {diff_ratio:.1f}x baseline rate on thin traffic ({r['opportunities']} journeys)"
+            elif is_rate_spike:
+                r["anomaly_reason"] = f"Rate spike: {diff_ratio:.1f}x baseline average"
+            elif is_volume_anomaly and diff_ratio >= 1.75:
+                r["anomaly_reason"] = f"Thin sample exposure ({r['opportunities']} journeys) with {diff_ratio:.1f}x baseline rate"
+            else:
+                r["anomaly_reason"] = "Within normal regional variance"
 
         outlier_groups = [r["group"] for r in rows if r.get("is_outlier")]
 

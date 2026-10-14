@@ -1,7 +1,7 @@
 const $ = (selector) => document.querySelector(selector);
 const state = {
   samples: [], caseId: null, caseInfo: null, mode: "apprentice", quest: null,
-  chosenGroup: null, evidence: "rate", investigated: new Set(), guideRemaining: 0,
+  chosenGroup: null, rationale: "risk_density", investigated: new Set(), guideRemaining: 0,
 };
 
 async function api(path, body) {
@@ -32,10 +32,14 @@ function createText(tag, className, content) {
 }
 
 function resetQuestView() {
-  state.quest = null; state.chosenGroup = null; state.investigated.clear(); state.guideRemaining = 0;
+  state.quest = null; state.chosenGroup = null; state.rationale = "risk_density"; state.investigated.clear(); state.guideRemaining = 0;
   $("#quest-content").hidden = true; $("#transfer-card").hidden = true;
   $("#empty-state").hidden = false; $("#loading-state").hidden = true;
   $("#answer-result").hidden = true; $("#ending").hidden = true;
+  const consequenceBox = $("#consequence-box"); if (consequenceBox) consequenceBox.hidden = true;
+  const computeReceipt = $("#compute-receipt"); if (computeReceipt) computeReceipt.hidden = true;
+  const repairBadge = $("#quest-repair-badge"); if (repairBadge) repairBadge.hidden = true;
+  const costReceipt = $("#quest-cost-receipt"); if (costReceipt) costReceipt.hidden = true;
   $("#evidence-board").replaceChildren(); $("#guide-messages").replaceChildren();
   changeStep(1);
 }
@@ -189,7 +193,11 @@ function renderEvidence(action, investigation, evidence) {
     if (action === "rates") {
       const callout = document.createElement("div");
       callout.className = "apprentice-callout";
-      callout.innerHTML = "<strong>✦ Apprentice Insight:</strong> Notice the contrast! The route with the highest incident volume is not necessarily the most hazardous per journey. Rates adjust for traffic exposure.";
+      if (state.quest?.ranking_differs || state.caseInfo?.ranking_differs) {
+        callout.innerHTML = "<strong>✦ Apprentice Insight:</strong> Notice the contrast! The route with the highest incident volume is not the most hazardous per journey. Rates adjust for traffic exposure.";
+      } else {
+        callout.innerHTML = "<strong>✦ Apprentice Insight:</strong> In this dataset, the highest volume route also has the highest rate, but rate is still the true test: hazard per journey.";
+      }
       card.append(callout);
     } else if (action === "outliers") {
       const callout = document.createElement("div");
@@ -249,7 +257,7 @@ function addGuideMessage(role, text, source = "", latencyMs = null, model = "") 
 function renderQuest(quest, guideRemaining) {
   state.quest = quest;
   state.chosenGroup = null;
-  state.evidence = "rate";
+  state.rationale = "risk_density";
   state.investigated.clear();
   state.guideRemaining = guideRemaining;
   $("#empty-state").hidden = true;
@@ -274,6 +282,36 @@ function renderQuest(quest, guideRemaining) {
     }
   }
 
+  const repairBadge = $("#quest-repair-badge");
+  if (repairBadge) {
+    if (quest.repaired) {
+      repairBadge.textContent = `⚡ Self-Repaired (${quest.attempts} attempts)`;
+      repairBadge.className = "telemetry-pill repair-badge repaired";
+      repairBadge.hidden = false;
+    } else if (quest.attempts) {
+      repairBadge.textContent = "✓ Verified 1st pass";
+      repairBadge.className = "telemetry-pill repair-badge";
+      repairBadge.hidden = false;
+    } else {
+      repairBadge.hidden = true;
+    }
+  }
+
+  const costReceipt = $("#quest-cost-receipt");
+  if (costReceipt) {
+    if (quest.cost) {
+      costReceipt.textContent = `~${quest.tokens?.total || 0} tokens · $${quest.cost.amd_compute_usd.toFixed(5)} AMD`;
+      costReceipt.hidden = false;
+    } else {
+      costReceipt.hidden = true;
+    }
+  }
+
+  const metricCost = $("#metric-cost");
+  if (metricCost && quest.cost) {
+    metricCost.textContent = `$${quest.cost.amd_compute_usd.toFixed(5)}`;
+  }
+
   $("#map-title").textContent = quest.setting.toUpperCase().slice(0, 35);
   $("#map-caption-left").textContent = quest.title.toUpperCase().slice(0, 34);
   renderCharacters(quest.characters);
@@ -295,15 +333,19 @@ function renderQuest(quest, guideRemaining) {
     });
     options.append(button);
   });
-  document.querySelectorAll(".evidence-choice").forEach((button) => {
-    button.classList.toggle("selected", button.dataset.evidence === "rate");
+
+  document.querySelectorAll(".rationale-choice").forEach((button) => {
+    button.classList.toggle("selected", button.dataset.rationale === "risk_density");
     button.onclick = () => {
-      state.evidence = button.dataset.evidence;
-      document.querySelectorAll(".evidence-choice").forEach((choice) => choice.classList.toggle("selected", choice === button));
+      state.rationale = button.dataset.rationale;
+      document.querySelectorAll(".rationale-choice").forEach((choice) => choice.classList.toggle("selected", choice === button));
     };
   });
+
   $("#submit-answer").disabled = true;
   $("#answer-result").hidden = true;
+  const consequenceBox = $("#consequence-box"); if (consequenceBox) consequenceBox.hidden = true;
+  const computeReceipt = $("#compute-receipt"); if (computeReceipt) computeReceipt.hidden = true;
   $("#ending").hidden = true;
   $("#transfer-card").hidden = true;
   $("#evidence-board").replaceChildren();
@@ -319,7 +361,7 @@ function updateDecisionLock() {
   const unlocked = state.investigated.size >= 2;
   $("#decision").classList.toggle("locked", !unlocked);
   $("#decision-hint").textContent = unlocked
-    ? "You have enough records to make a case. Choose the route and evidence that best support your answer."
+    ? "You have enough records to make a case. Choose the route and rationale that best support your answer."
     : `Investigate ${2 - state.investigated.size} more ${2 - state.investigated.size === 1 ? "record" : "records"} to unlock your verdict.`;
   $("#submit-answer").disabled = !unlocked || !state.chosenGroup;
 }
@@ -372,15 +414,31 @@ async function submitAnswer() {
     const result = await api("/api/answer", {
       case_id: state.caseId,
       group: state.chosenGroup,
-      evidence: state.evidence,
+      rationale: state.rationale,
     });
     const box = $("#answer-result");
     box.textContent = result.feedback;
     box.hidden = false;
     box.classList.toggle("incorrect", !result.correct);
+
+    const consequenceBox = $("#consequence-box");
+    if (result.consequence) {
+      $("#consequence-text").textContent = result.consequence;
+      consequenceBox.hidden = false;
+    } else if (consequenceBox) {
+      consequenceBox.hidden = true;
+    }
+
     const ending = $("#ending");
     ending.textContent = result.ending;
     ending.hidden = false;
+
+    const receiptBox = $("#compute-receipt");
+    if (receiptBox && state.quest?.cost) {
+      receiptBox.innerHTML = `<span>⚡ Verified Pipeline Receipt</span><span>${state.quest.tokens?.total || 0} tokens · $${state.quest.cost.amd_compute_usd.toFixed(5)} AMD GPU compute</span>`;
+      receiptBox.hidden = false;
+    }
+
     changeStep(3);
     if (result.correct) $("#transfer-card").hidden = false;
     else button.disabled = false;
@@ -419,7 +477,9 @@ $("#change-data").addEventListener("click", () => {
 });
 $("#next-case").addEventListener("click", () => {
   const current = $("#dataset-select").value;
-  const next = state.samples.find((sample) => sample.id !== current);
+  const currentIndex = state.samples.findIndex((sample) => sample.id === current);
+  const nextIndex = (currentIndex + 1) % state.samples.length;
+  const next = state.samples[nextIndex];
   if (next) {
     $("#dataset-select").value = next.id;
     loadCsv(next.csv);

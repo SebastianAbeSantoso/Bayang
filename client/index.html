@@ -58,7 +58,13 @@
             <div id="loading-state" class="loading-state" hidden><div class="spinner"></div><p>The world is taking shape…</p></div>
             <div id="quest-content" hidden>
               <section class="quest-hero">
-                <div class="quest-kicker"><span class="quest-tag">THE CASE</span><span id="quest-source" class="source-tag"></span><span id="quest-telemetry" class="telemetry-pill" hidden></span></div>
+                <div class="quest-kicker">
+                  <span class="quest-tag">THE CASE</span>
+                  <span id="quest-source" class="source-tag"></span>
+                  <span id="quest-telemetry" class="telemetry-pill" hidden></span>
+                  <span id="quest-repair-badge" class="telemetry-pill repair-badge" hidden></span>
+                  <span id="quest-cost-receipt" class="telemetry-pill cost-receipt" hidden></span>
+                </div>
                 <p id="quest-setting" class="quest-setting"></p><h2 id="quest-title" class="quest-title"></h2><p id="quest-premise" class="quest-premise"></p>
                 <div class="stakes"><span>THE STAKES</span><p id="quest-stakes"></p></div>
               </section>
@@ -82,12 +88,60 @@
                 <div class="decision-head"><span class="decision-step">FINAL DEDUCTION</span><span id="decision-question" class="decision-question"></span></div>
                 <p id="decision-hint" class="decision-hint">Investigate at least two records to unlock your verdict.</p>
                 <div id="answer-options" class="answer-options"></div>
-                <div class="evidence-options"><span>YOUR EVIDENCE</span><button class="evidence-choice selected" data-evidence="rate" type="button">Events per opportunity <small>RATE</small></button><button class="evidence-choice" data-evidence="count" type="button">Total events <small>COUNT</small></button></div>
+                <div class="rationale-block">
+                  <span class="field-label">YOUR ANALYTICAL RATIONALE</span>
+                  <div class="rationale-options" role="radiogroup" aria-label="Analytical rationale">
+                    <button class="rationale-choice selected" data-rationale="risk_density" type="button">
+                      <span class="rationale-glyph">✦</span>
+                      <span class="rationale-text">
+                        <strong>Risk Density</strong>
+                        <small>Incident frequency relative to exposure (per journey)</small>
+                      </span>
+                    </button>
+                    <button class="rationale-choice" data-rationale="incident_volume" type="button">
+                      <span class="rationale-glyph">⌁</span>
+                      <span class="rationale-text">
+                        <strong>Incident Volume</strong>
+                        <small>Gross unadjusted count of total recorded incidents</small>
+                      </span>
+                    </button>
+                    <button class="rationale-choice" data-rationale="random_variance" type="button">
+                      <span class="rationale-glyph">∿</span>
+                      <span class="rationale-text">
+                        <strong>Random Variance</strong>
+                        <small>Isolated fluke or statistical noise without systemic risk</small>
+                      </span>
+                    </button>
+                  </div>
+                </div>
                 <button id="submit-answer" class="primary-button answer-button" type="button" disabled>Commit your finding <span>→</span></button>
                 <div id="answer-result" class="answer-result" hidden></div>
+                <div id="consequence-box" class="consequence-box" hidden>
+                  <span class="consequence-label">IMMEDIATE REALM CONSEQUENCE</span>
+                  <p id="consequence-text"></p>
+                </div>
                 <div id="ending" class="ending" hidden></div>
+                <div id="compute-receipt" class="compute-receipt" hidden></div>
               </section>
-              <div id="transfer-card" class="transfer-card" hidden><span class="eyebrow">THE SKILL TRAVELS</span><h3>Carry your method forward.</h3><p>A new dataset grows a new world. Your next story will follow its own evidence.</p><button id="next-case" class="secondary-button" type="button">Seed another world <span>↗</span></button></div>
+              <div id="transfer-card" class="transfer-card" hidden>
+                <span class="eyebrow">THE SKILL TRAVELS</span>
+                <h3>Carry your method forward.</h3>
+                <p>A new dataset grows a new world. Your next story will follow its own evidence.</p>
+                <div class="instructor-metric">
+                  <div class="metric-row">
+                    <div class="metric-col">
+                      <span class="metric-val" id="metric-cost">$0.00015</span>
+                      <span class="metric-lbl">AMD Instinct + Gemma Compute</span>
+                    </div>
+                    <div class="metric-vs">vs</div>
+                    <div class="metric-col">
+                      <span class="metric-val">~45 min</span>
+                      <span class="metric-lbl">Manual Curriculum Authoring</span>
+                    </div>
+                  </div>
+                </div>
+                <button id="next-case" class="secondary-button" type="button">Seed another world <span>↗</span></button>
+              </div>
             </div>
           </section>
         </div>
