@@ -120,5 +120,30 @@
 .stratified-table td{color:#444b45;border-bottom:1px solid #e4ddd1;padding:6px 5px}
 .stratified-table td small{color:#807d72;font:8px var(--mono)}
 
+/* Schema Mapper Modal */
+.schema-modal{border:1px solid #d5cebc;border-radius:4px;background:#fbf8f1;padding:0;max-width:620px;width:92%;box-shadow:0 16px 40px rgba(23,32,28,.35)}
+.schema-modal::backdrop{background:rgba(19,27,24,.65);backdrop-filter:blur(2px)}
+.modal-box{padding:22px 24px}
+.modal-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #ded6c4;padding-bottom:12px}
+.modal-tag{font:8px var(--mono);letter-spacing:.09em;color:#8c734b}
+.modal-header h3{margin:4px 0 0;font:600 18px var(--serif);color:#24352b}
+.modal-close-btn{background:none;border:0;font-size:20px;color:#827e72;cursor:pointer;line-height:1}
+.modal-desc{margin:10px 0 16px;color:#696b61;font-size:11px;line-height:1.5}
+.mapper-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.mapper-field{display:flex;flex-direction:column;gap:5px}
+.mapper-field label{font:9px var(--mono);letter-spacing:.04em;color:#3b4d40;font-weight:500}
+.mapper-field label small{color:#8a7a58}
+.mapper-hint{font-size:8px;color:#838276;line-height:1.35}
+.modal-preview{margin-top:14px;border-top:1px solid #ded6c4;padding-top:12px}
+.modal-table-wrap{overflow-x:auto;margin-top:6px;border:1px solid #dcd4c2;background:#f4efe4;border-radius:2px}
+.preview-table{width:100%;border-collapse:collapse;font-size:9px;text-align:left}
+.preview-table th{background:#eae2d1;color:#615a4c;padding:6px 8px;font:8px var(--mono);border-bottom:1px solid #d5cdba}
+.preview-table td{padding:5px 8px;border-bottom:1px solid #e5ded0;color:#444a42;font-family:var(--mono);font-size:9px}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;border-top:1px solid #ded6c4;padding-top:14px}
+.modal-actions button{width:auto;min-width:130px;height:38px}
+.profile-title-actions{float:right;display:flex;gap:8px}
+@media(max-width:600px){.mapper-grid{grid-template-columns:1fr}}
+
+
 
 

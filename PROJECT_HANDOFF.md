@@ -1,4 +1,4 @@
-# Bayang — Project Handoff
+# Bayang  -  Project Handoff
 
 This document is the working handoff for someone continuing Bayang without the original planning conversation.
 

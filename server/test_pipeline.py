@@ -166,6 +166,45 @@ def test_raw_event_logs_and_simpsons_stratification():
     print("[PASS] True Simpson's Paradox reversal detected and validated across strata.")
 
 
+def test_wilson_math_and_custom_schema_mapping():
+    from data_profiler import wilson_score_interval, binomial_z_score, inspect_csv_headers
+    
+    # 1. Test Wilson Score Interval mathematics
+    low, high = wilson_score_interval(4, 20, z=1.96)
+    assert 0.05 < low < 0.10
+    assert 0.35 < high < 0.45
+    assert low < 0.20 < high
+    
+    # 2. Test Binomial Z-Score against baseline
+    z = binomial_z_score(4, 20, 0.0556)
+    assert z > 2.5, f"Z-score should indicate statistical significance, got {z}"
+    
+    # 3. Test inspect_csv_headers on arbitrary Kaggle-like 6-column CSV
+    complex_csv = "patient_id,ward,age,adverse_reaction,days_admitted,dose\n101,Oncology,54,1,12,High\n102,Oncology,62,0,5,Low\n103,Cardiology,45,0,8,Med\n"
+    insp = inspect_csv_headers(complex_csv)
+    assert len(insp["fieldnames"]) == 6
+    assert len(insp["preview_rows"]) == 3
+    assert insp["suggested"]["group"] in ("ward", "patient_id")
+    
+    # 4. Test explicit custom mapping override
+    custom_map = {
+        "group": "ward",
+        "events": "adverse_reaction",
+        "opportunities": None,
+        "confounder": "dose",
+        "is_raw_log": True,
+    }
+    custom_profile = profile_csv(complex_csv, custom_mapping=custom_map)
+    assert len(custom_profile["groups"]) == 2
+    assert "Oncology" in [g["group"] for g in custom_profile["groups"]]
+    oncology = next(g for g in custom_profile["groups"] if g["group"] == "Oncology")
+    assert oncology["events"] == 1
+    assert oncology["opportunities"] == 2
+    assert oncology["ci_lower"] >= 0.0
+    assert oncology["z_score"] is not None
+    print("[PASS] Wilson confidence intervals, Z-scores, header inspection, and custom mapping override verified.")
+
+
 if __name__ == "__main__":
     test_profiler_and_outliers()
     test_cost_calculation()
@@ -174,4 +213,5 @@ if __name__ == "__main__":
     test_field_guide_isolation()
     test_schema_inference_and_whatif_projection()
     test_raw_event_logs_and_simpsons_stratification()
+    test_wilson_math_and_custom_schema_mapping()
     print("\nALL GENERATE-VERIFY-REPAIR TESTS PASSED!")

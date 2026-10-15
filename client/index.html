@@ -45,7 +45,7 @@
             <label class="upload-button" for="csv-upload"><span>＋</span> Or bring your own CSV <small>.csv · up to 100 KB</small></label><input id="csv-upload" type="file" accept=".csv,text/csv" hidden>
             <div id="error-box" class="notice error" role="alert" hidden></div>
             <div id="profile-card" class="profile-card" hidden>
-              <div class="profile-title"><span class="live-dot"></span><span>SEALED DOSSIER</span><button id="change-data" class="text-button" type="button">Change</button></div>
+              <div class="profile-title"><span class="live-dot"></span><span>SEALED DOSSIER</span><div class="profile-title-actions"><button id="configure-schema-btn" class="text-button" type="button">Map Columns</button><button id="change-data" class="text-button" type="button">Change</button></div></div>
               <p id="case-summary" class="case-summary"></p><div id="profile-groups" class="profile-groups"></div>
               <div class="sealed-note">Counts and answer stay hidden until you investigate.</div>
             </div>
@@ -149,5 +149,52 @@
       </section>
     </main>
   </div>
+  <dialog id="schema-modal" class="schema-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div>
+          <span class="modal-tag">CSV SCHEMA MAPPER</span>
+          <h3>Configure Ledger Columns</h3>
+        </div>
+        <button type="button" id="modal-close" class="modal-close-btn">&times;</button>
+      </div>
+      <p class="modal-desc">Ensure Bayang maps your headers accurately to entities, events, exposure, and confounding conditions.</p>
+      
+      <div class="mapper-grid">
+        <div class="mapper-field">
+          <label for="map-group-select">Entity / Group Column <small>(Required)</small></label>
+          <select id="map-group-select" class="select-input"></select>
+          <span class="mapper-hint">The categories, routes, services, cohorts, or wards being compared.</span>
+        </div>
+        <div class="mapper-field">
+          <label for="map-events-select">Events / Incidents / Status <small>(Required)</small></label>
+          <select id="map-events-select" class="select-input"></select>
+          <span class="mapper-hint">Numeric count of incidents, or outcome status flags (error, fail, 1).</span>
+        </div>
+        <div class="mapper-field">
+          <label for="map-opp-select">Exposure / Denominator <small>(Optional for raw logs)</small></label>
+          <select id="map-opp-select" class="select-input"></select>
+          <span class="mapper-hint">Total journeys, requests, trials, or select "[Count rows as Exposure]" for raw logs.</span>
+        </div>
+        <div class="mapper-field">
+          <label for="map-confounder-select">Confounder / Stratum <small>(Optional · for Simpson's Paradox)</small></label>
+          <select id="map-confounder-select" class="select-input"></select>
+          <span class="mapper-hint">Subgroup variable (weather, severity, shift) to test for hidden bias.</span>
+        </div>
+      </div>
+
+      <div class="modal-preview">
+        <span class="field-label">FIRST 3 ROWS PREVIEW</span>
+        <div class="modal-table-wrap">
+          <table id="modal-preview-table" class="preview-table"></table>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" id="modal-cancel-btn" class="secondary-button">Cancel</button>
+        <button type="button" id="modal-apply-btn" class="primary-button">Confirm &amp; Profile World <span>&rarr;</span></button>
+      </div>
+    </div>
+  </dialog>
 </body>
 </html>

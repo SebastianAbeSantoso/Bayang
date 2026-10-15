@@ -1,4 +1,4 @@
-# Bayang — Implementation Plan
+# Bayang  -  Implementation Plan
 
 **Product:** The Living Ledger  
 **Hackathon track:** Create a New Kind of Experience  
@@ -109,21 +109,21 @@ Both the feature design notes (`thoughts.md`) and the external project evaluatio
 | ⚡ **Outlier Lens** | IQR flag (`value > Q3 + 1.5×IQR`) | New: `/api/investigate?type=outliers` | Describes a bizarre ledger entry as a suspicious merchant note |
 | 📊 **Compare Ratios** | Group-by rate calculation | Reuse `/api/investigate` (rates path) | Frames the rate disparity as a guild abacus revelation |
 
-The Field Guide (Lantern Sparks) already fills the role of the "Skew Gauge" — it explains method without touching the data. No additional endpoint is needed for that.
+The Field Guide (Lantern Sparks) already fills the role of the "Skew Gauge"  -  it explains method without touching the data. No additional endpoint is needed for that.
 
 ### The one rule that must not break
 
-The Python backend computes every number. The AMD model receives the computed result and adds narrative. Generated text that conflicts with the deterministic profile is silently discarded — the `game_engine` result is always authoritative. This is non-negotiable and already enforced by the existing game engine design.
+The Python backend computes every number. The AMD model receives the computed result and adds narrative. Generated text that conflicts with the deterministic profile is silently discarded  -  the `game_engine` result is always authoritative. This is non-negotiable and already enforced by the existing game engine design.
 
 ### Scope guardrails (from external evaluation)
 
 Build only what the 3-minute demo needs:
 
-- ✅ 4 investigation tools (the table above) — enough to show depth
+- ✅ 4 investigation tools (the table above)  -  enough to show depth
 - ✅ Apprentice highlights the count/rate discrepancy; Pathfinder shows raw numbers only
-- ✅ Two sample datasets producing visibly different quests — the strongest demo beat
+- ✅ Two sample datasets producing visibly different quests  -  the strongest demo beat
 - ❌ Skip: SVG animations, mobile layout, free-form chat, additional analytics lessons, persistent sessions
-- ❌ Skip: CSV edge-case validation — basic validation is sufficient for judging
+- ❌ Skip: CSV edge-case validation  -  basic validation is sufficient for judging
 
 ### AMD credit contingency
 

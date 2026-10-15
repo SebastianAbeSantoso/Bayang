@@ -154,12 +154,90 @@ function renderCaseSummary() {
   }
 }
 
-async function loadCsv(csv) {
+state.currentRawCsv = null;
+
+async function openSchemaModal(csv) {
+  try {
+    const inspection = await api("/api/inspect_headers", { csv });
+    const { fieldnames, suggested, preview_rows } = inspection;
+
+    const populateSelect = (selectId, includeEmpty = false, emptyLabel = "") => {
+      const select = $(selectId);
+      select.replaceChildren();
+      if (includeEmpty) {
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = emptyLabel;
+        select.append(opt);
+      }
+      fieldnames.forEach((name) => {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        select.append(opt);
+      });
+      return select;
+    };
+
+    const gSel = populateSelect("#map-group-select");
+    gSel.value = suggested.group || fieldnames[0] || "";
+
+    const eSel = populateSelect("#map-events-select");
+    eSel.value = suggested.events || fieldnames[1] || "";
+
+    const oSel = populateSelect("#map-opp-select", true, "Count rows as Exposure (Raw Event Log)");
+    oSel.querySelector('option[value=""]').value = "__RAW_LOG__";
+    oSel.value = suggested.opportunities || (suggested.is_raw_log ? "__RAW_LOG__" : (fieldnames[2] || ""));
+
+    const cSel = populateSelect("#map-confounder-select", true, "None (Unstratified Analysis)");
+    cSel.value = suggested.confounder || "";
+
+    // Render Preview Table
+    const table = $("#modal-preview-table");
+    table.replaceChildren();
+    const thead = document.createElement("thead");
+    const trHead = document.createElement("tr");
+    fieldnames.forEach((fn) => trHead.append(createText("th", "", fn)));
+    thead.append(trHead);
+    table.append(thead);
+
+    const tbody = document.createElement("tbody");
+    preview_rows.forEach((row) => {
+      const tr = document.createElement("tr");
+      fieldnames.forEach((fn) => tr.append(createText("td", "", row[fn] || "")));
+      tbody.append(tr);
+    });
+    table.append(tbody);
+
+    const modal = $("#schema-modal");
+    if (typeof modal.showModal === "function") {
+      modal.showModal();
+    } else {
+      modal.setAttribute("open", "");
+    }
+  } catch (err) {
+    showError(`Could not inspect CSV headers: ${err.message}`);
+  }
+}
+
+function closeSchemaModal() {
+  const modal = $("#schema-modal");
+  if (typeof modal.close === "function") {
+    modal.close();
+  } else {
+    modal.removeAttribute("open");
+  }
+}
+
+async function loadCsv(csv, custom_mapping = null) {
   clearError(); $("#begin-button").disabled = true;
+  state.currentRawCsv = csv;
   state.caseId = null; state.caseInfo = null; renderCaseSummary();
   resetQuestView();
   try {
-    const result = await api("/api/profile", { csv });
+    const payload = { csv };
+    if (custom_mapping) payload.custom_mapping = custom_mapping;
+    const result = await api("/api/profile", payload);
     state.caseId = result.case_id; state.caseInfo = result.case;
     renderCaseSummary(); $("#begin-button").disabled = false;
   } catch (error) {
@@ -679,8 +757,41 @@ $("#csv-upload").addEventListener("change", async (event) => {
   if (!file) return;
   if (file.size > 100_000) return showError("Choose a CSV under 100 KB.");
   $("#dataset-select").value = "";
-  await loadCsv(await file.text());
+  const text = await file.text();
+  state.currentRawCsv = text;
+  try {
+    const insp = await api("/api/inspect_headers", { csv: text });
+    if (insp.fieldnames.length > 3 || insp.suggested.is_raw_log || insp.suggested.confounder) {
+      openSchemaModal(text);
+      return;
+    }
+  } catch (e) {
+    // fallback to normal loader
+  }
+  await loadCsv(text);
 });
+
+$("#configure-schema-btn")?.addEventListener("click", () => {
+  if (state.currentRawCsv) openSchemaModal(state.currentRawCsv);
+});
+$("#modal-close")?.addEventListener("click", closeSchemaModal);
+$("#modal-cancel-btn")?.addEventListener("click", closeSchemaModal);
+$("#modal-apply-btn")?.addEventListener("click", () => {
+  const group = $("#map-group-select").value;
+  const events = $("#map-events-select").value;
+  const opp = $("#map-opp-select").value;
+  const confounder = $("#map-confounder-select").value || null;
+  const is_raw_log = opp === "__RAW_LOG__";
+  closeSchemaModal();
+  loadCsv(state.currentRawCsv, {
+    group,
+    events,
+    opportunities: is_raw_log ? null : opp,
+    confounder,
+    is_raw_log,
+  });
+});
+
 $("#change-data").addEventListener("click", () => {
   $("#dataset-select").focus();
   $("#dataset-select").scrollIntoView({ behavior: "smooth", block: "center" });

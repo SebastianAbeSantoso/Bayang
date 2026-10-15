@@ -1,4 +1,4 @@
-# Bayang — The Living Ledger
+# Bayang  -  The Living Ledger
 
 **Hackathon track:** Create a New Kind of Experience  
 **Core idea:** Turn a learner's dataset into a replayable, choice-driven tabletop-style analytics mystery.

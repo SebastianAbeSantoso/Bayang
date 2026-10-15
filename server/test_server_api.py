@@ -37,6 +37,19 @@ def run_test():
         sample_csv = samples_data["samples"][1]["csv"]
         print("[PASS] /api/samples returned sample ledgers.")
 
+    # 2b. Test /api/inspect_headers
+    req = urllib.request.Request(
+        f"{base}/api/inspect_headers",
+        data=json.dumps({"csv": sample_csv}).encode("utf-8"),
+        headers={"Content-Type": "application/json"}
+    )
+    with urllib.request.urlopen(req) as res:
+        insp_data = json.loads(res.read())
+        assert "fieldnames" in insp_data
+        assert "suggested" in insp_data
+        assert "preview_rows" in insp_data
+        print("[PASS] /api/inspect_headers provides schema suggestions and row previews.")
+
     # 3. Post /api/profile
     req = urllib.request.Request(
         f"{base}/api/profile",

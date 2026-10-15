@@ -8,7 +8,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
-from data_profiler import DataError, profile_csv
+from data_profiler import DataError, profile_csv, inspect_csv_headers
 from model_client import answer_guide, generate_consequence, generate_quest
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -216,8 +216,12 @@ class BayangHandler(BaseHTTPRequestHandler):
         route = urlparse(self.path).path
         try:
             payload = self.read_json()
+            if route == "/api/inspect_headers":
+                inspection = inspect_csv_headers(payload.get("csv", ""))
+                return self.send_json(200, inspection)
+
             if route == "/api/profile":
-                profile = profile_csv(payload.get("csv", ""))
+                profile = profile_csv(payload.get("csv", ""), custom_mapping=payload.get("custom_mapping"))
                 case_id = str(uuid.uuid4())
                 CASES[case_id] = {"profile": profile, "quest": None,
                                   "investigated": set(), "guide_remaining": None,

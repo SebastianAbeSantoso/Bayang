@@ -1,4 +1,4 @@
-# Bayang — Full Project Evaluation & Advice
+# Bayang  -  Full Project Evaluation & Advice
 
 **Date:** 13 October 2026, evening  
 **Deadline:** 18 October 2026, 15:00 UTC (~5 days from now)  
@@ -8,16 +8,16 @@
 
 ## 1. Honest Assessment: What You Have
 
-You have **three strong documents** and **zero running software**. The concept is well-scoped, the plan is realistic, and the README is clean. That's genuinely better than most hackathon starting points — most people write bad plans and good code. You've done the reverse, and now you need to flip.
+You have **three strong documents** and **zero running software**. The concept is well-scoped, the plan is realistic, and the README is clean. That's genuinely better than most hackathon starting points  -  most people write bad plans and good code. You've done the reverse, and now you need to flip.
 
 ### What's good about the idea
 
 | Strength | Why it matters |
 |---|---|
-| **Narrow, teachable concept** | "Counts vs. rates" is a real cognitive trap. You picked one lesson and committed — judges love that. |
+| **Narrow, teachable concept** | "Counts vs. rates" is a real cognitive trap. You picked one lesson and committed  -  judges love that. |
 | **Deterministic core + generative shell** | The split between "app checks the math, model tells the story" is the right architecture. It's defensible, explainable, and avoids the "the LLM hallucinated wrong answers" trap. |
 | **Data-driven generation** | Two different CSVs → two different quests is a strong demo beat. It proves the system is generative, not scripted. |
-| **Track fit** | "New Kind of Experience" is the softest track — it rewards novelty and polish over raw infra feats. A fantasy RPG investigation is the right vibe. |
+| **Track fit** | "New Kind of Experience" is the softest track  -  it rewards novelty and polish over raw infra feats. A fantasy RPG investigation is the right vibe. |
 | **Clear buyer hypothesis** | "Bootcamps want short applied exercises" is credible and not over-claimed. |
 
 ### What's risky
@@ -105,12 +105,12 @@ Here is my recommended build sequence, re-ordered for maximum "demoable at any p
    ```
    The template fallback is your safety net. If AMD credit never arrives, you still have a working demo (just less impressive).
 
-4. Write `app.py` — a minimal Python HTTP server (~100 lines). Serve static files, handle `/api/upload`, `/api/generate`, `/api/check_answer`.
+4. Write `app.py`  -  a minimal Python HTTP server (~100 lines). Serve static files, handle `/api/upload`, `/api/generate`, `/api/check_answer`.
 
-5. Write `index.html` — a single page with sections that show/hide. No router, no framework. Sections: Landing → Upload → Profile → Quest → Evidence → Conclusion → Transfer.
+5. Write `index.html`  -  a single page with sections that show/hide. No router, no framework. Sections: Landing → Upload → Profile → Quest → Evidence → Conclusion → Transfer.
 
 > [!IMPORTANT]
-> **Do NOT build the SVG chart from scratch.** Use a `<table>` with colored bars via CSS `width` percentages, or use [Chart.css](https://chartscss.org/) — it's a CSS-only charting library, zero JS, zero build step. You'll save 2+ hours.
+> **Do NOT build the SVG chart from scratch.** Use a `<table>` with colored bars via CSS `width` percentages, or use [Chart.css](https://chartscss.org/)  -  it's a CSS-only charting library, zero JS, zero build step. You'll save 2+ hours.
 
 ### Oct 14: Game loop works end-to-end
 
@@ -166,7 +166,7 @@ Here is my recommended build sequence, re-ordered for maximum "demoable at any p
    ```
 
    > [!TIP]
-   > **Ask for structured JSON output.** This is critical. If the model returns free-form text, you can't reliably parse character names, clues, etc. Use a JSON schema in the prompt and validate the response. vLLM supports guided decoding / JSON mode — use it if available for your model.
+   > **Ask for structured JSON output.** This is critical. If the model returns free-form text, you can't reliably parse character names, clues, etc. Use a JSON schema in the prompt and validate the response. vLLM supports guided decoding / JSON mode  -  use it if available for your model.
 
 3. Test with both datasets. Verify the model doesn't hallucinate numbers. If it does, tighten the prompt or reduce what you ask it to generate.
 
@@ -177,7 +177,7 @@ Here is my recommended build sequence, re-ordered for maximum "demoable at any p
 - End-to-end test both datasets, both modes
 - Add loading spinners for model calls
 - Add error handling if the model endpoint is down
-- Clean up the UI (doesn't need to be beautiful — needs to be *clear*)
+- Clean up the UI (doesn't need to be beautiful  -  needs to be *clear*)
 - Record the demo video
 - Update README with exact run instructions
 
@@ -208,7 +208,7 @@ flowchart TD
     K --> L["model_client.generate(\nprofile, 'clue_reveal', mode)"]
     L --> M["Display clue + evidence panel"]
     M --> N["User picks conclusion\n+ supporting evidence"]
-    N --> O["game_engine.check_answer()\n— DETERMINISTIC"]
+    N --> O["game_engine.check_answer()\n -  DETERMINISTIC"]
     O --> P["Display feedback\n+ transfer question"]
 ```
 
@@ -254,7 +254,7 @@ Don't overcomplicate this. Here's the minimum viable difference:
 | Conclusion screen | Pre-selects the correct framing, asks user to confirm | User must pick from scratch |
 | Prompt modifier | `"The player is a beginner. Give explicit hints."` | `"The player prefers to discover things independently. Be subtle."` |
 
-That's it. Same quest, same data, same flow — different hint density. Judges will see the difference in a side-by-side.
+That's it. Same quest, same data, same flow  -  different hint density. Judges will see the difference in a side-by-side.
 
 ---
 
@@ -262,8 +262,8 @@ That's it. Same quest, same data, same flow — different hint density. Judges w
 
 The track brief asks for:
 
-1. **An adaptive experience** — ✅ You have two modes + data-driven generation
-2. **Demonstration across at least two audiences, situations, or inputs** — ✅ Two datasets, two modes
+1. **An adaptive experience**  -  ✅ You have two modes + data-driven generation
+2. **Demonstration across at least two audiences, situations, or inputs**  -  ✅ Two datasets, two modes
 
 ### What judges will look for
 
