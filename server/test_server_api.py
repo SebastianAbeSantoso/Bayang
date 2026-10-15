@@ -48,6 +48,7 @@ def run_test():
         case_id = profile_res["case_id"]
         assert "groups" in profile_res["case"]
         assert profile_res["case"]["ranking_differs"] is True
+        assert "schema_mapping" in profile_res["case"]
         print(f"[PASS] /api/profile initialized case: {case_id[:8]}... with ranking_differs=True.")
 
     # 4. Post /api/quest
@@ -88,7 +89,9 @@ def run_test():
         inv_res = json.loads(res.read())
         assert inv_res["progress"] == 2
         assert inv_res["ready_to_decide"] is True
-        print("[PASS] /api/investigate rates completed 2-step unlock threshold.")
+        assert "equalized_exposure" in inv_res["evidence"]
+        assert any("projected_events" in r for r in inv_res["evidence"]["rows"])
+        print("[PASS] /api/investigate rates completed 2-step unlock threshold with equalized exposure.")
 
     # 7. Post /api/guide
     req = urllib.request.Request(

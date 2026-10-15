@@ -45,7 +45,8 @@ def public_case_summary(profile):
     """Expose only group labels before the player investigates."""
     return {"groups": [row["group"] for row in profile["groups"]],
             "group_count": len(profile["groups"]),
-            "ranking_differs": profile.get("ranking_differs", False)}
+            "ranking_differs": profile.get("ranking_differs", False),
+            "schema_mapping": profile.get("schema_mapping", {})}
 
 
 def public_quest(quest):
@@ -86,12 +87,14 @@ def investigation_evidence(profile, action, mode):
         )
     else:
         rows = [{"group": row["group"], "events": row["events"],
-                 "opportunities": row["opportunities"], "rate": row["rate"]}
+                 "opportunities": row["opportunities"], "rate": row["rate"],
+                 "projected_events": row.get("projected_events", row["events"]),
+                 "projected_exposure": row.get("projected_exposure", row["opportunities"])}
                 for row in profile["groups"]]
         label = "Events per journey"
         explanation = ("Rate = events ÷ journeys. Compare these to judge risk per journey."
                        if mode == "apprentice" else "Compare events ÷ journeys across groups.")
-    return {"label": label, "explanation": explanation, "rows": rows}
+    return {"label": label, "explanation": explanation, "rows": rows, "equalized_exposure": profile.get("equalized_exposure")}
 
 
 

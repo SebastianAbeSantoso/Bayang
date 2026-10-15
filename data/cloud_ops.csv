@@ -1,4 +1,4 @@
-group,events,opportunities
+service,errors,requests
 eu-central-ingress,48,1600
 us-east-canary,14,35
 ap-southeast-db,22,550

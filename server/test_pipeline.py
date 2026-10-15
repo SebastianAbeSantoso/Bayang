@@ -114,10 +114,37 @@ def test_field_guide_isolation():
     print("[PASS] Field Guide isolation prevents answer leaks under adversarial prompts.")
 
 
+def test_schema_inference_and_whatif_projection():
+    # Test clinical trials dataset with non-standard headers
+    clinical_csv = (ROOT / "data" / "clinical_trials.csv").read_text(encoding="utf-8")
+    profile = profile_csv(clinical_csv)
+    mapping = profile["schema_mapping"]
+    assert mapping["is_aliased"] is True
+    assert mapping["group_col"].lower() in ("cohort", "group", "name")
+    assert mapping["events_col"].lower() in ("adverse_events", "events")
+    assert mapping["opportunities_col"].lower() in ("patients", "opportunities")
+    assert profile["equalized_exposure"] > 0
+    assert all("projected_events" in g for g in profile["groups"])
+
+    # Test ad-hoc messy headers
+    messy_csv = "Region,Deaths,Population\nNorth,5,100\nSouth,20,200\n"
+    messy_profile = profile_csv(messy_csv)
+    assert messy_profile["schema_mapping"]["is_aliased"] is True
+    assert messy_profile["schema_mapping"]["group_col"] == "Region"
+    assert messy_profile["schema_mapping"]["events_col"] == "Deaths"
+    assert messy_profile["schema_mapping"]["opportunities_col"] == "Population"
+    assert messy_profile["equalized_exposure"] == 200
+    # North rate = 5/100 = 0.05. At max exposure 200, projected_events = round(0.05 * 200) = 10
+    north = next(g for g in messy_profile["groups"] if g["group"] == "North")
+    assert north["projected_events"] == 10
+    print("[PASS] Smart schema inference and equalized exposure projections verified.")
+
+
 if __name__ == "__main__":
     test_profiler_and_outliers()
     test_cost_calculation()
     test_generate_verify_pipeline()
     test_answer_deduction_and_consequence()
     test_field_guide_isolation()
+    test_schema_inference_and_whatif_projection()
     print("\nALL GENERATE-VERIFY-REPAIR TESTS PASSED!")

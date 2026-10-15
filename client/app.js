@@ -41,7 +41,48 @@ function resetQuestView() {
   const repairBadge = $("#quest-repair-badge"); if (repairBadge) repairBadge.hidden = true;
   const costReceipt = $("#quest-cost-receipt"); if (costReceipt) costReceipt.hidden = true;
   $("#evidence-board").replaceChildren(); $("#guide-messages").replaceChildren();
+  document.querySelectorAll("#map-routes .route-chip").forEach((chip) => {
+    chip.classList.remove("map-highlight", "has-anomaly");
+  });
   changeStep(1);
+}
+
+function highlightRoute(group, active) {
+  if (!group) return;
+  document.querySelectorAll("#map-routes .route-chip").forEach((chip) => {
+    if (chip.dataset.group === group) {
+      chip.classList.toggle("map-highlight", active);
+    }
+  });
+  document.querySelectorAll(".evidence-table tr").forEach((row) => {
+    if (row.dataset.group === group) {
+      row.classList.toggle("row-highlight", active);
+    }
+  });
+  document.querySelectorAll(".whatif-row").forEach((row) => {
+    if (row.dataset.group === group) {
+      row.classList.toggle("row-highlight", active);
+    }
+  });
+}
+
+function selectRouteFromMap(group) {
+  if (!group) return;
+  const option = document.querySelector(`#answer-options button[data-group="${CSS.escape(group)}"]`);
+  if (option) {
+    option.click();
+    option.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+}
+
+function syncAnomaliesToMap(rows) {
+  if (!rows || !Array.isArray(rows)) return;
+  rows.forEach((row) => {
+    if (row.is_outlier) {
+      const chip = document.querySelector(`#map-routes .route-chip[data-group="${CSS.escape(row.group)}"]`);
+      if (chip) chip.classList.add("has-anomaly");
+    }
+  });
 }
 
 function renderCaseSummary() {
@@ -49,11 +90,35 @@ function renderCaseSummary() {
   $("#profile-card").hidden = !info;
   if (!info) return;
   $("#case-summary").textContent = `${info.group_count} groups · count and rate investigation`;
+
+  let schemaEl = $("#schema-mapping-badge");
+  if (!schemaEl) {
+    schemaEl = document.createElement("div");
+    schemaEl.id = "schema-mapping-badge";
+    schemaEl.className = "schema-badge";
+    const profileCard = $("#profile-card");
+    const profileGroups = $("#profile-groups");
+    if (profileCard && profileGroups) {
+      profileCard.insertBefore(schemaEl, profileGroups);
+    }
+  }
+  if (info.schema_mapping && info.schema_mapping.is_aliased) {
+    schemaEl.innerHTML = `<span class="schema-glyph">✓</span> Inferred headers: <code>${info.schema_mapping.group_col}</code> → Group, <code>${info.schema_mapping.events_col}</code> → Events, <code>${info.schema_mapping.opportunities_col}</code> → Exposure`;
+    schemaEl.hidden = false;
+  } else if (schemaEl) {
+    schemaEl.hidden = true;
+  }
+
   const list = $("#profile-groups"); list.replaceChildren();
   info.groups.forEach((label) => list.append(createText("span", "group-chip", label)));
   const routes = $("#map-routes"); routes.replaceChildren();
   info.groups.slice(0, 5).forEach((label, index) => {
     const route = createText("span", `route-chip route-${index % 4}`, label);
+    route.dataset.group = label;
+    route.title = `Route: ${label} (Click to select)`;
+    route.addEventListener("mouseenter", () => highlightRoute(label, true));
+    route.addEventListener("mouseleave", () => highlightRoute(label, false));
+    route.addEventListener("click", () => selectRouteFromMap(label));
     routes.append(route);
   });
   if (info.groups.length > 5) routes.append(createText("span", "route-more", `+${info.groups.length - 5} more`));
@@ -166,6 +231,9 @@ function renderEvidence(action, investigation, evidence) {
   const body = document.createElement("tbody");
   sortedRows.forEach((row) => {
     const tr = document.createElement("tr");
+    tr.dataset.group = row.group;
+    tr.addEventListener("mouseenter", () => highlightRoute(row.group, true));
+    tr.addEventListener("mouseleave", () => highlightRoute(row.group, false));
     if (row.is_outlier) tr.className = "anomaly-row";
     columns.forEach(([key]) => {
       const cell = document.createElement("td");
@@ -188,6 +256,71 @@ function renderEvidence(action, investigation, evidence) {
   });
   table.append(body);
   card.append(table);
+
+  if (action === "rates") {
+    const equalizedExposure = evidence.equalized_exposure || Math.max(...evidence.rows.map((r) => r.opportunities || 0), 100);
+    const whatIf = document.createElement("div");
+    whatIf.className = "whatif-panel";
+    whatIf.innerHTML = `
+      <div class="whatif-header">
+        <div class="whatif-badge"><span class="whatif-glyph">✦</span> WHAT-IF SIMULATOR</div>
+        <h4>Equalized Exposure Projection</h4>
+        <p class="whatif-sub">Why rate beats raw volume: what happens if every sector carried equal traffic (${equalizedExposure} journeys)?</p>
+      </div>
+      <div class="whatif-controls">
+        <label class="whatif-label">
+          <span>Simulated Exposure:</span>
+          <strong class="whatif-slider-val">${equalizedExposure}</strong> <small>journeys</small>
+        </label>
+        <input type="range" min="${Math.max(10, Math.round(equalizedExposure * 0.2))}" max="${Math.round(equalizedExposure * 2.5)}" value="${equalizedExposure}" class="whatif-range">
+      </div>
+      <div class="whatif-bars"></div>
+    `;
+
+    const slider = whatIf.querySelector(".whatif-range");
+    const sliderVal = whatIf.querySelector(".whatif-slider-val");
+    const barsContainer = whatIf.querySelector(".whatif-bars");
+
+    function updateWhatIfBars(exposure) {
+      barsContainer.replaceChildren();
+      const simRows = [...evidence.rows].sort((a, b) => (b.rate || 0) - (a.rate || 0));
+      const maxSimEvents = Math.max(...simRows.map((r) => Math.round((r.rate || 0) * exposure)), 1);
+
+      simRows.forEach((row) => {
+        const proj = Math.round((row.rate || 0) * exposure);
+        const item = document.createElement("div");
+        item.className = `whatif-row ${row.is_outlier ? "is-anomaly" : ""}`;
+        item.dataset.group = row.group;
+        item.addEventListener("mouseenter", () => highlightRoute(row.group, true));
+        item.addEventListener("mouseleave", () => highlightRoute(row.group, false));
+
+        const barPct = Math.min(100, Math.round((proj / maxSimEvents) * 100));
+        item.innerHTML = `
+          <div class="whatif-row-meta">
+            <span class="whatif-group">${row.group}</span>
+            <span class="whatif-rate">${((row.rate || 0) * 100).toFixed(1)}%</span>
+            <span class="whatif-actual">(${row.events} in ${row.opportunities})</span>
+          </div>
+          <div class="whatif-row-bar-box">
+            <div class="whatif-bar-track">
+              <div class="whatif-bar-fill ${row.is_outlier ? "bar-spike" : ""}" style="width: ${barPct}%"></div>
+            </div>
+            <strong class="whatif-proj-val">${proj} projected</strong>
+          </div>
+        `;
+        barsContainer.append(item);
+      });
+    }
+
+    slider.addEventListener("input", (e) => {
+      const val = Number(e.target.value);
+      sliderVal.textContent = val;
+      updateWhatIfBars(val);
+    });
+
+    updateWhatIfBars(equalizedExposure);
+    card.append(whatIf);
+  }
 
   if (state.mode === "apprentice") {
     if (action === "rates") {
@@ -216,6 +349,9 @@ async function investigate(action, button) {
     const result = await api("/api/investigate", { case_id: state.caseId, action });
     state.investigated.add(action);
     renderEvidence(action, result.investigation, result.evidence);
+    if (result.evidence?.rows) {
+      syncAnomaliesToMap(result.evidence.rows);
+    }
     const totalCount = state.quest?.investigations?.length || 4;
     $("#investigation-progress").textContent = `${state.investigated.size} / ${totalCount} found`;
     renderInvestigations();
@@ -326,10 +462,14 @@ function renderQuest(quest, guideRemaining) {
   state.caseInfo.groups.forEach((group) => {
     const button = createText("button", "answer-option", group);
     button.type = "button";
+    button.dataset.group = group;
+    button.addEventListener("mouseenter", () => highlightRoute(group, true));
+    button.addEventListener("mouseleave", () => highlightRoute(group, false));
     button.addEventListener("click", () => {
       state.chosenGroup = group;
       options.querySelectorAll("button").forEach((choice) => choice.classList.toggle("selected", choice === button));
       $("#submit-answer").disabled = !state.chosenGroup || state.investigated.size < 2;
+      highlightRoute(group, true);
     });
     options.append(button);
   });

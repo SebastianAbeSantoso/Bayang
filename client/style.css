@@ -51,3 +51,45 @@
   .rationale-block,.consequence-box,.compute-receipt{margin-left:0}
 }
 
+/* Schema Inference Badge */
+.schema-badge{margin:8px 0;padding:6px 9px;background:#eef3eb;border:1px solid #c2d6be;border-radius:2px;font:9px/1.4 var(--mono);color:#3b573e}
+.schema-glyph{color:#4c815e;font-weight:bold;margin-right:3px}
+.schema-badge code{background:#e1ebd9;padding:1px 4px;border-radius:2px;font-weight:500}
+
+/* Tactical Map Synchronization */
+.route-chip{cursor:pointer;transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease}
+.route-chip:hover,.route-chip.map-highlight{border-color:#40654e!important;background:#fdfaf2!important;box-shadow:0 0 0 2px #40654e44;transform:translateY(-1px);color:#24463a!important}
+.route-chip.has-anomaly{position:relative;border-color:#cf8452!important;color:#8c4224!important}
+.route-chip.has-anomaly::after{content:" !";color:#a2543e;font-weight:700}
+.row-highlight{background:#fdf6e9!important}
+
+/* What-If Equalized Exposure Simulator */
+.whatif-panel{margin-top:14px;padding:13px 14px;background:#f4efe4;border:1px solid #dcd3be;border-radius:2px}
+.whatif-header h4{margin:4px 0 2px;font:600 13px var(--serif);color:#29382e}
+.whatif-badge{font:8px var(--mono);letter-spacing:.08em;color:#926f39;display:flex;align-items:center;gap:4px}
+.whatif-glyph{color:var(--gold)}
+.whatif-sub{margin:0 0 10px;font-size:10px;line-height:1.45;color:#696b61}
+.whatif-controls{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px;background:#ece5d6;border:1px solid #d5cbb4;border-radius:2px;margin-bottom:10px}
+.whatif-label{font:9px var(--mono);color:#55584e;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.whatif-label strong{color:#253e2d;font-size:11px}
+.whatif-range{flex:1;accent-color:#386451;height:5px;cursor:pointer}
+.whatif-bars{display:grid;gap:7px}
+.whatif-row{padding:6px 8px;background:#f8f6ef;border:1px solid #ded6c3;border-radius:2px;display:grid;grid-template-columns:1fr 140px;align-items:center;gap:10px;cursor:pointer;transition:background .15s ease,border-color .15s ease}
+.whatif-row:hover{border-color:#6d886f;background:#f2f5ec}
+.whatif-row.is-anomaly{border-left:3px solid #b8623d}
+.whatif-row-meta{display:flex;align-items:baseline;gap:8px;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.whatif-group{font-weight:600;color:#28372c}
+.whatif-rate{font:9px var(--mono);color:#93642c}
+.whatif-actual{font-size:9px;color:#8b8a7f}
+.whatif-row-bar-box{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.whatif-bar-track{flex:1;height:6px;background:#ded7c7;border-radius:3px;overflow:hidden;max-width:65px}
+.whatif-bar-fill{height:100%;background:#73846b;border-radius:3px;transition:width .2s ease}
+.whatif-bar-fill.bar-spike{background:#bd6a42}
+.whatif-proj-val{font:600 10px var(--mono);color:#28372c;min-width:70px;text-align:right}
+@media(max-width:650px){
+  .whatif-row{grid-template-columns:1fr;gap:5px}
+  .whatif-row-bar-box{justify-content:space-between}
+  .whatif-bar-track{max-width:100%}
+}
+
+
