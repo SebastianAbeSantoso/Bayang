@@ -898,6 +898,10 @@ const stageState = {
   selectedVerb: "block_route",
   tension: 2.0,
   isProcessing: false,
+  autoPlay: true,
+  metronomeTimer: null,
+  metronomeRemainingMs: 3500,
+  metronomeTotalMs: 3500,
 };
 
 const STAGE_NODE_COORDS = {
@@ -911,11 +915,29 @@ const STAGE_NODE_COORDS = {
 };
 
 const CHAR_CONFIG = {
-  "Julian": { code: "J", color: "#4a6778", class: "julian", name: "Julian" },
-  "Vesper": { code: "V", color: "#9e6a2b", class: "vesper", name: "Vesper" },
-  "Beatrice": { code: "B", color: "#7e4334", class: "beatrice", name: "Beatrice" },
-  "The Curator": { code: "C", color: "#544163", class: "curator", name: "The Curator" },
+  "Julian": { code: "J", color: "#4a6778", class: "julian", name: "Julian Vance", avatar: "assets/julian.jpg" },
+  "Vesper": { code: "V", color: "#9e6a2b", class: "vesper", name: "Vesper Cross", avatar: "assets/vesper.jpg" },
+  "Beatrice": { code: "B", color: "#7e4334", class: "beatrice", name: "Beatrice Thorne", avatar: "assets/beatrice.jpg" },
+  "The Curator": { code: "C", color: "#544163", class: "curator", name: "The Curator", avatar: "assets/curator.jpg" },
 };
+
+function getCharConfig(id) {
+  if (!id) return { code: "?", color: "#666", class: "julian", name: "Unknown", avatar: "assets/julian.jpg" };
+  const lower = id.toLowerCase();
+  if (lower.includes("julian")) return CHAR_CONFIG["Julian"];
+  if (lower.includes("vesper")) return CHAR_CONFIG["Vesper"];
+  if (lower.includes("beatrice")) return CHAR_CONFIG["Beatrice"];
+  if (lower.includes("curator")) return CHAR_CONFIG["The Curator"];
+  return CHAR_CONFIG[id] || { code: id[0], color: "#666", class: "julian", name: id, avatar: "assets/julian.jpg" };
+}
+
+function selectVerb(verb) {
+  document.querySelectorAll(".verb-choice").forEach((b) => {
+    b.classList.toggle("selected", b.dataset.verb === verb);
+  });
+  stageState.selectedVerb = verb;
+  updateDirectorDeckUI();
+}
 
 // Mode Switcher between Stage Director and Archival Folio Ledger
 const toggleLedgerBtn = $("#toggle-ledger-btn");
@@ -954,6 +976,7 @@ async function initStageEngine(forceReset = false) {
     renderStageBoard();
     renderCastCards();
     updateDirectorDeckUI();
+    startMetronomeLoop();
   } catch (err) {
     console.error("Failed to initialize stage engine:", err);
   }
@@ -1133,6 +1156,11 @@ function renderRoomStageSVG() {
         <stop offset="50%" stop-color="#c59b48" />
         <stop offset="100%" stop-color="#8a6421" />
       </linearGradient>
+
+      <!-- 2D Character Token Circular Clip -->
+      <clipPath id="token-clip-circle">
+        <circle cx="0" cy="0" r="23" />
+      </clipPath>
     </defs>
 
     <!-- 1. STAGE ENVIRONMENT (Atmospheric Victorian Theater Room) -->
@@ -1702,7 +1730,7 @@ function renderRoomStageSVG() {
     svg.appendChild(dg);
   });
 
-  // 7. RENDER CHARACTERS AS REVERSE: 1999 PAPER STANDEES ON STAGE FLOOR
+  // 7. RENDER CHARACTERS AS REVERSE: 1999 2D TOKEN MODELS ON STAGE FLOOR
   const charsByFixture = {};
   characters.forEach((char) => {
     if (!char.is_alive) return;
@@ -1716,100 +1744,140 @@ function renderRoomStageSVG() {
     const count = charList.length;
 
     charList.forEach((char, idx) => {
-      const cfg = CHAR_CONFIG[char.id] || { code: "?", color: "#333", class: "julian" };
-      // Position standees comfortably on the stage floor in front of the fixture
-      const offset = (idx - (count - 1) / 2) * 44;
+      const cfg = getCharConfig(char.id);
+      // Position tokens comfortably on stage floor in front of fixture
+      const offset = (idx - (count - 1) / 2) * 54;
       const posX = fixture.x + offset;
-      const posY = 320; // Standing firmly on the hardwood floorboards!
+      const posY = 320; // Standing firmly on hardwood floorboards!
 
       const tg = document.createElementNS("http://www.w3.org/2000/svg", "g");
-      tg.setAttribute("class", "char-token");
-      tg.setAttribute("style", "cursor: pointer;");
+      tg.setAttribute("class", "char-standee-group");
+      tg.setAttribute("data-char-id", char.id);
+      tg.setAttribute("transform", `translate(${posX}, ${posY})`);
+      tg.setAttribute("style", `transform: translate(${posX}px, ${posY}px); cursor: pointer;`);
 
       // 1. Cast Shadow on Floor
       const shadow = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
-      shadow.setAttribute("cx", posX);
-      shadow.setAttribute("cy", posY + 26);
-      shadow.setAttribute("rx", "22");
-      shadow.setAttribute("ry", "7");
+      shadow.setAttribute("cx", "0");
+      shadow.setAttribute("cy", "30");
+      shadow.setAttribute("rx", "28");
+      shadow.setAttribute("ry", "8");
       shadow.setAttribute("fill", "#000");
-      shadow.setAttribute("opacity", "0.4");
+      shadow.setAttribute("opacity", "0.45");
       shadow.setAttribute("filter", "url(#standee-shadow)");
       tg.appendChild(shadow);
 
       // 2. Brass Pedestal Stand Base
       const standBase = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
-      standBase.setAttribute("cx", posX);
-      standBase.setAttribute("cy", posY + 24);
-      standBase.setAttribute("rx", "20");
-      standBase.setAttribute("ry", "6");
+      standBase.setAttribute("cx", "0");
+      standBase.setAttribute("cy", "27");
+      standBase.setAttribute("rx", "24");
+      standBase.setAttribute("ry", "6.5");
       standBase.setAttribute("fill", "url(#brass-plaque)");
       standBase.setAttribute("stroke", "#453214");
-      standBase.setAttribute("stroke-width", "1");
+      standBase.setAttribute("stroke-width", "1.2");
       tg.appendChild(standBase);
 
-      // 3. Reverse: 1999 Character Paper Standee Card (Width 38 for comfortable fit)
-      const card = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      card.setAttribute("x", posX - 19);
-      card.setAttribute("y", posY - 34);
-      card.setAttribute("width", "38");
-      card.setAttribute("height", "56");
-      card.setAttribute("rx", "4");
-      card.setAttribute("fill", "#fffbf0");
-      card.setAttribute("stroke", cfg.color);
-      card.setAttribute("stroke-width", "2");
-      tg.appendChild(card);
+      const baseStep = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      baseStep.setAttribute("x", "-16");
+      baseStep.setAttribute("y", "23");
+      baseStep.setAttribute("width", "32");
+      baseStep.setAttribute("height", "4");
+      baseStep.setAttribute("fill", "#2b1c0e");
+      baseStep.setAttribute("rx", "1");
+      tg.appendChild(baseStep);
 
-      // Inner Portrait Background
-      const innerRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      innerRect.setAttribute("x", posX - 16);
-      innerRect.setAttribute("y", posY - 31);
-      innerRect.setAttribute("width", "32");
-      innerRect.setAttribute("height", "38");
-      innerRect.setAttribute("rx", "2");
-      innerRect.setAttribute("fill", cfg.color);
-      tg.appendChild(innerRect);
+      // 3. Ornate Bronze Bezel Medallion Frame
+      const outerRing = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      outerRing.setAttribute("cx", "0");
+      outerRing.setAttribute("cy", "0");
+      outerRing.setAttribute("r", "27");
+      outerRing.setAttribute("fill", "#1c140d");
+      outerRing.setAttribute("stroke", "#c59b48");
+      outerRing.setAttribute("stroke-width", "2.5");
+      outerRing.setAttribute("class", "bezel-ring");
+      tg.appendChild(outerRing);
 
-      // Actor Silhouette / Initial
-      const letter = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      letter.setAttribute("x", posX);
-      letter.setAttribute("y", posY - 7);
-      letter.setAttribute("text-anchor", "middle");
-      letter.setAttribute("fill", "#fff");
-      letter.setAttribute("font-family", "'Cinzel', Georgia, serif");
-      letter.setAttribute("font-size", "18");
-      letter.setAttribute("font-weight", "700");
-      letter.textContent = cfg.code;
-      tg.appendChild(letter);
+      // Inner astrological clockwork ticks
+      const tickRing = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      tickRing.setAttribute("cx", "0");
+      tickRing.setAttribute("cy", "0");
+      tickRing.setAttribute("r", "24.5");
+      tickRing.setAttribute("fill", "none");
+      tickRing.setAttribute("stroke", "#fcd34d");
+      tickRing.setAttribute("stroke-width", "0.75");
+      tickRing.setAttribute("stroke-dasharray", "2.5 2");
+      tg.appendChild(tickRing);
 
-      // Name Tab on Standee (Curator resolved cleanly, Beatrice fitting comfortably)
+      // 4. 2D Painterly Character Image (clipped in circle)
+      const imgGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      imgGroup.setAttribute("clip-path", "url(#token-clip-circle)");
+
+      const portrait = document.createElementNS("http://www.w3.org/2000/svg", "image");
+      portrait.setAttribute("href", cfg.avatar);
+      portrait.setAttribute("x", "-23");
+      portrait.setAttribute("y", "-23");
+      portrait.setAttribute("width", "46");
+      portrait.setAttribute("height", "46");
+      portrait.setAttribute("preserveAspectRatio", "xMidYMid slice");
+      imgGroup.appendChild(portrait);
+      tg.appendChild(imgGroup);
+
+      // 5. Glass Sheen Curved Highlight Reflection Overlay
+      const sheen = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      sheen.setAttribute("d", "M -16 -16 A 23 23 0 0 1 16 -16 A 23 13 0 0 0 -16 -16");
+      sheen.setAttribute("fill", "#ffffff");
+      sheen.setAttribute("opacity", "0.26");
+      sheen.setAttribute("pointer-events", "none");
+      tg.appendChild(sheen);
+
+      // 6. Character Accent Border Ring
+      const accentRing = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      accentRing.setAttribute("cx", "0");
+      accentRing.setAttribute("cy", "0");
+      accentRing.setAttribute("r", "23");
+      accentRing.setAttribute("fill", "none");
+      accentRing.setAttribute("stroke", cfg.color);
+      accentRing.setAttribute("stroke-width", "1.6");
+      tg.appendChild(accentRing);
+
+      // 7. Gilded Nameplate on Pedestal
       const isCurator = char.id.toLowerCase().includes("curator") || (char.name && char.name.toLowerCase().includes("curator"));
       const shortName = isCurator ? "CURATOR" : char.name.split(" ")[0].toUpperCase();
-      const nameTab = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      nameTab.setAttribute("x", posX);
-      nameTab.setAttribute("y", posY + 16);
-      nameTab.setAttribute("text-anchor", "middle");
-      nameTab.setAttribute("fill", "#20140a");
-      nameTab.setAttribute("font-family", "'Cinzel', Georgia, serif");
-      nameTab.setAttribute("font-size", shortName.length > 7 ? "6" : "7");
-      nameTab.setAttribute("font-weight", "700");
-      nameTab.textContent = shortName;
-      tg.appendChild(nameTab);
 
-      // 4. FLOATING COMIC / VN ACTION SPEECH BUBBLE (Staggered Heights with Zero Collision!)
+      const namePlate = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      namePlate.setAttribute("x", "-25");
+      namePlate.setAttribute("y", "17");
+      namePlate.setAttribute("width", "50");
+      namePlate.setAttribute("height", "14");
+      namePlate.setAttribute("rx", "2");
+      namePlate.setAttribute("fill", "#1c140e");
+      namePlate.setAttribute("stroke", "#c59b48");
+      namePlate.setAttribute("stroke-width", "1");
+      tg.appendChild(namePlate);
+
+      const nameText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      nameText.setAttribute("x", "0");
+      nameText.setAttribute("y", "27");
+      nameText.setAttribute("text-anchor", "middle");
+      nameText.setAttribute("fill", "#fff8ed");
+      nameText.setAttribute("font-family", "'Cinzel', Georgia, serif");
+      nameText.setAttribute("font-size", shortName.length > 7 ? "6.5" : "7.5");
+      nameText.setAttribute("font-weight", "700");
+      nameText.setAttribute("letter-spacing", "0.04em");
+      nameText.textContent = shortName;
+      tg.appendChild(nameText);
+
+      // 8. Staggered VN / Comic Action Bubble
       if (char.room_action) {
         const bubbleG = document.createElementNS("http://www.w3.org/2000/svg", "g");
-        
-        // Stagger Y position based on character index in room
         const charIdx = characters.findIndex((c) => c.id === char.id);
         const isStaggered = charIdx % 2 === 1;
-        const bubbleY = isStaggered ? posY - 84 : posY - 58;
+        const bubbleY = isStaggered ? -74 : -52;
 
-        const actShort = char.room_action.length > 18 ? char.room_action.slice(0, 16) + ".." : char.room_action;
-        const bWidth = Math.min(124, Math.max(82, actShort.length * 5.6 + 16));
-        
-        // Clamp bubble horizontally within stage limits [40, 760]
-        const bubbleX = Math.max(40 + bWidth / 2, Math.min(760 - bWidth / 2, posX));
+        const actShort = char.room_action.length > 20 ? char.room_action.slice(0, 18) + ".." : char.room_action;
+        const bWidth = Math.min(130, Math.max(84, actShort.length * 5.6 + 16));
+        const bubbleX = Math.max(40 + bWidth / 2 - posX, Math.min(760 - bWidth / 2 - posX, 0));
 
         const bubbleRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
         bubbleRect.setAttribute("x", bubbleX - bWidth / 2);
@@ -1822,9 +1890,9 @@ function renderRoomStageSVG() {
         bubbleRect.setAttribute("stroke-width", "1");
         bubbleG.appendChild(bubbleRect);
 
-        // Pointer triangle pointing from bubble bottom down to top of standee
+        // Pointer triangle pointing to token top
         const pointer = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-        pointer.setAttribute("points", `${posX - 4},${bubbleY + 20} ${posX + 4},${bubbleY + 20} ${posX},${posY - 34}`);
+        pointer.setAttribute("points", `-4,${bubbleY + 20} 4,${bubbleY + 20} 0,-27`);
         pointer.setAttribute("fill", "#fffdf5");
         pointer.setAttribute("stroke", "#c59b48");
         pointer.setAttribute("stroke-width", "1");
@@ -1844,14 +1912,14 @@ function renderRoomStageSVG() {
         tg.appendChild(bubbleG);
       }
 
-      // Interactive Click: clicking a character standee pre-selects Whisper
+      // Interactive Click: clicking character pre-selects plant_rumor
       tg.onclick = () => {
         selectVerb("plant_rumor");
         const sel = $("#director-target-select");
         if (sel) sel.value = char.id;
       };
 
-      // Standee Full Detail Tooltip
+      // Standee Detail Tooltip
       const tip = document.createElementNS("http://www.w3.org/2000/svg", "title");
       tip.textContent = `${char.name} (${char.role})\nAt: ${fixture.name}\nAction: ${char.room_action || "Investigating"}\nVoted Exit: Node ${char.voted_exit || "Undecided"}\nHP: ${char.hp}/${char.max_hp} | Stress: ${char.stress}% | Load: ${char.total_weight_kg}kg`;
       tg.appendChild(tip);
@@ -1866,7 +1934,7 @@ function renderCastCards() {
 
   container.innerHTML = "";
   Object.values(stageState.data.characters).forEach((c) => {
-    const cfg = CHAR_CONFIG[c.id] || { code: "A", class: "julian" };
+    const cfg = getCharConfig(c.id);
     const card = document.createElement("div");
     card.className = `cast-card ${cfg.class} ${c.is_alive ? "" : "fallen"}`;
     const hpPct = Math.max(0, Math.min(100, Math.round((c.hp / c.max_hp) * 100)));
@@ -1875,7 +1943,7 @@ function renderCastCards() {
     const gear = c.items && c.items.length > 0 ? c.items.join(", ") : "";
     card.title = `${c.name}, ${c.role}\n"${c.flaw}"\nLoad: ${c.total_weight_kg} kg${gear ? "\nGear: " + gear : ""}\nAction: ${c.room_action || "Observing"}`;
     card.innerHTML = `
-      <div class="cast-portrait ${cfg.class}">${cfg.code}</div>
+      <div class="cast-portrait ${cfg.class}" style="background-image: url('${cfg.avatar}');" title="${c.name}"></div>
       <div class="cast-body">
         <strong class="cast-name">${c.name}</strong>
         <div class="cast-bars">
@@ -1953,6 +2021,78 @@ document.querySelectorAll(".verb-choice").forEach((btn) => {
   });
 });
 
+function getTempoDurationMs(tension) {
+  const clamped = Math.max(1.0, Math.min(4.0, tension || 2.0));
+  return Math.round(5000 - ((clamped - 1.0) / 3.0) * 3800);
+}
+
+function startMetronomeLoop() {
+  if (stageState.metronomeTimer) clearInterval(stageState.metronomeTimer);
+  stageState.metronomeTotalMs = getTempoDurationMs(stageState.tension);
+  stageState.metronomeRemainingMs = stageState.metronomeTotalMs;
+
+  stageState.metronomeTimer = setInterval(async () => {
+    const isGameOver = stageState.data && (stageState.data.status === "won" || stageState.data.status === "lost");
+    if (isGameOver) {
+      clearInterval(stageState.metronomeTimer);
+      stageState.metronomeTimer = null;
+      return;
+    }
+
+    if (!stageState.autoPlay || stageState.isProcessing) {
+      return;
+    }
+
+    stageState.metronomeRemainingMs -= 100;
+    if (stageState.metronomeRemainingMs <= 0) {
+      stageState.metronomeTotalMs = getTempoDurationMs(stageState.tension);
+      stageState.metronomeRemainingMs = stageState.metronomeTotalMs;
+      await executeTurnStep();
+    }
+
+    updateMetronomeUI();
+  }, 100);
+}
+
+function updateMetronomeUI() {
+  const fill = $("#metronome-fill");
+  const countEl = $("#metronome-countdown");
+  const autoBtn = $("#stage-autoplay-btn");
+  const autoIcon = $("#autoplay-icon");
+  const autoLabel = $("#autoplay-label");
+
+  if (autoBtn && autoIcon && autoLabel) {
+    if (stageState.autoPlay) {
+      autoBtn.classList.add("active");
+      autoIcon.innerHTML = "&#10074;&#10074;";
+      autoLabel.textContent = "Live Pace";
+    } else {
+      autoBtn.classList.remove("active");
+      autoIcon.innerHTML = "&#9654;";
+      autoLabel.textContent = "Paused";
+    }
+  }
+
+  if (fill) {
+    const pct = Math.max(0, Math.min(100, (stageState.metronomeRemainingMs / stageState.metronomeTotalMs) * 100));
+    fill.style.width = `${pct}%`;
+  }
+  if (countEl) {
+    countEl.textContent = `${Math.max(0, (stageState.metronomeRemainingMs / 1000)).toFixed(1)}s`;
+  }
+}
+
+const autoBtn = $("#stage-autoplay-btn");
+if (autoBtn) {
+  autoBtn.addEventListener("click", () => {
+    stageState.autoPlay = !stageState.autoPlay;
+    if (stageState.autoPlay && !stageState.metronomeTimer) {
+      startMetronomeLoop();
+    }
+    updateMetronomeUI();
+  });
+}
+
 const tensionSlider = $("#tension-dial-range");
 if (tensionSlider) {
   tensionSlider.addEventListener("input", (e) => {
@@ -1967,6 +2107,9 @@ if (tensionSlider) {
       else desc = "Presto";
       readout.textContent = `${val.toFixed(1)} · ${desc}`;
     }
+    stageState.metronomeTotalMs = getTempoDurationMs(val);
+    stageState.metronomeRemainingMs = Math.min(stageState.metronomeRemainingMs, stageState.metronomeTotalMs);
+    updateMetronomeUI();
   });
 
   tensionSlider.addEventListener("change", async (e) => {
@@ -2019,100 +2162,115 @@ if (applyVerbBtn) {
   });
 }
 
-const stageTurnBtn = $("#stage-turn-btn");
-if (stageTurnBtn) {
-  stageTurnBtn.addEventListener("click", async () => {
-    if (stageState.isProcessing) return;
-    stageState.isProcessing = true;
+async function executeTurnStep() {
+  if (stageState.isProcessing) return;
+  const isGameOver = stageState.data && (stageState.data.status === "won" || stageState.data.status === "lost");
+  if (isGameOver) return;
+
+  stageState.isProcessing = true;
+  const stageTurnBtn = $("#stage-turn-btn");
+  if (stageTurnBtn) {
     stageTurnBtn.disabled = true;
     stageTurnBtn.innerHTML = `<span>The cast is acting...</span>`;
+  }
 
-    const summary = `Director applied ${stageState.selectedVerb} with tension ${stageState.tension.toFixed(1)}`;
+  const summary = `Director applied ${stageState.selectedVerb} with tension ${stageState.tension.toFixed(1)}`;
 
-    try {
-      const res = await api("/api/stage/turn", { director_action_summary: summary });
-      stageState.data = res.stage_state;
-      renderStageBoard();
-      renderCastCards();
+  try {
+    const res = await api("/api/stage/turn", { director_action_summary: summary });
+    stageState.data = res.stage_state;
+    renderStageBoard();
+    renderCastCards();
 
-      // Render Script Title and Narration
-      const titleEl = $("#script-scene-title");
-      if (titleEl && res.script.scene_title) titleEl.textContent = res.script.scene_title;
+    // Render Script Title and Narration
+    const titleEl = $("#script-scene-title");
+    if (titleEl && res.script.scene_title) titleEl.textContent = res.script.scene_title;
 
-      const tagEl = $("#script-scene-tag");
-      if (tagEl) tagEl.textContent = `SCENE ${res.stage_state.scene_number - 1}`;
+    const tagEl = $("#script-scene-tag");
+    if (tagEl) tagEl.textContent = `SCENE ${res.stage_state.scene_number - 1}`;
 
-      const narrEl = $("#script-narration-text");
-      if (narrEl && res.script.narration) narrEl.textContent = res.script.narration;
+    const narrEl = $("#script-narration-text");
+    if (narrEl && res.script.narration) narrEl.textContent = res.script.narration;
 
-      // Render Dialogue Stream
-      const stream = $("#stage-dialogue-stream");
-      if (stream && res.script.dialogue) {
-        stream.innerHTML = "";
-        res.script.dialogue.forEach((d) => {
-          const cfg = CHAR_CONFIG[d.speaker] || { class: "julian", code: "?" };
-          const card = document.createElement("div");
-          card.className = "dialogue-card";
-          card.innerHTML = `
-            <div class="dialogue-avatar ${cfg.class}">${cfg.code}</div>
-            <div class="dialogue-content">
-              <strong>${d.speaker}</strong>
-              <p>"${d.line}"</p>
-            </div>
-          `;
-          stream.appendChild(card);
-        });
-      }
+    // Render Dialogue Stream with 2D character avatar portraits
+    const stream = $("#stage-dialogue-stream");
+    if (stream && res.script.dialogue) {
+      stream.innerHTML = "";
+      res.script.dialogue.forEach((d) => {
+        const cfg = getCharConfig(d.speaker);
+        const card = document.createElement("div");
+        card.className = "dialogue-card";
+        card.innerHTML = `
+          <div class="dialogue-avatar ${cfg.class}" style="background-image: url('${cfg.avatar}');" title="${d.speaker}"></div>
+          <div class="dialogue-content">
+            <strong>${d.speaker}</strong>
+            <p>"${d.line}"</p>
+          </div>
+        `;
+        stream.appendChild(card);
+      });
+    }
 
-      // Render Hazard & Physics Events
-      const hazardsStream = $("#stage-hazards-stream");
-      if (hazardsStream && res.turn_resolution.hazard_events) {
-        res.turn_resolution.hazard_events.forEach((ev) => {
-          const entry = document.createElement("div");
-          entry.className = "hazard-entry";
-          entry.textContent = ev;
-          hazardsStream.prepend(entry);
-        });
-      }
+    // Render Hazard & Physics Events
+    const hazardsStream = $("#stage-hazards-stream");
+    if (hazardsStream && res.turn_resolution.hazard_events) {
+      res.turn_resolution.hazard_events.forEach((ev) => {
+        const entry = document.createElement("div");
+        entry.className = "hazard-entry";
+        entry.textContent = ev;
+        hazardsStream.prepend(entry);
+      });
+    }
 
-      // Handle Verifier Banner
-      const verifierAlert = $("#stage-verifier-alert");
-      if (verifierAlert) {
-        if (res.repairs && res.repairs.length > 0) {
-          const rep = res.repairs[0];
-          $("#verifier-rule-label").textContent = `VERIFIER INTERCEPTION: ${rep.rule}`;
-          $("#verifier-rule-desc").textContent = `${rep.issue} -> ${rep.action}`;
-          verifierAlert.hidden = false;
-          clearTimeout(verifierAlert._dismissTimer);
-          verifierAlert._dismissTimer = setTimeout(() => {
-            verifierAlert.hidden = true;
-          }, 4500);
-        } else {
+    // Handle Verifier Banner
+    const verifierAlert = $("#stage-verifier-alert");
+    if (verifierAlert) {
+      if (res.repairs && res.repairs.length > 0) {
+        const rep = res.repairs[0];
+        $("#verifier-rule-label").textContent = `VERIFIER INTERCEPTION: ${rep.rule}`;
+        $("#verifier-rule-desc").textContent = `${rep.issue} -> ${rep.action}`;
+        verifierAlert.hidden = false;
+        clearTimeout(verifierAlert._dismissTimer);
+        verifierAlert._dismissTimer = setTimeout(() => {
           verifierAlert.hidden = true;
-        }
+        }, 4500);
+      } else {
+        verifierAlert.hidden = true;
       }
+    }
 
-      // Handle Telemetry Pill
-      const costPill = $("#stage-cost-pill");
-      if (costPill && res.telemetry) {
-        costPill.textContent = `${res.telemetry.total_tokens} tokens · $${res.telemetry.amd_cost_usd.toFixed(6)} AMD (${res.telemetry.savings_pct}% savings)`;
-      }
+    // Handle Telemetry Pill
+    const costPill = $("#stage-cost-pill");
+    if (costPill && res.telemetry) {
+      costPill.textContent = `${res.telemetry.total_tokens} tokens · $${res.telemetry.amd_cost_usd.toFixed(6)} AMD (${res.telemetry.savings_pct}% savings)`;
+    }
 
-      // Check Game Status
-      if (res.stage_state.status === "won") {
-        showStageEnd(true, "The Midnight Express has departed. The cast crossed the border safely.");
-      } else if (res.stage_state.status === "lost") {
-        showStageEnd(false, "The Wailing Fog claimed the stage. The troupe has fallen.");
-      }
+    // Check Game Status
+    if (res.stage_state.status === "won") {
+      showStageEnd(true, "The Midnight Express has departed. The cast crossed the border safely.");
+    } else if (res.stage_state.status === "lost") {
+      showStageEnd(false, "The Wailing Fog claimed the stage. The troupe has fallen.");
+    }
 
-    } catch (err) {
-      console.error(err);
-      showStageToast("The scene failed: " + err.message);
-    } finally {
-      stageState.isProcessing = false;
+  } catch (err) {
+    console.error(err);
+    showStageToast("The scene failed: " + err.message);
+  } finally {
+    stageState.isProcessing = false;
+    if (stageTurnBtn) {
       stageTurnBtn.disabled = false;
       stageTurnBtn.innerHTML = `<span>Raise Curtain</span>`;
     }
+  }
+}
+
+const stageTurnBtn = $("#stage-turn-btn");
+if (stageTurnBtn) {
+  stageTurnBtn.addEventListener("click", async () => {
+    stageState.metronomeTotalMs = getTempoDurationMs(stageState.tension);
+    stageState.metronomeRemainingMs = stageState.metronomeTotalMs;
+    updateMetronomeUI();
+    await executeTurnStep();
   });
 }
 

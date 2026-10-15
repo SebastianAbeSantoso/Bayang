@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
+  <link rel="icon" href="data:,">
   <script src="/app.js" defer></script>
 </head>
 <body>
@@ -127,9 +128,17 @@
           </div>
 
           <div class="tempo-row">
+            <button id="stage-autoplay-btn" class="autoplay-toggle-btn active" type="button" title="Toggle autonomous pace">
+              <span id="autoplay-icon">&#10074;&#10074;</span>
+              <span id="autoplay-label">Live Pace</span>
+            </button>
+            <div class="metronome-cluster" title="Tempo urgency metronome">
+              <div class="metronome-track"><div id="metronome-fill" class="metronome-fill" style="width: 100%;"></div></div>
+              <span id="metronome-countdown" class="metronome-countdown">3.5s</span>
+            </div>
             <label for="tension-dial-range">Tempo</label>
-            <input id="tension-dial-range" class="tension-slider" type="range" min="1.0" max="5.0" step="0.5" value="2.0">
-            <span id="tension-readout" class="tension-readout">2.0 Moderato</span>
+            <input id="tension-dial-range" class="tension-slider" type="range" min="1.0" max="4.0" step="0.5" value="2.0">
+            <span id="tension-readout" class="tension-readout">Moderato</span>
           </div>
 
           <button id="stage-turn-btn" class="stage-advance-btn" type="button"><span>Raise Curtain</span></button>

@@ -1081,7 +1081,7 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .cast-roster .cast-card.beatrice { border-left-color: #6d9a82; }
 .cast-roster .cast-card.curator { border-left-color: #9a6a9c; }
 .cast-roster .cast-card.fallen { opacity: .45; filter: grayscale(1); }
-.cast-roster .cast-portrait { width: 34px; height: 34px; font: 700 13px "Cinzel", Georgia, serif; border: 2px solid #e7ddca; }
+.cast-roster .cast-portrait { width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--theater-gold); background-size: cover; background-position: center; flex-shrink: 0; box-shadow: 0 0 8px rgba(0, 0, 0, 0.6); }
 .cast-body { flex: 1; min-width: 0; display: grid; gap: 3px; }
 .cast-name { font: 600 14px "Cormorant Garamond", Georgia, serif; color: #f3ead6; line-height: 1; }
 .cast-bars { display: grid; gap: 3px; }
@@ -1094,8 +1094,8 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .script-head strong { font: 600 14px "Cinzel", Georgia, serif; color: #fff3d0; }
 .script-narration { margin: 0; font: italic 12px/1.5 "Libre Baskerville", Georgia, serif; color: #d9cdb0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .script-box .dialogue-stream { flex: 1; min-height: 0; max-height: none; margin: 0; gap: 2px; overflow-y: auto; padding: 0 4px 0 0; }
-.script-box .dialogue-card { background: transparent; border: 0; padding: 2px 0; gap: 8px; align-items: baseline; }
-.script-box .dialogue-avatar { width: 20px; height: 20px; font-size: 9px; align-self: center; }
+.script-box .dialogue-card { background: transparent; border: 0; padding: 2px 0; gap: 8px; align-items: center; }
+.script-box .dialogue-avatar { width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--theater-gold); background-size: cover; background-position: center; flex-shrink: 0; align-self: center; }
 .script-box .dialogue-content { display: flex; gap: 8px; align-items: baseline; }
 .script-box .dialogue-content strong { color: var(--theater-gold-bright); font: 600 13px "Cormorant Garamond", Georgia, serif; margin: 0; white-space: nowrap; }
 .script-box .dialogue-content p { color: #f3ead6; font: italic 12px/1.45 "Libre Baskerville", Georgia, serif; }
@@ -1122,10 +1122,20 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .command-bar .apply-verb-btn { width: auto; height: 36px; margin: 0; padding: 0 18px; background: #6a4f27; color: #fff3d0; border: 1px solid var(--theater-gold); border-radius: 3px; font: 600 12px var(--sans); }
 .command-bar .apply-verb-btn:hover { background: #7d5d2d; }
 .command-bar .verb-status-msg { position: absolute; left: 18px; bottom: calc(100% + 10px); margin: 0; padding: 8px 12px; background: rgba(24, 40, 30, .96); border: 1px solid #4d815c; border-left-width: 3px; color: #d7efdd; border-radius: 3px; z-index: 20; }
-.tempo-row { display: flex; align-items: center; gap: 8px; }
+/* Dynamic stage token animations */
+.char-standee-group { transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1); will-change: transform; }
+.char-standee-group:hover .bezel-ring { stroke: #ffffff; filter: url(#glow-amber); }
+
+.tempo-row { display: flex; align-items: center; gap: 10px; }
+.autoplay-toggle-btn { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px; background: #251d15; border: 1px solid #6b5028; color: #d8c8a3; font: 700 10.5px var(--mono); border-radius: 3px; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; }
+.autoplay-toggle-btn.active { background: #4a2d14; border-color: var(--theater-gold); color: #fff3d0; box-shadow: 0 0 10px rgba(197, 155, 72, 0.4); }
+.metronome-cluster { display: flex; align-items: center; gap: 6px; }
+.metronome-track { width: 54px; height: 5px; background: #33271d; border-radius: 2px; overflow: hidden; border: 1px solid #4a3825; }
+.metronome-fill { height: 100%; background: linear-gradient(90deg, #d97706, #fcd34d); transition: width 0.1s linear; }
+.metronome-countdown { font: 700 10px var(--mono); color: var(--theater-gold-bright); min-width: 28px; }
 .tempo-row label { font: 600 11px var(--sans); color: #bfa879; }
-.tempo-row .tension-slider { width: 140px; }
-.tempo-row .tension-readout { font: 600 11px var(--mono); color: var(--theater-gold-bright); min-width: 86px; }
+.tempo-row .tension-slider { width: 100px; }
+.tempo-row .tension-readout { font: 600 11px var(--mono); color: var(--theater-gold-bright); min-width: 72px; }
 .command-bar .stage-advance-btn { margin-left: auto; width: auto; min-width: 190px; height: 48px; padding: 0 28px; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(#8e232d, #6a1820); color: #fbf0d8; border: 1px solid var(--theater-gold); border-radius: 4px; font: 600 15px "Cinzel", Georgia, serif; letter-spacing: .06em; cursor: pointer; box-shadow: 0 0 16px rgba(142, 35, 45, .5); }
 .command-bar .stage-advance-btn:hover:not(:disabled) { background: linear-gradient(#a42a35, #7c1c25); transform: none; }
 .command-bar .stage-advance-btn:disabled { opacity: .6; cursor: wait; }

@@ -193,27 +193,25 @@ def _generate_local_preview_turn(stage: StageEngine, director_action_summary: st
             "The wooden trestle groans violently beneath the wind. Frost glazes the narrow ties, "
             "and hundreds of feet below, the wailing fog churns across jagged rocks."
         )
-        for cid in living_chars:
-            intents[cid] = 4
-            actions[cid] = {"target_fixture": "rotted_timber", "action": "carefully tests footing on the timber span", "voted_exit": 4}
-
+        if "Julian" in living_chars:
+            intents["Julian"] = 4
+            actions["Julian"] = {"target_fixture": "winch", "action": "calculates cable load rating", "voted_exit": 4}
+            dialogue.append({"speaker": "Julian", "line": "Step carefully. The winch cable can support us if a tie gives way."})
         if "Vesper" in living_chars:
+            intents["Vesper"] = 4
+            actions["Vesper"] = {"target_fixture": "rotted_timber", "action": "tests footing on timber span", "voted_exit": 4}
             if stage.characters["Vesper"]["node"] == 2 and 2 in stage.spotlighted_nodes:
-                dialogue.append({
-                    "speaker": "Vesper",
-                    "line": "The spotlight beam caught the fractured beam just in time! I had to ditch the heavy satchel to keep the span from splitting!",
-                })
+                dialogue.append({"speaker": "Vesper", "line": "The spotlight beam caught the fractured timber in time! Keep moving!"})
             else:
-                dialogue.append({
-                    "speaker": "Vesper",
-                    "line": "The timber groaned under my boots! That was far too close... keep moving toward the Signal Tower!",
-                })
-
+                dialogue.append({"speaker": "Vesper", "line": "The timber groaned under my boots! Hurry toward the Signal Tower!"})
         if "Beatrice" in living_chars:
-            dialogue.append({
-                "speaker": "Beatrice",
-                "line": "Do not look down. Step only where the iron bolts hold the stringers together.",
-            })
+            intents["Beatrice"] = 4
+            actions["Beatrice"] = {"target_fixture": "observation", "action": "monitors structural deflection", "voted_exit": 4}
+            dialogue.append({"speaker": "Beatrice", "line": "Do not look down. Step only where the iron bolts hold the stringers together."})
+        if "The Curator" in living_chars:
+            intents["The Curator"] = 4
+            actions["The Curator"] = {"target_fixture": "lantern_post", "action": "surveys the fog ceiling below", "voted_exit": 4}
+            dialogue.append({"speaker": "The Curator", "line": "The fog churns below the timbers. The clock is ticking."})
 
     elif room_id == 3:
         scene_title = "Scene II: Sheltered in the Canyon Scree"
@@ -221,20 +219,22 @@ def _generate_local_preview_turn(stage: StageEngine, director_action_summary: st
             "The canyon walls loom like black monoliths. The wind is muffled here, but the sharp scree "
             "bites through leather soles with every step."
         )
-        for cid in living_chars:
-            intents[cid] = 4
-            actions[cid] = {"target_fixture": "hearth", "action": "takes momentary shelter near the stone hearth", "voted_exit": 4}
-
-        if "Beatrice" in living_chars:
-            dialogue.append({
-                "speaker": "Beatrice",
-                "line": "My boots are shredded, but the cliff wall holds steady. The ascending tunnel to the Signal Tower is just ahead.",
-            })
         if "Julian" in living_chars:
-            dialogue.append({
-                "speaker": "Julian",
-                "line": "The compass needle is steadying. Up the stone stairs, everyone.",
-            })
+            intents["Julian"] = 4
+            actions["Julian"] = {"target_fixture": "mine_cart", "action": "searches mining manifests", "voted_exit": 4}
+            dialogue.append({"speaker": "Julian", "line": "The compass needle is steadying. Up the stone stairs, everyone."})
+        if "Vesper" in living_chars:
+            intents["Vesper"] = 4
+            actions["Vesper"] = {"target_fixture": "scree_bed", "action": "scouts footing in scree trench", "voted_exit": 4}
+            dialogue.append({"speaker": "Vesper", "line": "Mind the loose shale! Keep your center of gravity low."})
+        if "Beatrice" in living_chars:
+            intents["Beatrice"] = 4
+            actions["Beatrice"] = {"target_fixture": "hearth", "action": "takes momentary shelter by hearth", "voted_exit": 4}
+            dialogue.append({"speaker": "Beatrice", "line": "My boots are shredded, but the cliff wall holds steady. The ascending tunnel is just ahead."})
+        if "The Curator" in living_chars:
+            intents["The Curator"] = 4
+            actions["The Curator"] = {"target_fixture": "spring", "action": "inspects the thermal vent", "voted_exit": 4}
+            dialogue.append({"speaker": "The Curator", "line": "Warmth in the deep cold. A transient refuge before the threshold."})
 
     elif room_id == 4:
         scene_title = "Scene III: The Locked Junction Tower"
@@ -243,33 +243,80 @@ def _generate_local_preview_turn(stage: StageEngine, director_action_summary: st
             "Behind, the wailing fog climbs the gorge, devouring the lower paths."
         )
         next_vote = 6 if (4, 5) in stage.blocked_edges else 5
-        for cid in living_chars:
-            intents[cid] = next_vote
-            actions[cid] = {"target_fixture": "gate_lock", "action": "attempts to breach the chained gate", "voted_exit": next_vote}
-
-        if "Beatrice" in living_chars:
-            dialogue.append({
-                "speaker": "Beatrice",
-                "line": "The padlock is seized with rust. Stand back, let me put the cold iron spanner to the hasp!",
-            })
         if "Julian" in living_chars:
-            dialogue.append({
-                "speaker": "Julian",
-                "line": "The fog has already swallowed the crossing behind us! Break the lock, Beatrice!",
-            })
+            intents["Julian"] = next_vote
+            actions["Julian"] = {"target_fixture": "switchboard", "action": "calibrates junction relays", "voted_exit": next_vote}
+            dialogue.append({"speaker": "Julian", "line": "The fog has already swallowed the crossing behind us! Break the lock, Beatrice!"})
+        if "Vesper" in living_chars:
+            intents["Vesper"] = next_vote
+            actions["Vesper"] = {"target_fixture": "lookout", "action": "scouts northern route conditions", "voted_exit": next_vote}
+            dialogue.append({"speaker": "Vesper", "line": "I can see the high ridges from the balcony. Clear the gates!"})
+        if "Beatrice" in living_chars:
+            intents["Beatrice"] = next_vote
+            actions["Beatrice"] = {"target_fixture": "gate_lock", "action": "pries rusted padlock with spanner", "voted_exit": next_vote}
+            dialogue.append({"speaker": "Beatrice", "line": "The padlock is seized with rust. Stand back, let me put the cold iron spanner to the hasp!"})
+        if "The Curator" in living_chars:
+            intents["The Curator"] = next_vote
+            actions["The Curator"] = {"target_fixture": "heater", "action": "keeps instruments thawed by heater", "voted_exit": next_vote}
+            dialogue.append({"speaker": "The Curator", "line": "Every lock yields to determination or force. Choose swiftly."})
+
+    elif room_id == 5:
+        scene_title = "Scene IV: Through the Smuggler's Cut"
+        narration = (
+            "Sheer granite fissures block the sky. The darkness is absolute, save for the faint glow of the brass lantern."
+        )
+        for cid in living_chars:
+            intents[cid] = 7
+        if "Julian" in living_chars:
+            actions["Julian"] = {"target_fixture": "stash", "action": "examines smuggled trail markers", "voted_exit": 7}
+            dialogue.append({"speaker": "Julian", "line": "Old smuggler runes on the boulder! The terminal lies straight ahead."})
+        if "Vesper" in living_chars:
+            actions["Vesper"] = {"target_fixture": "ledge", "action": "guides party across high ledge", "voted_exit": 7}
+            dialogue.append({"speaker": "Vesper", "line": "Follow my stride! I have run this defile twenty times in the dark."})
+        if "Beatrice" in living_chars:
+            actions["Beatrice"] = {"target_fixture": "defile", "action": "braces against narrow rock fissure", "voted_exit": 7}
+            dialogue.append({"speaker": "Beatrice", "line": "Keep touching the left wall. We are almost through."})
+        if "The Curator" in living_chars:
+            actions["The Curator"] = {"target_fixture": "crevasse", "action": "watches the shadows behind", "voted_exit": 7}
+            dialogue.append({"speaker": "The Curator", "line": "The mountain swallows sound, but the rails hum with departure."})
+
+    elif room_id == 6:
+        scene_title = "Scene IV: The Sanctuary Steps"
+        narration = (
+            "Carved stone steps rise into the mist, flanked by the warm yellow glow of sanctuary lanterns."
+        )
+        for cid in living_chars:
+            intents[cid] = 7
+        if "Julian" in living_chars:
+            actions["Julian"] = {"target_fixture": "fresco", "action": "interprets the wayfarer fresco", "voted_exit": 7}
+            dialogue.append({"speaker": "Julian", "line": "The fresco depicts the safe route across the border. We are on true ground."})
+        if "Vesper" in living_chars:
+            actions["Vesper"] = {"target_fixture": "belfry", "action": "scouts departure platform from belfry", "voted_exit": 7}
+            dialogue.append({"speaker": "Vesper", "line": "I see the headlamp of the locomotive! The terminal gates are open!"})
+        if "Beatrice" in living_chars:
+            actions["Beatrice"] = {"target_fixture": "altar", "action": "catches breath by stone altar", "voted_exit": 7}
+            dialogue.append({"speaker": "Beatrice", "line": "The air is thin, but my heart is steady. Onward to the terminal."})
+        if "The Curator" in living_chars:
+            actions["The Curator"] = {"target_fixture": "font", "action": "observes the quiet waters", "voted_exit": 7}
+            dialogue.append({"speaker": "The Curator", "line": "A serene interlude before the final curtain call."})
 
     else:
         scene_title = f"Scene {stage.scene_number}: The Final Ascent"
         narration = "The white steam plume of the Midnight Express cuts through the freezing mountain twilight. Salvation is at hand."
         for cid in living_chars:
             intents[cid] = 7
-            actions[cid] = {"target_fixture": "locomotive", "action": "sprints toward the departure platform", "voted_exit": 7}
-
         if "Julian" in living_chars:
-            dialogue.append({
-                "speaker": "Julian",
-                "line": "The terminal gates! Keep running, do not let the fog claim our steps!",
-            })
+            actions["Julian"] = {"target_fixture": "conductor", "action": "presents boarding manifests", "voted_exit": 7}
+            dialogue.append({"speaker": "Julian", "line": "The terminal gates! Keep running, do not let the fog claim our steps!"})
+        if "Vesper" in living_chars:
+            actions["Vesper"] = {"target_fixture": "locomotive", "action": "swings aboard the carriage steps", "voted_exit": 7}
+            dialogue.append({"speaker": "Vesper", "line": "All aboard! Throw the trunks into the baggage car!"})
+        if "Beatrice" in living_chars:
+            actions["Beatrice"] = {"target_fixture": "locomotive", "action": "helps Julian onto the platform", "voted_exit": 7}
+            dialogue.append({"speaker": "Beatrice", "line": "Steam pressure is rising! We made it across the pass!"})
+        if "The Curator" in living_chars:
+            actions["The Curator"] = {"target_fixture": "conductor", "action": "closes the platform gate", "voted_exit": 7}
+            dialogue.append({"speaker": "The Curator", "line": "The drama concludes. The curtain falls upon the mountain."})
 
     return {
         "scene_title": scene_title,
