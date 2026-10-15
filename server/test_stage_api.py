@@ -46,7 +46,7 @@ def test_stage_api():
             assert [1, 2] in data["stage_state"]["blocked_edges"]
             print("[PASS] POST /api/stage/director_action successfully dropped stage curtain.")
 
-        # 3. POST /api/stage/turn (Execute turn)
+        # 3. POST /api/stage/turn (Turn 1: In-room exploration)
         turn_payload = {
             "director_action_summary": "Director dropped curtain on Route 1->2. Tension dial set to 3.0"
         }
@@ -62,8 +62,24 @@ def test_stage_api():
             assert "repairs" in data
             assert "telemetry" in data
             assert "stage_state" in data
-            assert data["stage_state"]["scene_number"] == 2
-            print(f"[PASS] POST /api/stage/turn executed Scene 1 -> 2 with {len(data['repairs'])} verifier repairs.")
+            assert data["stage_state"]["scene_number"] == 1
+            assert not data["turn_resolution"]["transitioned"], "Turn 1 should explore without instant exit"
+            assert data["stage_state"]["room_progress"] > 15
+            print(f"[PASS] POST /api/stage/turn executed Turn 1 exploration (Room {data['stage_state']['current_room_id']}).")
+
+        # 4. POST /api/stage/turn (Turn 2: Consensus exit transition to Scene 2)
+        req2 = urllib.request.Request(
+            f"{base}/api/stage/turn",
+            data=json.dumps(turn_payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req2) as resp2:
+            data2 = json.loads(resp2.read().decode("utf-8"))
+            assert data2["stage_state"]["scene_number"] == 2
+            assert data2["turn_resolution"]["transitioned"] is True
+            assert data2["stage_state"]["current_room_id"] == 3  # Route 1->2 blocked, so bypassed to 3
+            print(f"[PASS] POST /api/stage/turn executed Turn 2 consensus departure to Scene 2 (Room 3).")
 
     finally:
         server.shutdown()

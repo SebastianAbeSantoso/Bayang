@@ -898,7 +898,7 @@ const stageState = {
   selectedVerb: "block_route",
   tension: 2.0,
   isProcessing: false,
-  autoPlay: true,
+  autoPlay: false,
   metronomeTimer: null,
   metronomeRemainingMs: 3500,
   metronomeTotalMs: 3500,
@@ -977,6 +977,7 @@ async function initStageEngine(forceReset = false) {
     renderCastCards();
     updateDirectorDeckUI();
     startMetronomeLoop();
+    updateMetronomeUI();
   } catch (err) {
     console.error("Failed to initialize stage engine:", err);
   }
@@ -2187,7 +2188,7 @@ async function executeTurnStep() {
     if (titleEl && res.script.scene_title) titleEl.textContent = res.script.scene_title;
 
     const tagEl = $("#script-scene-tag");
-    if (tagEl) tagEl.textContent = `SCENE ${res.stage_state.scene_number - 1}`;
+    if (tagEl) tagEl.textContent = `SCENE ${res.stage_state.scene_number}`;
 
     const narrEl = $("#script-narration-text");
     if (narrEl && res.script.narration) narrEl.textContent = res.script.narration;
@@ -2222,11 +2223,14 @@ async function executeTurnStep() {
       });
     }
 
-    // Handle Verifier Banner
+    // Handle Verifier Banner (Strictly show domain gameplay verifications, not network logs)
     const verifierAlert = $("#stage-verifier-alert");
     if (verifierAlert) {
-      if (res.repairs && res.repairs.length > 0) {
-        const rep = res.repairs[0];
+      const domainRepairs = (res.repairs || []).filter(
+        (r) => !r.rule.includes("Network") && !r.rule.includes("Failover") && !r.rule.includes("Fallback")
+      );
+      if (domainRepairs.length > 0) {
+        const rep = domainRepairs[0];
         $("#verifier-rule-label").textContent = `VERIFIER INTERCEPTION: ${rep.rule}`;
         $("#verifier-rule-desc").textContent = `${rep.issue} -> ${rep.action}`;
         verifierAlert.hidden = false;

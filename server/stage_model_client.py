@@ -94,13 +94,15 @@ You MUST output strictly valid JSON matching this schema:
 }
 """
 
+_AMD_CIRCUIT_BROKEN = False
+
 
 def _call_amd_api(messages: List[Dict[str, str]], max_tokens: int = 800) -> Tuple[str, Dict[str, int]]:
-    """Calls Gemma 2 on AMD Developer Cloud (vLLM ROCm endpoint)."""
+    """Calls vLLM / SGLang ROCm endpoint on AMD Developer Cloud."""
     base = os.getenv("AMD_API_BASE_URL", "https://developer.amd.com.cn/radeon/api/v1").rstrip("/")
     endpoint = base + ("/chat/completions" if base.endswith("/v1") else "/v1/chat/completions")
     body = {
-        "model": os.getenv("AMD_MODEL_NAME", "google/gemma-2-9b-it"),
+        "model": os.getenv("AMD_MODEL_NAME", "Qwen3.8-27B"),
         "temperature": 0.7,
         "messages": messages,
         "max_tokens": max_tokens,
@@ -111,14 +113,20 @@ def _call_amd_api(messages: List[Dict[str, str]], max_tokens: int = 800) -> Tupl
         data=json.dumps(body).encode("utf-8"),
         headers={
             "Content-Type": "application/json",
-            "Authorization": "Bearer " + os.getenv("AMD_API_KEY", ""),
+            "Authorization": "Bearer " + os.getenv("AMD_API_KEY", "").strip(),
         },
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=6) as resp:
+    with urllib.request.urlopen(req, timeout=4) as resp:
         res = json.loads(resp.read().decode("utf-8"))
     usage = res.get("usage", {"prompt_tokens": 450, "completion_tokens": 280})
-    content = res["choices"][0]["message"]["content"]
+    msg = res["choices"][0]["message"]
+    content = msg.get("content", "")
+    if not content and "reasoning" in msg:
+        content = msg.get("reasoning", "")
+    if "```" in content:
+        lines = content.splitlines()
+        content = "\n".join(l for l in lines if not l.strip().startswith("```"))
     return content, usage
 
 
@@ -139,53 +147,75 @@ def _generate_local_preview_turn(stage: StageEngine, director_action_summary: st
     blocked_targets = [to_n for (frm, to_n) in stage.blocked_edges if frm == room_id]
 
     if room_id == 1:
-        scene_title = "Scene I: The Whistle in the Ticket Hall"
-        narration = (
-            f"Inside the {current_room['name']}, cold mountain mist seeps beneath the door jamb. "
-            "The brass telegraph keys chatter softly in the silence as the cast gathers around the iron stove."
-        )
+        if stage.room_turn <= 1:
+            scene_title = "Scene I: The Whistle in the Ticket Hall"
+            narration = (
+                f"Inside the {current_room['name']}, cold mountain mist seeps beneath the door jamb. "
+                "The brass telegraph keys chatter softly in the silence as the cast gathers around the iron stove."
+            )
+            julian_line = "The telegraph records confirm the midnight express has already passed the outer signal. Let us check our gear before we venture out."
+            vesper_line = "The company ledger drawer is locked. Keep watch while I see what route manifests they left behind."
+            beatrice_line = "The frost outside is creeping across the iron ties. Let us warm our joints at the stove first; this cold will freeze a gear in minutes."
+            curator_line = "Every room holds its secrets. Take your marks and search the fixtures."
 
-        # Decide voted exits
-        if 2 in blocked_targets:
-            vesper_vote = 3
-            vesper_line = "Someone dropped the velvet curtain across the upper bridge door! Blast it... we are forced into the valley scree."
+            if "Julian" in living_chars:
+                actions["Julian"] = {"target_fixture": "telegraph", "action": "decodes telegraph ticker", "voted_exit": None}
+                intents["Julian"] = 1
+                dialogue.append({"speaker": "Julian", "line": julian_line})
+            if "Vesper" in living_chars:
+                actions["Vesper"] = {"target_fixture": "cabinets", "action": "inspects the locked ledger drawer", "voted_exit": None}
+                intents["Vesper"] = 1
+                dialogue.append({"speaker": "Vesper", "line": vesper_line})
+            if "Beatrice" in living_chars:
+                actions["Beatrice"] = {"target_fixture": "stove", "action": "warms numb fingers over coal embers", "voted_exit": None}
+                intents["Beatrice"] = 1
+                dialogue.append({"speaker": "Beatrice", "line": beatrice_line})
+            if "The Curator" in living_chars:
+                actions["The Curator"] = {"target_fixture": "floorboards", "action": "examines the creaking floorboards", "voted_exit": None}
+                intents["The Curator"] = 1
+                dialogue.append({"speaker": "The Curator", "line": curator_line})
         else:
-            vesper_vote = 2
-            vesper_line = "I am not trudging through mud and wet scree with my satchel. The Trestle Bridge is 92% safe in company records. I say we take the bridge."
+            scene_title = "Scene I: Route Consensus in the Ticket Hall"
+            narration = (
+                "The shadows lengthen across the station platform. The troupe must choose their route before the wailing fog engulfs the valley."
+            )
+            # Decide voted exits
+            if 2 in blocked_targets:
+                vesper_vote = 3
+                vesper_line = "Someone dropped the velvet curtain across the upper bridge door! Blast it... we are forced into the valley scree."
+                julian_vote = 3
+                julian_line = "With the upper door barricaded, the telegraph records agree: our only viable crossing is through the lower ravine hatch."
+            else:
+                vesper_vote = 2
+                vesper_line = "I am not trudging through mud and wet scree with my satchel. The Trestle Bridge is 92% safe in company records. I say we take the bridge."
+                julian_vote = 2
+                julian_line = "The telegraph records confirm the express leaves at midnight. We cannot afford the extra hour in the ravine unless the bridge is truly impassable."
 
-        beatrice_vote = 3
-        beatrice_line = "Company records were written before the winter freeze, Vesper. Those timber supports creak in the wind. The ravine shelter is rough, but safe."
+            beatrice_vote = 3
+            beatrice_line = "Company records were written before the winter freeze, Vesper. Those timber supports creak in the wind. The ravine shelter is rough, but safe."
+            curator_vote = vesper_vote
+            curator_line = "The stage directions are clear. Every decision carries weight across the chasm."
 
-        if 2 in blocked_targets:
-            julian_vote = 3
-            julian_line = "With the upper door barricaded, the telegraph records agree: our only viable crossing is through the lower ravine hatch."
-        else:
-            julian_vote = 2
-            julian_line = "The telegraph records confirm the express leaves at midnight. We cannot afford the extra hour in the ravine unless the bridge is truly impassable."
+            # Assign room fixtures and actions
+            if "Julian" in living_chars:
+                actions["Julian"] = {"target_fixture": "telegraph", "action": "decodes telegraph ticker", "voted_exit": julian_vote}
+                intents["Julian"] = julian_vote
+                dialogue.append({"speaker": "Julian", "line": julian_line})
 
-        curator_vote = vesper_vote
-        curator_line = "The stage directions are clear. Every decision carries weight across the chasm."
+            if "Vesper" in living_chars:
+                actions["Vesper"] = {"target_fixture": "cabinets", "action": "inspects the locked ledger drawer", "voted_exit": vesper_vote}
+                intents["Vesper"] = vesper_vote
+                dialogue.append({"speaker": "Vesper", "line": vesper_line})
 
-        # Assign room fixtures and actions
-        if "Julian" in living_chars:
-            actions["Julian"] = {"target_fixture": "telegraph", "action": "decodes telegraph ticker", "voted_exit": julian_vote}
-            intents["Julian"] = julian_vote
-            dialogue.append({"speaker": "Julian", "line": julian_line})
+            if "Beatrice" in living_chars:
+                actions["Beatrice"] = {"target_fixture": "stove", "action": "warms numb fingers over coal embers", "voted_exit": beatrice_vote}
+                intents["Beatrice"] = beatrice_vote
+                dialogue.append({"speaker": "Beatrice", "line": beatrice_line})
 
-        if "Vesper" in living_chars:
-            actions["Vesper"] = {"target_fixture": "cabinets", "action": "inspects the locked ledger drawer", "voted_exit": vesper_vote}
-            intents["Vesper"] = vesper_vote
-            dialogue.append({"speaker": "Vesper", "line": vesper_line})
-
-        if "Beatrice" in living_chars:
-            actions["Beatrice"] = {"target_fixture": "stove", "action": "warms numb fingers over coal embers", "voted_exit": beatrice_vote}
-            intents["Beatrice"] = beatrice_vote
-            dialogue.append({"speaker": "Beatrice", "line": beatrice_line})
-
-        if "The Curator" in living_chars:
-            actions["The Curator"] = {"target_fixture": "floorboards", "action": "examines the creaking floorboards", "voted_exit": curator_vote}
-            intents["The Curator"] = curator_vote
-            dialogue.append({"speaker": "The Curator", "line": curator_line})
+            if "The Curator" in living_chars:
+                actions["The Curator"] = {"target_fixture": "floorboards", "action": "examines the creaking floorboards", "voted_exit": curator_vote}
+                intents["The Curator"] = curator_vote
+                dialogue.append({"speaker": "The Curator", "line": curator_line})
 
     elif room_id == 2:
         scene_title = "Scene II: Over the Gaping Abyss"
@@ -435,12 +465,13 @@ def generate_stage_turn(
     Executes the Generate-Verify-Repair loop for a theatrical stage scene.
     Returns: (verified_script, list_of_repairs, cost_telemetry)
     """
+    global _AMD_CIRCUIT_BROKEN
     start_time = time.time()
     repairs_log: List[Dict[str, str]] = []
     cost_data = compute_cost_usd(520, 240)
 
-    # Check if live AMD API key is provided
-    use_live_amd = bool(os.getenv("AMD_API_KEY"))
+    # Check if live AMD API key is provided and circuit is healthy
+    use_live_amd = bool(os.getenv("AMD_API_KEY")) and not _AMD_CIRCUIT_BROKEN
 
     if not use_live_amd:
         # High fidelity local deterministic generation
@@ -448,7 +479,7 @@ def generate_stage_turn(
         repairs = _validate_turn_script(stage, script)
         repairs_log.extend(repairs)
         cost_data["latency_ms"] = int((time.time() - start_time) * 1000)
-        cost_data["mode"] = "local-preview"
+        cost_data["mode"] = "local-preview" if not _AMD_CIRCUIT_BROKEN else "local-failover"
         return script, repairs_log, cost_data
 
     # Live AMD ROCm / vLLM execution with Generate-Verify-Repair loop
@@ -491,16 +522,13 @@ Write the theatrical turn script in valid JSON matching the schema.
             repairs = _validate_turn_script(stage, parsed)
             repairs_log.extend(repairs)
             final_script = parsed
+            cost_data["mode"] = "amd-live"
             break
         except (urllib.error.URLError, TimeoutError, OSError) as net_err:
+            _AMD_CIRCUIT_BROKEN = True
             final_script = _generate_local_preview_turn(stage, director_action_summary)
             repairs = _validate_turn_script(stage, final_script)
             repairs_log.extend(repairs)
-            repairs_log.append({
-                "rule": "Network Failover Engaged",
-                "issue": f"AMD endpoint unreachable ({net_err}).",
-                "action": "Switched to high-fidelity deterministic theater engine.",
-            })
             cost_data["mode"] = "local-failover"
             break
         except Exception as exc:
@@ -516,11 +544,7 @@ Write the theatrical turn script in valid JSON matching the schema.
                 final_script = _generate_local_preview_turn(stage, director_action_summary)
                 repairs = _validate_turn_script(stage, final_script)
                 repairs_log.extend(repairs)
-                repairs_log.append({
-                    "rule": "Autonomous Repair Fallback",
-                    "issue": f"Gemma repair turns exhausted ({str(exc)}).",
-                    "action": "Applied deterministic stage script fallback.",
-                })
+                cost_data["mode"] = "local-repair-fallback"
 
     cost_data["latency_ms"] = int((time.time() - start_time) * 1000)
     cost_data["attempts"] = attempts

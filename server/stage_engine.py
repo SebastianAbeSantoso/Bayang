@@ -863,6 +863,7 @@ class StageEngine:
         # 2. Advance Room Progress based on tension
         progress_increment = int(35 * (0.8 + (self.tension_dial - 1.0) * 0.2))
         self.room_progress = min(100, self.room_progress + progress_increment)
+        turn_num = self.room_turn
         self.room_turn += 1
 
         # 3. Check for Consensus to Exit
@@ -870,21 +871,32 @@ class StageEngine:
         living_chars = [c for c in self.characters.values() if c["is_alive"]]
         for c in living_chars:
             ve = c.get("voted_exit")
-            if ve is not None:
+            if ve is not None and ve != self.current_room_id:
                 # Check if edge is blocked
                 edge = (self.current_room_id, ve)
                 if edge not in self.blocked_edges and edge in self.edges:
                     votes[ve] = votes.get(ve, 0) + 1
 
         chosen_exit = None
-        for exit_node, vote_count in votes.items():
-            if vote_count > len(living_chars) / 2:
-                chosen_exit = exit_node
-                break
+        # Characters must explore before consensus exit can trigger
+        can_exit = (turn_num >= 2 or self.room_progress >= 70)
+        if can_exit:
+            for exit_node, vote_count in votes.items():
+                if vote_count > len(living_chars) / 2:
+                    chosen_exit = exit_node
+                    break
 
-        # If room_progress reached 100% and no strict majority, choose the top-voted legal exit
-        if chosen_exit is None and self.room_progress >= 100 and votes:
-            chosen_exit = max(votes.keys(), key=lambda k: votes[k])
+            # If room_progress reached 100% and no strict majority, choose the top-voted legal exit
+            if chosen_exit is None and self.room_progress >= 100:
+                if votes:
+                    chosen_exit = max(votes.keys(), key=lambda k: votes[k])
+                else:
+                    outgoing = [
+                        to_n for (frm, to_n) in self.edges
+                        if frm == self.current_room_id and (frm, to_n) not in self.blocked_edges
+                    ]
+                    if outgoing:
+                        chosen_exit = outgoing[0]
 
         transitioned = False
         if chosen_exit is not None and chosen_exit != self.current_room_id:
