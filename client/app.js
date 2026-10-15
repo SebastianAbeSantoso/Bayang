@@ -940,12 +940,16 @@ if (toggleLedgerBtn && viewStage && viewLedger) {
   });
 }
 
-async function initStageEngine() {
+async function initStageEngine(forceReset = false) {
   renderStageBoard();
   renderCastCards();
   updateDirectorDeckUI();
   try {
-    const data = await api("/api/stage/init");
+    const endpoint = forceReset ? "/api/stage/init" : "/api/stage/state";
+    let data = await api(endpoint);
+    if (!data || !data.current_room_id) {
+      data = await api("/api/stage/init");
+    }
     stageState.data = data;
     renderStageBoard();
     renderCastCards();
@@ -973,6 +977,9 @@ function renderStageBoard() {
     const curRoom = stageState.data.current_room || {};
     actVal.textContent = curRoom.act || `Act ${stageState.data.scene_number}`;
   }
+
+  // Keep command bar target options synchronized with active room
+  updateDirectorDeckUI();
 }
 
 function renderMacroRibbon() {
@@ -1067,336 +1074,635 @@ function renderRoomStageSVG() {
   const spotlightedNodes = stageState.data.spotlighted_nodes || [];
   const characters = Object.values(stageState.data.characters || {});
 
-  // Generate Stage Footlights
-  const footlights = [60, 140, 220, 300, 380, 460, 540, 620, 700, 780].map((fx) => `
-    <circle cx="${fx}" cy="392" r="3.5" class="footlight-lamp" />
-    <polygon points="${fx - 16},392 ${fx},364 ${fx + 16},392" fill="#fae6a2" opacity="0.07" />
+  // Generate Stage Footlights along stage apron (y = 394)
+  const footlights = [80, 160, 240, 320, 400, 480, 560, 640, 720, 780].map((fx) => `
+    <circle cx="${fx}" cy="392" r="4.5" fill="#fcd34d" filter="url(#glow-amber)" />
+    <circle cx="${fx}" cy="392" r="2.5" fill="#fffef0" />
+    <polygon points="${fx - 24},396 ${fx},340 ${fx + 24},396" fill="#fef3c7" opacity="0.06" />
   `).join("");
 
   svg.innerHTML = `
     <defs>
+      <!-- Atmospheric Gradients & Glows -->
       <filter id="glow-gold" x="-30%" y="-30%" width="160%" height="160%">
-        <feGaussianBlur stdDeviation="6" result="blur" />
+        <feGaussianBlur stdDeviation="5" result="blur" />
         <feComposite in="SourceGraphic" in2="blur" operator="over" />
       </filter>
-      <linearGradient id="spotlight-beam" x1="50%" y1="0%" x2="50%" y2="100%">
-        <stop offset="0%" stop-color="#fff8e6" stop-opacity="0.9" />
-        <stop offset="35%" stop-color="#fae3b4" stop-opacity="0.5" />
-        <stop offset="100%" stop-color="#dfcaa0" stop-opacity="0.02" />
-      </linearGradient>
-      <linearGradient id="velvet-fold" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stop-color="#551218" />
-        <stop offset="25%" stop-color="#7e1d25" />
-        <stop offset="50%" stop-color="#5a141b" />
-        <stop offset="75%" stop-color="#88222b" />
-        <stop offset="100%" stop-color="#4d1016" />
-      </linearGradient>
-      <filter id="paper-standee-shadow" x="-40%" y="-40%" width="180%" height="180%">
-        <feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-color="#2d2215" flood-opacity="0.25" />
+      <filter id="glow-amber" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="5" result="blur" />
+        <feComposite in="SourceGraphic" in2="blur" operator="over" />
       </filter>
+      <filter id="standee-shadow" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="3.5" result="blur" />
+        <feColorMatrix type="matrix" values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.45 0"/>
+      </filter>
+      
+      <!-- Limelight Conical Beam -->
+      <linearGradient id="limelight-cone" x1="50%" y1="0%" x2="50%" y2="100%">
+        <stop offset="0%" stop-color="#fffbeb" stop-opacity="0.9" />
+        <stop offset="35%" stop-color="#fde68a" stop-opacity="0.45" />
+        <stop offset="70%" stop-color="#d97706" stop-opacity="0.15" />
+        <stop offset="100%" stop-color="#b45309" stop-opacity="0.0" />
+      </linearGradient>
+
+      <!-- Velvet Drapery Gradient -->
+      <linearGradient id="velvet-fold" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#3b0d11" />
+        <stop offset="20%" stop-color="#6e151c" />
+        <stop offset="45%" stop-color="#4a0f14" />
+        <stop offset="70%" stop-color="#7a1820" />
+        <stop offset="100%" stop-color="#2d080b" />
+      </linearGradient>
+
+      <!-- Aged Stage Wood Planks -->
+      <linearGradient id="wall-damask" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#1c1713" />
+        <stop offset="60%" stop-color="#251e18" />
+        <stop offset="100%" stop-color="#18130f" />
+      </linearGradient>
+      
+      <linearGradient id="stage-floor" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#2e2216" />
+        <stop offset="40%" stop-color="#241a10" />
+        <stop offset="100%" stop-color="#161009" />
+      </linearGradient>
+
+      <!-- Antique Brass Plaque Texture -->
+      <linearGradient id="brass-plaque" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#ecd599" />
+        <stop offset="50%" stop-color="#c59b48" />
+        <stop offset="100%" stop-color="#8a6421" />
+      </linearGradient>
     </defs>
 
-    <!-- Room Architecture: Walls & Floor -->
-    <rect x="0" y="0" width="840" height="290" class="room-wall-bg" />
-    <rect x="0" y="290" width="840" height="110" fill="#e9dcc2" />
-    <line x1="28" y1="45" x2="812" y2="45" stroke="#d5cabb" stroke-width="1.2" />
+    <!-- 1. STAGE ENVIRONMENT (Atmospheric Victorian Theater Room) -->
+    <!-- Rear Wall (Dark Victorian Salon Damask) -->
+    <rect x="0" y="0" width="840" height="260" fill="url(#wall-damask)" />
     
-    <!-- Wainscoting Wall Panels -->
-    <line x1="160" y1="45" x2="160" y2="290" stroke="#e0d6c4" stroke-width="1" stroke-dasharray="6 8" />
-    <line x1="320" y1="45" x2="320" y2="290" stroke="#e0d6c4" stroke-width="1" stroke-dasharray="6 8" />
-    <line x1="480" y1="45" x2="480" y2="290" stroke="#e0d6c4" stroke-width="1" stroke-dasharray="6 8" />
-    <line x1="640" y1="45" x2="640" y2="290" stroke="#e0d6c4" stroke-width="1" stroke-dasharray="6 8" />
+    <!-- Ornate Damask Wall Panels & Gilded Picture Rail -->
+    <line x1="28" y1="48" x2="812" y2="48" stroke="#8a6421" stroke-width="1.8" />
+    <line x1="28" y1="52" x2="812" y2="52" stroke="#3b2b18" stroke-width="1" />
+    
+    <!-- Vertical Wall Column Paneling -->
+    <line x1="140" y1="52" x2="140" y2="260" stroke="#2d241c" stroke-width="1.5" />
+    <line x1="310" y1="52" x2="310" y2="260" stroke="#2d241c" stroke-width="1.5" />
+    <line x1="480" y1="52" x2="480" y2="260" stroke="#2d241c" stroke-width="1.5" />
+    <line x1="660" y1="52" x2="660" y2="260" stroke="#2d241c" stroke-width="1.5" />
 
-    <!-- Hardwood Floorboards -->
-    <line x1="0" y1="290" x2="840" y2="290" stroke="#b9a984" stroke-width="2" />
-    <line x1="0" y1="315" x2="840" y2="315" stroke="#d3c3a1" stroke-width="1" />
-    <line x1="0" y1="343" x2="840" y2="343" stroke="#d3c3a1" stroke-width="1" />
-    <line x1="0" y1="375" x2="840" y2="375" stroke="#d3c3a1" stroke-width="1" />
+    <!-- Dado / Wainscoting Rail -->
+    <rect x="28" y="248" width="784" height="12" fill="#2d2116" stroke="#4a3723" stroke-width="1" />
 
-    <!-- Top Proscenium Valance Drapery -->
-    <path d="M 0 0 L 840 0 L 840 28 Q 735 44 630 28 Q 525 44 420 28 Q 315 44 210 28 Q 105 44 0 28 Z" fill="url(#velvet-fold)" />
-    <path d="M 0 28 Q 105 44 210 28 Q 315 44 420 28 Q 525 44 630 28 Q 735 44 840 28" stroke="#c59b48" stroke-width="2.5" fill="none" />
+    <!-- 2. STAGE FLOOR (Hardwood Floorboards with Depth & Perspective) -->
+    <rect x="0" y="260" width="840" height="140" fill="url(#stage-floor)" />
+    
+    <!-- Floorboard Perspective Planks -->
+    <line x1="0" y1="290" x2="840" y2="290" stroke="#1f160e" stroke-width="1.2" />
+    <line x1="0" y1="324" x2="840" y2="324" stroke="#1a120b" stroke-width="1.5" />
+    <line x1="0" y1="362" x2="840" y2="362" stroke="#150e08" stroke-width="1.8" />
+    
+    <!-- Vertical Plank Joints -->
+    <line x1="120" y1="260" x2="105" y2="290" stroke="#1a120b" stroke-width="1" />
+    <line x1="280" y1="260" x2="265" y2="290" stroke="#1a120b" stroke-width="1" />
+    <line x1="450" y1="260" x2="435" y2="290" stroke="#1a120b" stroke-width="1" />
+    <line x1="620" y1="260" x2="605" y2="290" stroke="#1a120b" stroke-width="1" />
 
-    <!-- Left & Right Fluted Mahogany Pilasters -->
-    <rect x="0" y="0" width="28" height="400" class="proscenium-column" />
-    <line x1="14" y1="28" x2="14" y2="400" stroke="#c59b48" stroke-width="1.5" stroke-dasharray="8 6" />
-    <rect x="812" y="0" width="28" height="400" class="proscenium-column" />
-    <line x1="826" y1="28" x2="826" y2="400" stroke="#c59b48" stroke-width="1.5" stroke-dasharray="8 6" />
+    <line x1="200" y1="290" x2="180" y2="324" stroke="#160f09" stroke-width="1" />
+    <line x1="370" y1="290" x2="350" y2="324" stroke="#160f09" stroke-width="1" />
+    <line x1="540" y1="290" x2="520" y2="324" stroke="#160f09" stroke-width="1" />
+    <line x1="710" y1="290" x2="690" y2="324" stroke="#160f09" stroke-width="1" />
 
-    <!-- Stage Footlight Lamps -->
+    <line x1="90" y1="324" x2="65" y2="362" stroke="#120c07" stroke-width="1.2" />
+    <line x1="270" y1="324" x2="245" y2="362" stroke="#120c07" stroke-width="1.2" />
+    <line x1="470" y1="324" x2="445" y2="362" stroke="#120c07" stroke-width="1.2" />
+    <line x1="650" y1="324" x2="625" y2="362" stroke="#120c07" stroke-width="1.2" />
+
+    <!-- Stage Apron Brass Rim -->
+    <rect x="0" y="394" width="840" height="6" fill="url(#brass-plaque)" stroke="#3a2510" stroke-width="0.8" />
+
+    <!-- 3. PROSCENIUM ARCH & DRAPERY VALANCE -->
+    <path d="M 0,0 L 840,0 L 840,36 C 760,42 700,32 630,36 C 560,42 490,32 420,36 C 350,42 280,32 210,36 C 140,42 70,32 0,36 Z" fill="url(#velvet-fold)" />
+    <path d="M 0,36 C 70,32 140,42 210,36 C 280,32 350,42 420,36 C 490,32 560,42 630,36 C 700,32 760,42 840,36" stroke="#c59b48" stroke-width="2.5" fill="none" />
+    
+    <!-- Gold Bullion Fringe Drops -->
+    <circle cx="105" cy="46" r="3.5" fill="#fcd34d" />
+    <circle cx="315" cy="46" r="3.5" fill="#fcd34d" />
+    <circle cx="525" cy="46" r="3.5" fill="#fcd34d" />
+    <circle cx="735" cy="46" r="3.5" fill="#fcd34d" />
+
+    <!-- Left Fluted Mahogany Pilaster Column -->
+    <rect x="0" y="0" width="28" height="400" fill="#2b1c12" stroke="#442c1c" stroke-width="1.5" />
+    <line x1="14" y1="34" x2="14" y2="400" stroke="#c59b48" stroke-width="2" stroke-dasharray="10 8" />
+    <rect x="0" y="32" width="28" height="8" fill="url(#brass-plaque)" />
+    <rect x="0" y="380" width="28" height="12" fill="url(#brass-plaque)" />
+
+    <!-- Right Fluted Mahogany Pilaster Column -->
+    <rect x="812" y="0" width="28" height="400" fill="#2b1c12" stroke="#442c1c" stroke-width="1.5" />
+    <line x1="826" y1="34" x2="826" y2="400" stroke="#c59b48" stroke-width="2" stroke-dasharray="10 8" />
+    <rect x="812" y="32" width="28" height="8" fill="url(#brass-plaque)" />
+    <rect x="812" y="380" width="28" height="12" fill="url(#brass-plaque)" />
+
+    <!-- Stage Apron Footlights -->
     ${footlights}
   `;
 
-  // 1. Render Interactive Fixtures
+  // 4. RENDER ILLUSTRATED FIXTURE SET PIECES (Antique Theater Props)
   fixtures.forEach((f) => {
     const isLit = spotlightedFixture === f.id || spotlightedNodes.includes(currentRoomId);
-    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    g.setAttribute("class", "fixture-group");
+    const fg = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    fg.setAttribute("class", "fixture-group");
+    fg.setAttribute("style", "cursor: pointer;");
 
-    // Spotlight beam on fixture
+    // Limelight Spotlight Cone
     if (isLit) {
       const beam = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-      beam.setAttribute("points", `${f.x},28 ${f.x - 75},${f.y + 42} ${f.x + 75},${f.y + 42}`);
-      beam.setAttribute("fill", "url(#spotlight-beam)");
+      beam.setAttribute("points", `${f.x},32 ${f.x - 70},${f.y + 70} ${f.x + 70},${f.y + 70}`);
+      beam.setAttribute("fill", "url(#limelight-cone)");
       beam.setAttribute("class", "spotlight-cone");
       beam.setAttribute("filter", "url(#glow-gold)");
       svg.appendChild(beam);
     }
 
-    // Fixture Card Rect
-    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    rect.setAttribute("x", f.x - 70);
-    rect.setAttribute("y", f.y - 38);
-    rect.setAttribute("width", 140);
-    rect.setAttribute("height", 76);
-    rect.setAttribute("class", "fixture-box");
-    g.appendChild(rect);
-
-    // Handcrafted Vector Prop Vignette
-    const ftype = (f.type || "").toLowerCase();
     const fid = (f.id || "").toLowerCase();
-    if (fid.includes("telegraph") || ftype.includes("desk")) {
-      // Brass Telegraph Key
-      const keyBase = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      keyBase.setAttribute("x", f.x - 62);
-      keyBase.setAttribute("y", f.y - 30);
-      keyBase.setAttribute("width", 26);
-      keyBase.setAttribute("height", 14);
-      keyBase.setAttribute("fill", "#3d2a1b");
-      keyBase.setAttribute("rx", "1");
-      g.appendChild(keyBase);
+    const ftype = (f.type || "").toLowerCase();
+
+    // Prop Floor Shadow
+    const shadow = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+    shadow.setAttribute("cx", f.x);
+    shadow.setAttribute("cy", f.y + 45);
+    shadow.setAttribute("rx", "48");
+    shadow.setAttribute("ry", "10");
+    shadow.setAttribute("fill", "#000");
+    shadow.setAttribute("opacity", "0.35");
+    shadow.setAttribute("filter", "url(#standee-shadow)");
+    fg.appendChild(shadow);
+
+    // DRAW BESPOKE ILLUSTRATED PROPS
+    if (fid.includes("telegraph") || ftype.includes("terminal")) {
+      // 1. TELEGRAPH DESK PROP
+      const deskTop = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      deskTop.setAttribute("x", f.x - 48);
+      deskTop.setAttribute("y", f.y - 10);
+      deskTop.setAttribute("width", "96");
+      deskTop.setAttribute("height", "14");
+      deskTop.setAttribute("rx", "2");
+      deskTop.setAttribute("fill", "#422817");
+      deskTop.setAttribute("stroke", "#c59b48");
+      deskTop.setAttribute("stroke-width", "1.2");
+      fg.appendChild(deskTop);
+
+      // Desk Legs
+      const legL = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      legL.setAttribute("x", f.x - 42);
+      legL.setAttribute("y", f.y + 4);
+      legL.setAttribute("width", "8");
+      legL.setAttribute("height", "40");
+      legL.setAttribute("fill", "#2b1a0e");
+      fg.appendChild(legL);
+
+      const legR = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      legR.setAttribute("x", f.x + 34);
+      legR.setAttribute("y", f.y + 4);
+      legR.setAttribute("width", "8");
+      legR.setAttribute("height", "40");
+      legR.setAttribute("fill", "#2b1a0e");
+      fg.appendChild(legR);
+
+      // Brass Morse Key & Sounder Box
+      const sounderBox = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      sounderBox.setAttribute("x", f.x - 28);
+      sounderBox.setAttribute("y", f.y - 24);
+      sounderBox.setAttribute("width", "26");
+      sounderBox.setAttribute("height", "15");
+      sounderBox.setAttribute("rx", "2");
+      sounderBox.setAttribute("fill", "#22170f");
+      sounderBox.setAttribute("stroke", "#d4af37");
+      sounderBox.setAttribute("stroke-width", "1");
+      fg.appendChild(sounderBox);
+
+      // Brass Key Arm
+      const keyArm = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      keyArm.setAttribute("x1", f.x - 22);
+      keyArm.setAttribute("y1", f.y - 17);
+      keyArm.setAttribute("x2", f.x - 8);
+      keyArm.setAttribute("y2", f.y - 20);
+      keyArm.setAttribute("stroke", "#fcd34d");
+      keyArm.setAttribute("stroke-width", "2");
+      fg.appendChild(keyArm);
 
       const keyKnob = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      keyKnob.setAttribute("cx", f.x - 52);
-      keyKnob.setAttribute("cy", f.y - 25);
+      keyKnob.setAttribute("cx", f.x - 8);
+      keyKnob.setAttribute("cy", f.y - 20);
       keyKnob.setAttribute("r", "3");
-      keyKnob.setAttribute("fill", "#c59b48");
-      g.appendChild(keyKnob);
+      keyKnob.setAttribute("fill", "#1c120a");
+      keyKnob.setAttribute("stroke", "#fcd34d");
+      keyKnob.setAttribute("stroke-width", "1");
+      fg.appendChild(keyKnob);
 
-      const tapeLine = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      tapeLine.setAttribute("d", `M ${f.x - 48} ${f.y - 23} Q ${f.x - 42} ${f.y - 18} ${f.x - 36} ${f.y - 24}`);
-      tapeLine.setAttribute("stroke", "#fff8e8");
-      tapeLine.setAttribute("stroke-width", "1.2");
-      tapeLine.setAttribute("fill", "none");
-      g.appendChild(tapeLine);
-    } else if (fid.includes("stove") || ftype.includes("hearth")) {
-      // Cast-Iron Potbelly Stove
+      // Green Banker's Desk Lamp with Amber Glow
+      const lampBase = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      lampBase.setAttribute("x", f.x + 12);
+      lampBase.setAttribute("y", f.y - 26);
+      lampBase.setAttribute("width", "20");
+      lampBase.setAttribute("height", "7");
+      lampBase.setAttribute("rx", "3");
+      lampBase.setAttribute("fill", "#1d5c38");
+      lampBase.setAttribute("stroke", "#fcd34d");
+      lampBase.setAttribute("stroke-width", "1");
+      fg.appendChild(lampBase);
+
+      const lampGlow = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      lampGlow.setAttribute("cx", f.x + 22);
+      lampGlow.setAttribute("cy", f.y - 20);
+      lampGlow.setAttribute("r", "14");
+      lampGlow.setAttribute("fill", "#fef3c7");
+      lampGlow.setAttribute("opacity", "0.2");
+      lampGlow.setAttribute("filter", "url(#glow-amber)");
+      fg.appendChild(lampGlow);
+
+      // Cascading Ticker Tape Paper
+      const tape = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      tape.setAttribute("d", `M ${f.x - 2} ${f.y - 10} Q ${f.x + 8} ${f.y + 6} ${f.x - 4} ${f.y + 24} T ${f.x + 6} ${f.y + 40}`);
+      tape.setAttribute("stroke", "#fef9c3");
+      tape.setAttribute("stroke-width", "2.5");
+      tape.setAttribute("fill", "none");
+      fg.appendChild(tape);
+
+    } else if (fid.includes("stove") || ftype.includes("rest") || fid.includes("hearth")) {
+      // 2. CAST-IRON POTBELLY STOVE PROP
+      const chimney = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      chimney.setAttribute("x", f.x - 6);
+      chimney.setAttribute("y", f.y - 48);
+      chimney.setAttribute("width", "12");
+      chimney.setAttribute("height", "30");
+      chimney.setAttribute("fill", "#17120e");
+      chimney.setAttribute("stroke", "#3a2c1f");
+      chimney.setAttribute("stroke-width", "1");
+      fg.appendChild(chimney);
+
       const stoveBody = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      stoveBody.setAttribute("x", f.x - 60);
-      stoveBody.setAttribute("y", f.y - 32);
-      stoveBody.setAttribute("width", 22);
-      stoveBody.setAttribute("height", 18);
-      stoveBody.setAttribute("fill", "#26221e");
-      stoveBody.setAttribute("rx", "2");
-      g.appendChild(stoveBody);
+      stoveBody.setAttribute("x", f.x - 24);
+      stoveBody.setAttribute("y", f.y - 20);
+      stoveBody.setAttribute("width", "48");
+      stoveBody.setAttribute("height", "54");
+      stoveBody.setAttribute("rx", "12");
+      stoveBody.setAttribute("fill", "#1c1611");
+      stoveBody.setAttribute("stroke", "#c59b48");
+      stoveBody.setAttribute("stroke-width", "1.5");
+      fg.appendChild(stoveBody);
 
-      const flue = document.createElementNS("http://www.w3.org/2000/svg", "line");
-      flue.setAttribute("x1", f.x - 49);
-      flue.setAttribute("y1", f.y - 32);
-      flue.setAttribute("x2", f.x - 49);
-      flue.setAttribute("y2", f.y - 37);
-      flue.setAttribute("stroke", "#1c1916");
-      flue.setAttribute("stroke-width", "3");
-      g.appendChild(flue);
+      const grateGlow = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+      grateGlow.setAttribute("cx", f.x);
+      grateGlow.setAttribute("cy", f.y + 12);
+      grateGlow.setAttribute("rx", "22");
+      grateGlow.setAttribute("ry", "14");
+      grateGlow.setAttribute("fill", "#ea580c");
+      grateGlow.setAttribute("opacity", "0.4");
+      grateGlow.setAttribute("filter", "url(#glow-amber)");
+      fg.appendChild(grateGlow);
 
-      const grate = document.createElementNS("http://www.w3.org/2000/svg", "line");
-      grate.setAttribute("x1", f.x - 57);
-      grate.setAttribute("y1", f.y - 22);
-      grate.setAttribute("x2", f.x - 41);
-      grate.setAttribute("y2", f.y - 22);
-      grate.setAttribute("stroke", "#e67e22");
-      grate.setAttribute("stroke-width", "1.8");
-      g.appendChild(grate);
-    } else if (fid.includes("trapdoor") || ftype.includes("floor")) {
-      // Trapdoor Planks with Iron Ring
-      const planks = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      planks.setAttribute("x", f.x - 62);
-      planks.setAttribute("y", f.y - 30);
-      planks.setAttribute("width", 26);
-      planks.setAttribute("height", 14);
-      planks.setAttribute("fill", "#2c2118");
-      g.appendChild(planks);
+      for (let sl = -12; sl <= 12; sl += 6) {
+        const slit = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        slit.setAttribute("x1", f.x - 12);
+        slit.setAttribute("y1", f.y + sl + 10);
+        slit.setAttribute("x2", f.x + 12);
+        slit.setAttribute("y2", f.y + sl + 10);
+        slit.setAttribute("stroke", "#fbbf24");
+        slit.setAttribute("stroke-width", "2.2");
+        fg.appendChild(slit);
+      }
 
-      const seam = document.createElementNS("http://www.w3.org/2000/svg", "line");
-      seam.setAttribute("x1", f.x - 62);
-      seam.setAttribute("y1", f.y - 23);
-      seam.setAttribute("x2", f.x - 36);
-      seam.setAttribute("y2", f.y - 23);
-      seam.setAttribute("stroke", "#18120d");
-      seam.setAttribute("stroke-width", "1.5");
-      g.appendChild(seam);
+      // Bench beside stove
+      const bench = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      bench.setAttribute("x", f.x + 28);
+      bench.setAttribute("y", f.y + 14);
+      bench.setAttribute("width", "28");
+      bench.setAttribute("height", "8");
+      bench.setAttribute("rx", "1");
+      bench.setAttribute("fill", "#422b1a");
+      bench.setAttribute("stroke", "#8c642d");
+      bench.setAttribute("stroke-width", "1");
+      fg.appendChild(bench);
+
+      const benchLeg = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      benchLeg.setAttribute("x1", f.x + 48);
+      benchLeg.setAttribute("y1", f.y + 22);
+      benchLeg.setAttribute("x2", f.x + 48);
+      benchLeg.setAttribute("y2", f.y + 44);
+      benchLeg.setAttribute("stroke", "#2b1c10");
+      benchLeg.setAttribute("stroke-width", "3");
+      fg.appendChild(benchLeg);
+
+    } else if (fid.includes("floor") || ftype.includes("hazard") || fid.includes("scree")) {
+      // 3. ROTTED FLOORBOARDS / TRAPDOOR HAZARD
+      const abyss = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+      abyss.setAttribute("cx", f.x);
+      abyss.setAttribute("cy", f.y + 10);
+      abyss.setAttribute("rx", "44");
+      abyss.setAttribute("ry", "18");
+      abyss.setAttribute("fill", "#090604");
+      abyss.setAttribute("stroke", "#3b1e10");
+      abyss.setAttribute("stroke-width", "1.5");
+      fg.appendChild(abyss);
+
+      // Splintered Broken Planks
+      const plank1 = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+      plank1.setAttribute("points", `${f.x - 42},${f.y + 4} ${f.x - 8},${f.y - 2} ${f.x - 12},${f.y + 12} ${f.x - 40},${f.y + 14}`);
+      plank1.setAttribute("fill", "#382213");
+      plank1.setAttribute("stroke", "#8a5829");
+      plank1.setAttribute("stroke-width", "1");
+      fg.appendChild(plank1);
+
+      const plank2 = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+      plank2.setAttribute("points", `${f.x + 10},${f.y + 8} ${f.x + 42},${f.y + 2} ${f.x + 38},${f.y + 16} ${f.x + 6},${f.y + 18}`);
+      plank2.setAttribute("fill", "#2e1c0f");
+      plank2.setAttribute("stroke", "#784a20");
+      plank2.setAttribute("stroke-width", "1");
+      fg.appendChild(plank2);
 
       const ring = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      ring.setAttribute("cx", f.x - 49);
-      ring.setAttribute("cy", f.y - 23);
-      ring.setAttribute("r", "2.8");
+      ring.setAttribute("cx", f.x - 2);
+      ring.setAttribute("cy", f.y + 12);
+      ring.setAttribute("r", "5.5");
       ring.setAttribute("fill", "none");
-      ring.setAttribute("stroke", "#8c7755");
-      ring.setAttribute("stroke-width", "1.2");
-      g.appendChild(ring);
-    } else {
-      // Expedition Bureau / Map Table
-      const bureau = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      bureau.setAttribute("x", f.x - 62);
-      bureau.setAttribute("y", f.y - 32);
-      bureau.setAttribute("width", 24);
-      bureau.setAttribute("height", 16);
-      bureau.setAttribute("fill", "#423223");
-      bureau.setAttribute("rx", "1");
-      g.appendChild(bureau);
+      ring.setAttribute("stroke", "#fcd34d");
+      ring.setAttribute("stroke-width", "2");
+      fg.appendChild(ring);
 
-      const divLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
-      divLine.setAttribute("x1", f.x - 62);
-      divLine.setAttribute("y1", f.y - 24);
-      divLine.setAttribute("x2", f.x - 38);
-      divLine.setAttribute("y2", f.y - 24);
-      divLine.setAttribute("stroke", "#c59b48");
-      divLine.setAttribute("stroke-width", "0.8");
-      g.appendChild(divLine);
+    } else {
+      // 4. ARCHIVAL CABINETS / BLUEPRINT BUREAU
+      const cab = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      cab.setAttribute("x", f.x - 38);
+      cab.setAttribute("y", f.y - 26);
+      cab.setAttribute("width", "76");
+      cab.setAttribute("height", "66");
+      cab.setAttribute("rx", "2");
+      cab.setAttribute("fill", "#382315");
+      cab.setAttribute("stroke", "#c59b48");
+      cab.setAttribute("stroke-width", "1.5");
+      fg.appendChild(cab);
+
+      for (let dy = -10; dy <= 26; dy += 18) {
+        const dLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        dLine.setAttribute("x1", f.x - 34);
+        dLine.setAttribute("y1", f.y + dy);
+        dLine.setAttribute("x2", f.x + 34);
+        dLine.setAttribute("y2", f.y + dy);
+        dLine.setAttribute("stroke", "#20140a");
+        dLine.setAttribute("stroke-width", "1.5");
+        fg.appendChild(dLine);
+
+        const handle = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        handle.setAttribute("x", f.x - 8);
+        handle.setAttribute("y", f.y + dy - 10);
+        handle.setAttribute("width", "16");
+        handle.setAttribute("height", "5");
+        handle.setAttribute("rx", "1.5");
+        handle.setAttribute("fill", "#fcd34d");
+        fg.appendChild(handle);
+      }
+
+      const scroll = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+      scroll.setAttribute("cx", f.x);
+      scroll.setAttribute("cy", f.y - 31);
+      scroll.setAttribute("rx", "26");
+      scroll.setAttribute("ry", "6");
+      scroll.setAttribute("fill", "#1e3a5f");
+      scroll.setAttribute("stroke", "#93c5fd");
+      scroll.setAttribute("stroke-width", "1");
+      fg.appendChild(scroll);
     }
 
-    // Type Badge
-    const badge = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    badge.setAttribute("x", f.x - 30);
-    badge.setAttribute("y", f.y - 22);
-    badge.setAttribute("class", "fixture-badge");
-    badge.textContent = `[${(f.type || "SET").toUpperCase()}]`;
-    g.appendChild(badge);
+    // 5. ANTIQUE BRASS FIXTURE PLAQUE (Positioned by depth tier to eliminate collisions)
+    const plaqueG = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    plaqueG.setAttribute("class", "fixture-plaque");
 
-    // Fixture Title
-    const title = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    title.setAttribute("x", f.x - 62);
-    title.setAttribute("y", f.y + 2);
-    title.setAttribute("class", "fixture-title");
-    title.textContent = f.name;
-    g.appendChild(title);
+    // Tier calculation: background fixtures hang at f.y - 56, foreground at f.y - 44
+    const plaqueY = f.y < 180 ? f.y - 56 : f.y - 44;
 
-    // Fixture Short Description
-    const sub = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    sub.setAttribute("x", f.x - 62);
-    sub.setAttribute("y", f.y + 22);
-    sub.setAttribute("class", "fixture-desc");
-    const descShort = f.desc.length > 27 ? f.desc.slice(0, 25) + "..." : f.desc;
-    sub.textContent = descShort;
-    g.appendChild(sub);
+    const plaqueRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    plaqueRect.setAttribute("x", f.x - 56);
+    plaqueRect.setAttribute("y", plaqueY - 12);
+    plaqueRect.setAttribute("width", "112");
+    plaqueRect.setAttribute("height", "24");
+    plaqueRect.setAttribute("rx", "3");
+    plaqueRect.setAttribute("fill", "#1c150e");
+    plaqueRect.setAttribute("stroke", "#c59b48");
+    plaqueRect.setAttribute("stroke-width", "1.2");
+    plaqueG.appendChild(plaqueRect);
 
-    const fullTitle = document.createElementNS("http://www.w3.org/2000/svg", "title");
-    fullTitle.textContent = `${f.name}: ${f.desc}`;
-    g.appendChild(fullTitle);
+    const titleText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    titleText.setAttribute("x", f.x);
+    titleText.setAttribute("y", plaqueY + 1);
+    titleText.setAttribute("text-anchor", "middle");
+    titleText.setAttribute("fill", "#fff7ed");
+    titleText.setAttribute("font-family", "'Cinzel', Georgia, serif");
+    titleText.setAttribute("font-size", "9");
+    titleText.setAttribute("font-weight", "600");
+    titleText.setAttribute("letter-spacing", "0.04em");
+    titleText.textContent = f.name.toUpperCase();
+    plaqueG.appendChild(titleText);
 
-    svg.appendChild(g);
+    const typeText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    typeText.setAttribute("x", f.x);
+    typeText.setAttribute("y", plaqueY + 9);
+    typeText.setAttribute("text-anchor", "middle");
+    typeText.setAttribute("fill", "#d97706");
+    typeText.setAttribute("font-family", "'DM Mono', monospace");
+    typeText.setAttribute("font-size", "7");
+    typeText.setAttribute("font-weight", "700");
+    typeText.textContent = `✦ ${(f.type || "SET PIECE").toUpperCase()} ✦`;
+    plaqueG.appendChild(typeText);
+
+    fg.appendChild(plaqueG);
+
+    // Interactive Click: clicking a fixture auto-selects Spotlight
+    fg.onclick = () => {
+      selectVerb("shift_spotlight");
+      const sel = $("#director-target-select");
+      if (sel) sel.value = f.id;
+    };
+
+    // Tooltip
+    const tip = document.createElementNS("http://www.w3.org/2000/svg", "title");
+    tip.textContent = `${f.name} [${(f.type || "SET").toUpperCase()}]: ${f.desc}`;
+    fg.appendChild(tip);
+
+    svg.appendChild(fg);
   });
 
-  // 2. Render Exit Doors
+  // 6. RENDER GOTHIC ARCHED EXIT DOORS
   exits.forEach((exit) => {
     const isBlocked = blocked.some(([u, v]) => u === currentRoomId && v === exit.target_node);
     const isLit = spotlightedFixture === String(exit.target_node);
 
     const dg = document.createElementNS("http://www.w3.org/2000/svg", "g");
     dg.setAttribute("class", "room-exit-door");
+    dg.setAttribute("style", "cursor: pointer;");
 
-    // Door Spotlight
+    // Limelight on Door
     if (isLit) {
       const beam = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-      beam.setAttribute("points", `${exit.x},28 ${exit.x - 55},${exit.y + 45} ${exit.x + 55},${exit.y + 45}`);
-      beam.setAttribute("fill", "url(#spotlight-beam)");
+      beam.setAttribute("points", `${exit.x},32 ${exit.x - 55},${exit.y + 60} ${exit.x + 55},${exit.y + 60}`);
+      beam.setAttribute("fill", "url(#limelight-cone)");
       beam.setAttribute("class", "spotlight-cone");
       beam.setAttribute("filter", "url(#glow-gold)");
       svg.appendChild(beam);
     }
 
-    // Door Frame Rect
-    const door = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    door.setAttribute("x", exit.x - 50);
-    door.setAttribute("y", exit.y - 45);
-    door.setAttribute("width", 100);
-    door.setAttribute("height", 90);
-    door.setAttribute("class", "door-frame");
-    dg.appendChild(door);
+    // Door Portal Arch Frame
+    const doorFrame = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    doorFrame.setAttribute("x", exit.x - 48);
+    doorFrame.setAttribute("y", exit.y - 44);
+    doorFrame.setAttribute("width", "96");
+    doorFrame.setAttribute("height", "88");
+    doorFrame.setAttribute("rx", "16");
+    doorFrame.setAttribute("fill", "#100c09");
+    doorFrame.setAttribute("stroke", isBlocked ? "#781c24" : "#c59b48");
+    doorFrame.setAttribute("stroke-width", "2");
+    dg.appendChild(doorFrame);
 
-    // Arch outline
-    const arch = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    arch.setAttribute("d", `M ${exit.x - 45} ${exit.y - 20} Q ${exit.x} ${exit.y - 42} ${exit.x + 45} ${exit.y - 20}`);
-    arch.setAttribute("class", "door-arch");
-    dg.appendChild(arch);
+    // Gothic Pointed Arch Cresting
+    const archPeak = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    archPeak.setAttribute("d", `M ${exit.x - 48} ${exit.y - 30} Q ${exit.x} ${exit.y - 56} ${exit.x + 48} ${exit.y - 30}`);
+    archPeak.setAttribute("stroke", "#fcd34d");
+    archPeak.setAttribute("stroke-width", "1.5");
+    archPeak.setAttribute("fill", "none");
+    dg.appendChild(archPeak);
 
-    // Door Text
-    const dTitle = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    dTitle.setAttribute("x", exit.x);
-    dTitle.setAttribute("y", exit.y - 2);
-    dTitle.setAttribute("class", "door-title");
-    const nameShort = exit.name.split(" to ")[0];
-    dTitle.textContent = nameShort.length > 14 ? nameShort.slice(0, 12) + ".." : nameShort;
-    dg.appendChild(dTitle);
+    // Inner Doorway Void
+    const doorVoid = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    doorVoid.setAttribute("x", exit.x - 40);
+    doorVoid.setAttribute("y", exit.y - 36);
+    doorVoid.setAttribute("width", "80");
+    doorVoid.setAttribute("height", "74");
+    doorVoid.setAttribute("rx", "12");
+    doorVoid.setAttribute("fill", isBlocked ? "#180a0d" : "#0d0a07");
+    dg.appendChild(doorVoid);
 
-    const dSub = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    dSub.setAttribute("x", exit.x);
-    dSub.setAttribute("y", exit.y + 16);
-    dSub.setAttribute("class", "door-sub");
-    dSub.textContent = `-> Node ${exit.target_node}`;
-    dg.appendChild(dSub);
+    // Door Nameplate Plaque (Short clean name so it never overflows)
+    const dPlaque = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    dPlaque.setAttribute("x", exit.x - 44);
+    dPlaque.setAttribute("y", exit.y - 40);
+    dPlaque.setAttribute("width", "88");
+    dPlaque.setAttribute("height", "20");
+    dPlaque.setAttribute("rx", "2");
+    dPlaque.setAttribute("fill", "#1c150e");
+    dPlaque.setAttribute("stroke", "#c59b48");
+    dPlaque.setAttribute("stroke-width", "1");
+    dg.appendChild(dPlaque);
 
-    // Dropped Velvet Curtain if Blocked
+    const dShortName = exit.name.includes(":") ? exit.name.split(":")[0] : exit.name.split(" to ")[0];
+    const dName = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    dName.setAttribute("x", exit.x);
+    dName.setAttribute("y", exit.y - 26);
+    dName.setAttribute("text-anchor", "middle");
+    dName.setAttribute("fill", "#fff7ed");
+    dName.setAttribute("font-family", "'Cinzel', Georgia, serif");
+    dName.setAttribute("font-size", "8");
+    dName.setAttribute("font-weight", "700");
+    dName.textContent = dShortName.toUpperCase();
+    dg.appendChild(dName);
+
+    // Target Node Tag
+    const targetTag = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    targetTag.setAttribute("x", exit.x);
+    targetTag.setAttribute("y", exit.y - 4);
+    targetTag.setAttribute("text-anchor", "middle");
+    targetTag.setAttribute("fill", "#c59b48");
+    targetTag.setAttribute("font-family", "'DM Mono', monospace");
+    targetTag.setAttribute("font-size", "7.5");
+    targetTag.setAttribute("font-weight", "700");
+    targetTag.textContent = `→ NODE ${exit.target_node}`;
+    dg.appendChild(targetTag);
+
+    // If Blocked: Draw Velvet Drop Curtain with Bullion Fringe & Wax Seal
     if (isBlocked) {
       const curtain = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      curtain.setAttribute("x", exit.x - 50);
-      curtain.setAttribute("y", exit.y - 45);
-      curtain.setAttribute("width", 100);
-      curtain.setAttribute("height", 90);
+      curtain.setAttribute("x", exit.x - 48);
+      curtain.setAttribute("y", exit.y - 44);
+      curtain.setAttribute("width", "96");
+      curtain.setAttribute("height", "88");
       curtain.setAttribute("fill", "url(#velvet-fold)");
-      curtain.setAttribute("class", "curtain-drape");
+      curtain.setAttribute("stroke", "#4a0f14");
+      curtain.setAttribute("stroke-width", "1.5");
       dg.appendChild(curtain);
 
-      // Gold fringe line
+      // Gold bullion bottom fringe
       const fringe = document.createElementNS("http://www.w3.org/2000/svg", "line");
-      fringe.setAttribute("x1", exit.x - 50);
-      fringe.setAttribute("y1", exit.y + 45);
-      fringe.setAttribute("x2", exit.x + 50);
-      fringe.setAttribute("y2", exit.y + 45);
-      fringe.setAttribute("class", "curtain-gold-trim");
+      fringe.setAttribute("x1", exit.x - 48);
+      fringe.setAttribute("y1", exit.y + 44);
+      fringe.setAttribute("x2", exit.x + 48);
+      fringe.setAttribute("y2", exit.y + 44);
+      fringe.setAttribute("stroke", "#fcd34d");
+      fringe.setAttribute("stroke-width", "3");
       dg.appendChild(fringe);
 
-      // Seal badge
+      // Wax Seal Badge
+      const sealG = document.createElementNS("http://www.w3.org/2000/svg", "g");
       const sealRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
       sealRect.setAttribute("x", exit.x - 42);
-      sealRect.setAttribute("y", exit.y - 10);
-      sealRect.setAttribute("width", 84);
-      sealRect.setAttribute("height", 20);
-      sealRect.setAttribute("class", "curtain-seal-rect");
-      dg.appendChild(sealRect);
+      sealRect.setAttribute("y", exit.y - 12);
+      sealRect.setAttribute("width", "84");
+      sealRect.setAttribute("height", "24");
+      sealRect.setAttribute("rx", "3");
+      sealRect.setAttribute("fill", "#781c24");
+      sealRect.setAttribute("stroke", "#fcd34d");
+      sealRect.setAttribute("stroke-width", "1.5");
+      sealG.appendChild(sealRect);
 
       const sealText = document.createElementNS("http://www.w3.org/2000/svg", "text");
       sealText.setAttribute("x", exit.x);
       sealText.setAttribute("y", exit.y + 3);
-      sealText.setAttribute("class", "curtain-seal-text");
-      sealText.textContent = "CURTAIN LOWERED";
-      dg.appendChild(sealText);
+      sealText.setAttribute("text-anchor", "middle");
+      sealText.setAttribute("fill", "#fef3c7");
+      sealText.setAttribute("font-family", "'DM Mono', monospace");
+      sealText.setAttribute("font-size", "8");
+      sealText.setAttribute("font-weight", "700");
+      sealText.setAttribute("letter-spacing", "0.06em");
+      sealText.textContent = "CURTAIN SEALED";
+      sealG.appendChild(sealText);
+
+      dg.appendChild(sealG);
     }
 
-    // Cast votes indicator
+    // Cast Votes Indicator Tag
     const voters = characters.filter((c) => c.is_alive && c.voted_exit === exit.target_node);
     if (voters.length > 0) {
       const vPill = document.createElementNS("http://www.w3.org/2000/svg", "rect");
       vPill.setAttribute("x", exit.x - 38);
-      vPill.setAttribute("y", exit.y + 26);
-      vPill.setAttribute("width", 76);
-      vPill.setAttribute("height", 14);
-      vPill.setAttribute("class", "door-vote-pill");
+      vPill.setAttribute("y", exit.y + 30);
+      vPill.setAttribute("width", "76");
+      vPill.setAttribute("height", "18");
+      vPill.setAttribute("rx", "9");
+      vPill.setAttribute("fill", "#1c150e");
+      vPill.setAttribute("stroke", "#c59b48");
+      vPill.setAttribute("stroke-width", "1");
       dg.appendChild(vPill);
 
       const vText = document.createElementNS("http://www.w3.org/2000/svg", "text");
       vText.setAttribute("x", exit.x);
-      vText.setAttribute("y", exit.y + 36);
-      vText.setAttribute("class", "door-vote-text");
+      vText.setAttribute("y", exit.y + 42);
+      vText.setAttribute("text-anchor", "middle");
+      vText.setAttribute("fill", "#fde68a");
+      vText.setAttribute("font-family", "'DM Mono', monospace");
+      vText.setAttribute("font-size", "8.5");
+      vText.setAttribute("font-weight", "700");
       const initials = voters.map((c) => CHAR_CONFIG[c.id]?.code || c.id[0]).join(", ");
       vText.textContent = `Votes: ${initials}`;
       dg.appendChild(vText);
     }
 
+    // Interactive Click: clicking an exit door pre-selects block_route
+    dg.onclick = () => {
+      selectVerb("block_route");
+      const sel = $("#director-target-select");
+      if (sel) sel.value = String(exit.target_node);
+    };
+
     svg.appendChild(dg);
   });
 
-  // 3. Render Character Paper Standees at Room Fixtures
+  // 7. RENDER CHARACTERS AS REVERSE: 1999 PAPER STANDEES ON STAGE FLOOR
   const charsByFixture = {};
   characters.forEach((char) => {
     if (!char.is_alive) return;
@@ -1411,61 +1717,149 @@ function renderRoomStageSVG() {
 
     charList.forEach((char, idx) => {
       const cfg = CHAR_CONFIG[char.id] || { code: "?", color: "#333", class: "julian" };
-      const offset = (idx - (count - 1) / 2) * 32;
+      // Position standees comfortably on the stage floor in front of the fixture
+      const offset = (idx - (count - 1) / 2) * 44;
       const posX = fixture.x + offset;
-      const posY = fixture.y + 28;
+      const posY = 320; // Standing firmly on the hardwood floorboards!
 
       const tg = document.createElementNS("http://www.w3.org/2000/svg", "g");
       tg.setAttribute("class", "char-token");
+      tg.setAttribute("style", "cursor: pointer;");
 
-      // Standee Base on Stage Floor
-      const base = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
-      base.setAttribute("cx", posX);
-      base.setAttribute("cy", posY + 16);
-      base.setAttribute("rx", "14");
-      base.setAttribute("ry", "4");
-      base.setAttribute("class", "standee-base");
-      tg.appendChild(base);
+      // 1. Cast Shadow on Floor
+      const shadow = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+      shadow.setAttribute("cx", posX);
+      shadow.setAttribute("cy", posY + 26);
+      shadow.setAttribute("rx", "22");
+      shadow.setAttribute("ry", "7");
+      shadow.setAttribute("fill", "#000");
+      shadow.setAttribute("opacity", "0.4");
+      shadow.setAttribute("filter", "url(#standee-shadow)");
+      tg.appendChild(shadow);
 
-      // Standee Paper Card
+      // 2. Brass Pedestal Stand Base
+      const standBase = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+      standBase.setAttribute("cx", posX);
+      standBase.setAttribute("cy", posY + 24);
+      standBase.setAttribute("rx", "20");
+      standBase.setAttribute("ry", "6");
+      standBase.setAttribute("fill", "url(#brass-plaque)");
+      standBase.setAttribute("stroke", "#453214");
+      standBase.setAttribute("stroke-width", "1");
+      tg.appendChild(standBase);
+
+      // 3. Reverse: 1999 Character Paper Standee Card (Width 38 for comfortable fit)
       const card = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      card.setAttribute("x", posX - 13);
-      card.setAttribute("y", posY - 18);
-      card.setAttribute("width", "26");
-      card.setAttribute("height", "32");
-      card.setAttribute("rx", "3");
-      card.setAttribute("class", `standee-card ${cfg.class}`);
-      card.setAttribute("filter", "url(#paper-standee-shadow)");
+      card.setAttribute("x", posX - 19);
+      card.setAttribute("y", posY - 34);
+      card.setAttribute("width", "38");
+      card.setAttribute("height", "56");
+      card.setAttribute("rx", "4");
+      card.setAttribute("fill", "#fffbf0");
+      card.setAttribute("stroke", cfg.color);
+      card.setAttribute("stroke-width", "2");
       tg.appendChild(card);
 
-      // Actor Initial
+      // Inner Portrait Background
+      const innerRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      innerRect.setAttribute("x", posX - 16);
+      innerRect.setAttribute("y", posY - 31);
+      innerRect.setAttribute("width", "32");
+      innerRect.setAttribute("height", "38");
+      innerRect.setAttribute("rx", "2");
+      innerRect.setAttribute("fill", cfg.color);
+      tg.appendChild(innerRect);
+
+      // Actor Silhouette / Initial
       const letter = document.createElementNS("http://www.w3.org/2000/svg", "text");
       letter.setAttribute("x", posX);
-      letter.setAttribute("y", posY - 1);
-      letter.setAttribute("class", `standee-letter ${cfg.class}`);
+      letter.setAttribute("y", posY - 7);
+      letter.setAttribute("text-anchor", "middle");
+      letter.setAttribute("fill", "#fff");
+      letter.setAttribute("font-family", "'Cinzel', Georgia, serif");
+      letter.setAttribute("font-size", "18");
+      letter.setAttribute("font-weight", "700");
       letter.textContent = cfg.code;
       tg.appendChild(letter);
 
-      // Floating Action Cue
+      // Name Tab on Standee (Curator resolved cleanly, Beatrice fitting comfortably)
+      const isCurator = char.id.toLowerCase().includes("curator") || (char.name && char.name.toLowerCase().includes("curator"));
+      const shortName = isCurator ? "CURATOR" : char.name.split(" ")[0].toUpperCase();
+      const nameTab = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      nameTab.setAttribute("x", posX);
+      nameTab.setAttribute("y", posY + 16);
+      nameTab.setAttribute("text-anchor", "middle");
+      nameTab.setAttribute("fill", "#20140a");
+      nameTab.setAttribute("font-family", "'Cinzel', Georgia, serif");
+      nameTab.setAttribute("font-size", shortName.length > 7 ? "6" : "7");
+      nameTab.setAttribute("font-weight", "700");
+      nameTab.textContent = shortName;
+      tg.appendChild(nameTab);
+
+      // 4. FLOATING COMIC / VN ACTION SPEECH BUBBLE (Staggered Heights with Zero Collision!)
       if (char.room_action) {
-        const actionText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        actionText.setAttribute("x", posX);
-        actionText.setAttribute("y", posY - 23);
-        actionText.setAttribute("class", "standee-action-bubble");
+        const bubbleG = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        
+        // Stagger Y position based on character index in room
+        const charIdx = characters.findIndex((c) => c.id === char.id);
+        const isStaggered = charIdx % 2 === 1;
+        const bubbleY = isStaggered ? posY - 84 : posY - 58;
+
         const actShort = char.room_action.length > 18 ? char.room_action.slice(0, 16) + ".." : char.room_action;
-        actionText.textContent = actShort;
-        tg.appendChild(actionText);
+        const bWidth = Math.min(124, Math.max(82, actShort.length * 5.6 + 16));
+        
+        // Clamp bubble horizontally within stage limits [40, 760]
+        const bubbleX = Math.max(40 + bWidth / 2, Math.min(760 - bWidth / 2, posX));
+
+        const bubbleRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        bubbleRect.setAttribute("x", bubbleX - bWidth / 2);
+        bubbleRect.setAttribute("y", bubbleY);
+        bubbleRect.setAttribute("width", bWidth);
+        bubbleRect.setAttribute("height", "20");
+        bubbleRect.setAttribute("rx", "4");
+        bubbleRect.setAttribute("fill", "#fffdf5");
+        bubbleRect.setAttribute("stroke", "#c59b48");
+        bubbleRect.setAttribute("stroke-width", "1");
+        bubbleG.appendChild(bubbleRect);
+
+        // Pointer triangle pointing from bubble bottom down to top of standee
+        const pointer = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+        pointer.setAttribute("points", `${posX - 4},${bubbleY + 20} ${posX + 4},${bubbleY + 20} ${posX},${posY - 34}`);
+        pointer.setAttribute("fill", "#fffdf5");
+        pointer.setAttribute("stroke", "#c59b48");
+        pointer.setAttribute("stroke-width", "1");
+        bubbleG.appendChild(pointer);
+
+        const textEl = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        textEl.setAttribute("x", bubbleX);
+        textEl.setAttribute("y", bubbleY + 13);
+        textEl.setAttribute("text-anchor", "middle");
+        textEl.setAttribute("fill", "#291b10");
+        textEl.setAttribute("font-family", "'Libre Baskerville', Georgia, serif");
+        textEl.setAttribute("font-size", "8.5");
+        textEl.setAttribute("font-style", "italic");
+        textEl.textContent = `"${actShort}"`;
+        bubbleG.appendChild(textEl);
+
+        tg.appendChild(bubbleG);
       }
 
-      const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
-      title.textContent = `${char.name} (${char.role})\nLocation: ${fixture.name}\nAction: ${char.room_action || "Investigating"}\nVoted Exit: Node ${char.voted_exit || "Undecided"}\nHP: ${char.hp}/${char.max_hp}, Stress: ${char.stress}%, Weight: ${char.total_weight_kg}kg`;
-      tg.appendChild(title);
+      // Interactive Click: clicking a character standee pre-selects Whisper
+      tg.onclick = () => {
+        selectVerb("plant_rumor");
+        const sel = $("#director-target-select");
+        if (sel) sel.value = char.id;
+      };
+
+      // Standee Full Detail Tooltip
+      const tip = document.createElementNS("http://www.w3.org/2000/svg", "title");
+      tip.textContent = `${char.name} (${char.role})\nAt: ${fixture.name}\nAction: ${char.room_action || "Investigating"}\nVoted Exit: Node ${char.voted_exit || "Undecided"}\nHP: ${char.hp}/${char.max_hp} | Stress: ${char.stress}% | Load: ${char.total_weight_kg}kg`;
+      tg.appendChild(tip);
 
       svg.appendChild(tg);
     });
   });
 }
-
 function renderCastCards() {
   const container = $("#cast-cards-grid");
   if (!container || !stageState.data) return;
@@ -1689,6 +2083,10 @@ if (stageTurnBtn) {
           $("#verifier-rule-label").textContent = `VERIFIER INTERCEPTION: ${rep.rule}`;
           $("#verifier-rule-desc").textContent = `${rep.issue} -> ${rep.action}`;
           verifierAlert.hidden = false;
+          clearTimeout(verifierAlert._dismissTimer);
+          verifierAlert._dismissTimer = setTimeout(() => {
+            verifierAlert.hidden = true;
+          }, 4500);
         } else {
           verifierAlert.hidden = true;
         }
@@ -1742,7 +2140,7 @@ function showStageEnd(won, message) {
       <p>${message}</p>
       <button type="button" class="stage-advance-btn" id="stage-end-restart"><span>Play again</span></button>
     </div>`;
-  $("#stage-end-restart").addEventListener("click", () => { overlay.remove(); initStageEngine(); });
+  $("#stage-end-restart").addEventListener("click", () => { overlay.remove(); initStageEngine(true); });
 }
 
 const stageResetBtn = $("#stage-reset-btn");
@@ -1750,7 +2148,7 @@ if (stageResetBtn) {
   stageResetBtn.addEventListener("click", () => {
     const endOverlay = $("#stage-end");
     if (endOverlay) endOverlay.remove();
-    initStageEngine();
+    initStageEngine(true);
   });
 }
 

@@ -115,7 +115,7 @@ def _call_amd_api(messages: List[Dict[str, str]], max_tokens: int = 800) -> Tupl
         },
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=60) as resp:
+    with urllib.request.urlopen(req, timeout=6) as resp:
         res = json.loads(resp.read().decode("utf-8"))
     usage = res.get("usage", {"prompt_tokens": 450, "completion_tokens": 280})
     content = res["choices"][0]["message"]["content"]
@@ -445,6 +445,17 @@ Write the theatrical turn script in valid JSON matching the schema.
             repairs_log.extend(repairs)
             final_script = parsed
             break
+        except (urllib.error.URLError, TimeoutError, OSError) as net_err:
+            final_script = _generate_local_preview_turn(stage, director_action_summary)
+            repairs = _validate_turn_script(stage, final_script)
+            repairs_log.extend(repairs)
+            repairs_log.append({
+                "rule": "Network Failover Engaged",
+                "issue": f"AMD endpoint unreachable ({net_err}).",
+                "action": "Switched to high-fidelity deterministic theater engine.",
+            })
+            cost_data["mode"] = "local-failover"
+            break
         except Exception as exc:
             # Self-repair feedback turn
             if attempts < max_attempts:
@@ -456,6 +467,8 @@ Write the theatrical turn script in valid JSON matching the schema.
             else:
                 # Fall back to deterministic script on exhaustion
                 final_script = _generate_local_preview_turn(stage, director_action_summary)
+                repairs = _validate_turn_script(stage, final_script)
+                repairs_log.extend(repairs)
                 repairs_log.append({
                     "rule": "Autonomous Repair Fallback",
                     "issue": f"Gemma repair turns exhausted ({str(exc)}).",

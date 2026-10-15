@@ -1039,34 +1039,34 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .game-viewport { position: relative; flex: 1; min-height: 0; background: radial-gradient(ellipse at 50% 45%, #2a2118 0%, #14110e 80%); overflow: hidden; }
 .game-viewport .stage-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 
-/* HUD chips */
-.hud { position: absolute; z-index: 5; color: #f3ead6; background: rgba(20, 16, 12, 0.8); border: 1px solid rgba(197, 155, 72, 0.55); backdrop-filter: blur(4px); }
-.hud-room { top: 12px; left: 44px; width: 270px; padding: 8px 12px; border-radius: 4px; display: grid; gap: 4px; }
-.hud-act { font: 700 9px var(--mono); letter-spacing: .12em; color: var(--theater-gold-bright); text-transform: uppercase; }
-.hud-room-name { font: 600 15px "Cinzel", Georgia, serif; line-height: 1.2; }
-.hud-progress { display: flex; align-items: center; gap: 8px; }
-.hud-progress .room-progress-track { flex: 1; background: #3a3026; }
-.hud-progress .progress-val { color: var(--theater-gold-bright); font-size: 10px; }
-.hud-room .consensus-hint { color: #cbbd9b; font: italic 10.5px/1.35 "Libre Baskerville", Georgia, serif; margin: 0; }
+/* HUD chips - Unified 32px slim marquee bar across the proscenium valance */
+.hud { position: absolute; z-index: 5; color: #f3ead6; background: rgba(18, 14, 10, 0.94); border: 1px solid rgba(197, 155, 72, 0.65); backdrop-filter: blur(6px); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5); }
+.hud-room { top: 8px; left: 24px; height: 32px; padding: 0 12px; border-radius: 4px; display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+.hud-act { font: 700 8.5px var(--mono); letter-spacing: .1em; color: var(--theater-gold-bright); text-transform: uppercase; padding-right: 6px; border-right: 1px solid #4a3822; }
+.hud-room-name { font: 600 13px "Cinzel", Georgia, serif; line-height: 1; }
+.hud-progress { display: flex; align-items: center; gap: 6px; margin-left: 4px; }
+.hud-progress .room-progress-track { width: 50px; height: 4px; background: #3a3026; border-radius: 2px; }
+.hud-progress .progress-val { color: var(--theater-gold-bright); font-size: 9.5px; font-weight: 700; font-family: var(--mono); }
+.hud-room .consensus-hint { display: none; }
 
-.hud-route { top: 12px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 999px; }
+.hud-route { top: 8px; left: 50%; transform: translateX(-50%); height: 32px; display: flex; align-items: center; gap: 6px; padding: 0 14px; border-radius: 999px; }
 .hud-route .ribbon-node { padding: 0; gap: 6px; background: transparent; border: 0; box-shadow: none; opacity: 1; color: #bfae8a; }
 .hud-route .ribbon-title { display: none; font: 600 11px "Cinzel", Georgia, serif; }
-.hud-route .ribbon-node.active .ribbon-title { display: inline; color: #fff3d0; }
-.hud-route .ribbon-badge { width: 22px; height: 22px; background: #3a3026; color: #cbbd9b; border: 1px solid #5a4730; }
+.hud-route .ribbon-node.active .ribbon-title { display: inline; color: #fff3d0; margin-left: 2px; }
+.hud-route .ribbon-badge { width: 20px; height: 20px; font-size: 10px; background: #3a3026; color: #cbbd9b; border: 1px solid #5a4730; }
 .hud-route .ribbon-node.active .ribbon-badge { background: var(--theater-gold); color: #1d1408; border-color: #f3d58c; box-shadow: 0 0 10px rgba(230, 190, 109, .7); }
 .hud-route .ribbon-node.visited .ribbon-badge { background: #34503f; color: #d7efdd; border-color: #4f7a61; }
 .hud-route .ribbon-node.fogged .ribbon-badge { background: #4a5a58; color: #dbe7e4; border-color: #6d8985; opacity: .8; }
-.hud-route .ribbon-arrow { color: #6e5b3d; font-size: 10px; }
+.hud-route .ribbon-arrow { color: #6e5b3d; font-size: 9px; }
 
-.hud-counters { top: 12px; right: 44px; display: flex; align-items: center; gap: 12px; padding: 6px 12px; border-radius: 4px; }
-.counter { display: inline-flex; align-items: center; gap: 6px; font: 500 11px var(--mono); }
-.counter b { font-weight: 600; }
+.hud-counters { top: 8px; right: 24px; height: 32px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border-radius: 4px; }
+.counter { display: inline-flex; align-items: center; gap: 5px; font: 600 10.5px var(--mono); }
+.counter b { font-weight: 700; color: #fff3d0; }
 .counter-icon { color: var(--theater-gold-bright); font-style: normal; }
-.hud-btn { background: transparent; border: 1px solid #5a4730; color: #d8c8a3; font: 600 10.5px var(--sans); padding: 4px 10px; border-radius: 3px; cursor: pointer; }
-.hud-btn:hover { border-color: var(--theater-gold); color: #fff3d0; }
+.hud-btn { background: #261e16; border: 1px solid #5a4730; color: #d8c8a3; font: 600 10px var(--sans); padding: 3px 8px; border-radius: 3px; cursor: pointer; }
+.hud-btn:hover { border-color: var(--theater-gold); color: #fff3d0; background: #382c20; }
 
-.hud-verifier { top: 76px; left: 50%; transform: translateX(-50%); width: min(560px, 80%); display: flex; gap: 12px; align-items: flex-start; padding: 10px 14px; border-radius: 4px; border-color: #d99a48; background: rgba(48, 30, 12, 0.92); animation: toastIn .3s ease-out; }
+.hud-verifier { top: 52px; left: 50%; transform: translateX(-50%); width: min(560px, 80%); display: flex; gap: 12px; align-items: flex-start; padding: 10px 14px; border-radius: 4px; border-color: #d99a48; background: rgba(48, 30, 12, 0.95); animation: toastIn .3s ease-out; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7); }
 .hud-verifier .verifier-badge { background: #d99a48; color: #2b1705; border: 0; white-space: nowrap; }
 .hud-verifier .verifier-details strong { color: #ffd9a1; margin-bottom: 2px; }
 .hud-verifier .verifier-details p { color: #ecdcc0; font-size: 11px; }
