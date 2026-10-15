@@ -818,3 +818,507 @@ document.querySelectorAll(".mode-option").forEach((button) => button.addEventLis
 }));
 
 loadSamples();
+
+/* =========================================================================
+   THE WORLD'S A STAGE: REVERSE: 1999 STAGE DIRECTOR CONTROLLER
+   ========================================================================= */
+
+const stageState = {
+  data: null,
+  selectedVerb: "block_route",
+  tension: 2.0,
+  isProcessing: false,
+};
+
+const STAGE_NODE_COORDS = {
+  1: { x: 80, y: 170, label: "1. Station Platform", sub: "Lit · Safe Gathering" },
+  2: { x: 260, y: 80, label: "2. The Trestle Bridge", sub: "Fast · 150kg Rotted Timber" },
+  3: { x: 260, y: 260, label: "3. The Valley Bypass", sub: "Rugged Scree · Fatigue" },
+  4: { x: 440, y: 170, label: "4. The Signal Tower", sub: "Padlocked Gate Barrier" },
+  5: { x: 620, y: 80, label: "5. Smuggler's Cut", sub: "Dark · Ambush Hazard" },
+  6: { x: 620, y: 260, label: "6. Pilgrim's Stair", sub: "Lit · Moral Trial" },
+  7: { x: 770, y: 170, label: "7. The Iron Terminal", sub: "Goal · Departure" },
+};
+
+const CHAR_CONFIG = {
+  "Julian": { code: "J", color: "#4a6778", class: "julian", name: "Julian" },
+  "Vesper": { code: "V", color: "#9e6a2b", class: "vesper", name: "Vesper" },
+  "Beatrice": { code: "B", color: "#7e4334", class: "beatrice", name: "Beatrice" },
+  "The Curator": { code: "C", color: "#544163", class: "curator", name: "The Curator" },
+};
+
+// Mode Switcher between Stage Director and Living Ledger
+const tabStage = $("#mode-tab-stage");
+const tabLedger = $("#mode-tab-ledger");
+const viewStage = $("#stage-experience");
+const viewLedger = $("#ledger-experience");
+
+if (tabStage && tabLedger) {
+  tabStage.addEventListener("click", () => {
+    tabStage.classList.add("active");
+    tabStage.setAttribute("aria-selected", "true");
+    tabLedger.classList.remove("active");
+    tabLedger.setAttribute("aria-selected", "false");
+    viewStage.hidden = false;
+    viewLedger.hidden = true;
+    renderStageBoard();
+  });
+
+  tabLedger.addEventListener("click", () => {
+    tabLedger.classList.add("active");
+    tabLedger.setAttribute("aria-selected", "true");
+    tabStage.classList.remove("active");
+    tabStage.setAttribute("aria-selected", "false");
+    viewStage.hidden = true;
+    viewLedger.hidden = false;
+  });
+}
+
+async function initStageEngine() {
+  try {
+    const data = await api("/api/stage/init");
+    stageState.data = data;
+    renderStageBoard();
+    renderCastCards();
+    updateDirectorDeckUI();
+  } catch (err) {
+    console.error("Failed to initialize stage engine:", err);
+  }
+}
+
+function renderStageBoard() {
+  const svg = $("#stage-svg");
+  if (!svg || !stageState.data) return;
+
+  svg.innerHTML = `
+    <defs>
+      <filter id="glow-gold" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="4" result="blur" />
+        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+      </filter>
+      <radialGradient id="spotlight-beam" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#fff8e6" stop-opacity="0.8" />
+        <stop offset="40%" stop-color="#f6dfb2" stop-opacity="0.5" />
+        <stop offset="100%" stop-color="#e8cf99" stop-opacity="0" />
+      </radialGradient>
+    </defs>
+  `;
+
+  const edges = stageState.data.edges || [];
+  const blocked = stageState.data.blocked_edges || [];
+  const spotlights = stageState.data.spotlighted_nodes || [];
+  const fogNode = stageState.data.fog_node || 0;
+
+  // 1. Draw Edges
+  edges.forEach(([u, v]) => {
+    const fromCoord = STAGE_NODE_COORDS[u];
+    const toCoord = STAGE_NODE_COORDS[v];
+    if (!fromCoord || !toCoord) return;
+
+    const isBlocked = blocked.some(([bu, bv]) => (bu === u && bv === v) || (bu === v && bv === u));
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.setAttribute("x1", fromCoord.x);
+    line.setAttribute("y1", fromCoord.y);
+    line.setAttribute("x2", toCoord.x);
+    line.setAttribute("y2", toCoord.y);
+    line.setAttribute("class", isBlocked ? "stage-track track-blocked" : "stage-track track-active");
+    svg.appendChild(line);
+
+    if (isBlocked) {
+      const midX = (fromCoord.x + toCoord.x) / 2;
+      const midY = (fromCoord.y + toCoord.y) / 2;
+      const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+
+      const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      rect.setAttribute("x", midX - 44);
+      rect.setAttribute("y", midY - 10);
+      rect.setAttribute("width", 88);
+      rect.setAttribute("height", 20);
+      rect.setAttribute("class", "curtain-banner");
+
+      const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      txt.setAttribute("x", midX);
+      txt.setAttribute("y", midY + 4);
+      txt.setAttribute("class", "curtain-text");
+      txt.textContent = "DROPPED CURTAIN";
+
+      g.appendChild(rect);
+      g.appendChild(txt);
+      svg.appendChild(g);
+    }
+  });
+
+  // 2. Draw Nodes
+  Object.entries(STAGE_NODE_COORDS).forEach(([nodeIdStr, coord]) => {
+    const nid = Number(nodeIdStr);
+    const nodeData = stageState.data.nodes[nid];
+    const isSpotlight = spotlights.includes(nid);
+    const isFogged = nid <= fogNode;
+
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g.setAttribute("transform", `translate(${coord.x}, ${coord.y})`);
+
+    // Spotlight beam
+    if (isSpotlight) {
+      const beam = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      beam.setAttribute("r", "44");
+      beam.setAttribute("fill", "url(#spotlight-beam)");
+      beam.setAttribute("filter", "url(#glow-gold)");
+      g.appendChild(beam);
+    }
+
+    // Node Circle
+    let circleClass = "node-circle";
+    if (isFogged) circleClass += " node-fog";
+    else if (isSpotlight) circleClass += " node-lit";
+    else if (nodeData.light_level === "Dark") circleClass += " node-dark";
+    else circleClass += " node-dim";
+
+    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    circle.setAttribute("r", "28");
+    circle.setAttribute("class", circleClass);
+    g.appendChild(circle);
+
+    // Node Label
+    const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    label.setAttribute("y", "-34");
+    label.setAttribute("class", "node-label");
+    label.textContent = coord.label;
+    g.appendChild(label);
+
+    const sub = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    sub.setAttribute("y", "44");
+    sub.setAttribute("class", isFogged ? "node-hazard" : "node-subtext");
+    sub.textContent = isFogged ? "[WAILING FOG ENGULFED]" : coord.sub;
+    g.appendChild(sub);
+
+    svg.appendChild(g);
+  });
+
+  // 3. Draw Character Tokens
+  const charTokensByNode = {};
+  Object.values(stageState.data.characters).forEach((char) => {
+    if (!char.is_alive) return;
+    charTokensByNode[char.node] = charTokensByNode[char.node] || [];
+    charTokensByNode[char.node].push(char);
+  });
+
+  Object.entries(charTokensByNode).forEach(([nidStr, charList]) => {
+    const nid = Number(nidStr);
+    const coord = STAGE_NODE_COORDS[nid];
+    if (!coord) return;
+
+    const count = charList.length;
+    charList.forEach((char, idx) => {
+      const cfg = CHAR_CONFIG[char.id] || { code: "?", color: "#333", class: "julian" };
+      // Distribute tokens horizontally within the node circle
+      const offset = (idx - (count - 1) / 2) * 16;
+      const tg = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      tg.setAttribute("class", "char-token");
+      tg.setAttribute("transform", `translate(${coord.x + offset}, ${coord.y})`);
+
+      const tc = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      tc.setAttribute("r", "10");
+      tc.setAttribute("class", `token-circle ${cfg.class}`);
+
+      const tt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      tt.setAttribute("class", "token-text");
+      tt.textContent = cfg.code;
+
+      const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+      title.textContent = `${char.name} (HP: ${char.hp}, Stress: ${char.stress}, Weight: ${char.total_weight_kg}kg)`;
+
+      tg.appendChild(tc);
+      tg.appendChild(tt);
+      tg.appendChild(title);
+      svg.appendChild(tg);
+    });
+  });
+
+  // 4. Update Header Stats
+  const daVal = $("#director-da-val");
+  if (daVal) daVal.textContent = stageState.data.director_authority;
+
+  const sceneVal = $("#scene-counter-val");
+  if (sceneVal) sceneVal.textContent = `Scene ${stageState.data.scene_number} / ${stageState.data.max_scenes}`;
+
+  const actVal = $("#act-name-val");
+  if (actVal) {
+    const actNames = ["Act I: Gathering", "Act II: The Crossing", "Act III: The Threshold", "Act IV: The Ascent", "Act V: The Departure"];
+    const curAct = actNames[Math.min(actNames.length - 1, stageState.data.scene_number - 1)];
+    actVal.textContent = curAct;
+  }
+}
+
+function renderCastCards() {
+  const container = $("#cast-cards-grid");
+  if (!container || !stageState.data) return;
+
+  container.innerHTML = "";
+  Object.values(stageState.data.characters).forEach((c) => {
+    const cfg = CHAR_CONFIG[c.id] || { code: "A", class: "julian" };
+    const card = document.createElement("div");
+    card.className = `cast-card ${c.is_alive ? "" : "fallen"}`;
+
+    const hpPct = Math.max(0, Math.min(100, Math.round((c.hp / c.max_hp) * 100)));
+    const stressPct = Math.max(0, Math.min(100, c.stress));
+    const fatiguePct = Math.max(0, Math.min(100, c.fatigue));
+
+    card.innerHTML = `
+      <div class="cast-card-head">
+        <div class="cast-portrait ${cfg.class}">${cfg.code}</div>
+        <div class="cast-meta">
+          <strong>${c.name}</strong>
+          <small>${c.role} · Node ${c.node} (${c.node_name})</small>
+        </div>
+      </div>
+      <div class="cast-vital-bars">
+        <div class="vital-row">
+          <span>HP</span>
+          <div class="vital-track"><div class="vital-bar hp" style="width: ${hpPct}%"></div></div>
+          <span>${c.hp}/${c.max_hp}</span>
+        </div>
+        <div class="vital-row">
+          <span>Stress</span>
+          <div class="vital-track"><div class="vital-bar stress" style="width: ${stressPct}%"></div></div>
+          <span>${c.stress}%</span>
+        </div>
+        <div class="vital-row">
+          <span>Fatigue</span>
+          <div class="vital-track"><div class="vital-bar fatigue" style="width: ${fatiguePct}%"></div></div>
+          <span>${c.fatigue}%</span>
+        </div>
+      </div>
+      <div class="cast-burden">
+        <span>Load Weight: <strong>${c.total_weight_kg} kg</strong></span>
+        ${c.id === "Vesper" && c.total_weight_kg > 100 ? `<span style="color:#9e6a32;margin-left:6px">(Heavy Contraband Payload!)</span>` : ""}
+      </div>
+      <p class="cast-flaw">"${c.flaw}"</p>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function updateDirectorDeckUI() {
+  const verb = stageState.selectedVerb;
+  const label = $("#verb-param-label");
+  const select = $("#verb-param-select");
+  const rumorWrap = $("#rumor-text-wrap");
+  if (!label || !select || !rumorWrap) return;
+
+  rumorWrap.hidden = true;
+  select.hidden = false;
+
+  if (verb === "block_route") {
+    label.textContent = "ROUTE TO BLOCK (DROP CURTAIN)";
+    select.innerHTML = `
+      <option value="1,2">Node 1 &rarr; Node 2 (The Trestle Bridge · Rotted 150kg)</option>
+      <option value="1,3">Node 1 &rarr; Node 3 (The Valley Bypass · Rugged Scree)</option>
+      <option value="4,5">Node 4 &rarr; Node 5 (Smuggler's Cut · Ambush Trap)</option>
+      <option value="4,6">Node 4 &rarr; Node 6 (Pilgrim's Stair · Moral Trial)</option>
+    `;
+  } else if (verb === "shift_spotlight") {
+    label.textContent = "NODE TO ILLUMINATE (SPOTLIGHT)";
+    select.innerHTML = `
+      <option value="2">Node 2: The Trestle Bridge (Reveal Rot / Avert Plunge)</option>
+      <option value="3">Node 3: The Valley Bypass (Reveal Safe Footholds)</option>
+      <option value="4">Node 4: The Signal Tower (Inspect Padlocked Gate)</option>
+      <option value="5">Node 5: Smuggler's Cut (Pierce Pitch-Black Ambush)</option>
+    `;
+  } else if (verb === "plant_rumor") {
+    label.textContent = "WHISPER PROMPT CUE TO ACTOR";
+    select.innerHTML = `
+      <option value="Vesper">Vesper Cross (The Smuggler)</option>
+      <option value="Julian">Julian Vance (The Archivist)</option>
+      <option value="Beatrice">Beatrice Thorne (The Machinist)</option>
+      <option value="The Curator">The Curator (The Infiltrator)</option>
+    `;
+    rumorWrap.hidden = false;
+  } else if (verb === "cue_prop") {
+    label.textContent = "STAGE ITEM PLACEMENT";
+    select.innerHTML = `
+      <option value="4,Cold Iron Crowbar">Node 4: Cold Iron Crowbar (Pry Gate Lock)</option>
+      <option value="3,Restorative Tonic">Node 3: Restorative Tonic (Soothe Fatigue)</option>
+      <option value="2,Safety Harness">Node 2: Safety Harness (Bridge Reinforcement)</option>
+    `;
+  }
+}
+
+// Event Listeners for Director Console
+document.querySelectorAll(".verb-choice").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".verb-choice").forEach((b) => b.classList.remove("selected"));
+    btn.classList.add("selected");
+    stageState.selectedVerb = btn.dataset.verb;
+    updateDirectorDeckUI();
+  });
+});
+
+const tensionSlider = $("#tension-dial-range");
+if (tensionSlider) {
+  tensionSlider.addEventListener("input", (e) => {
+    const val = parseFloat(e.target.value);
+    stageState.tension = val;
+    const readout = $("#tension-readout");
+    if (readout) {
+      let desc = "Andante";
+      if (val <= 1.5) desc = "Adagio (Calm & Meticulous)";
+      else if (val <= 2.5) desc = "Moderato";
+      else if (val <= 3.5) desc = "Allegro (Tense)";
+      else desc = "Presto (Frantic & Rushed)";
+      readout.textContent = `${val.toFixed(1)} · ${desc}`;
+    }
+  });
+
+  tensionSlider.addEventListener("change", async (e) => {
+    const val = parseFloat(e.target.value);
+    try {
+      await api("/api/stage/director_action", { verb: "adjust_tension", target: val });
+    } catch (err) {
+      console.error(err);
+    }
+  });
+}
+
+const applyVerbBtn = $("#apply-verb-btn");
+if (applyVerbBtn) {
+  applyVerbBtn.addEventListener("click", async () => {
+    const verb = stageState.selectedVerb;
+    let target = null;
+    const select = $("#verb-param-select");
+    const statusMsg = $("#verb-status-msg");
+
+    if (verb === "block_route") {
+      target = select.value.split(",").map(Number);
+    } else if (verb === "shift_spotlight") {
+      target = Number(select.value);
+    } else if (verb === "plant_rumor") {
+      const char = select.value;
+      const text = $("#rumor-text-input").value.trim() || "The path ahead is rigged.";
+      target = { character: char, rumor: text };
+    } else if (verb === "cue_prop") {
+      const [nid, prop] = select.value.split(",");
+      target = { node: Number(nid), prop: prop.trim() };
+    }
+
+    try {
+      const res = await api("/api/stage/director_action", { verb, target });
+      stageState.data = res.stage_state;
+      renderStageBoard();
+      renderCastCards();
+      if (statusMsg) {
+        statusMsg.textContent = res.message;
+        statusMsg.hidden = false;
+        setTimeout(() => { statusMsg.hidden = true; }, 4000);
+      }
+    } catch (err) {
+      if (statusMsg) {
+        statusMsg.textContent = err.message;
+        statusMsg.hidden = false;
+      }
+    }
+  });
+}
+
+const stageTurnBtn = $("#stage-turn-btn");
+if (stageTurnBtn) {
+  stageTurnBtn.addEventListener("click", async () => {
+    if (stageState.isProcessing) return;
+    stageState.isProcessing = true;
+    stageTurnBtn.disabled = true;
+    stageTurnBtn.innerHTML = `<span>Gemma 2 staging Scene on AMD MI300X...</span>`;
+
+    const summary = `Director applied ${stageState.selectedVerb} with tension ${stageState.tension.toFixed(1)}`;
+
+    try {
+      const res = await api("/api/stage/turn", { director_action_summary: summary });
+      stageState.data = res.stage_state;
+      renderStageBoard();
+      renderCastCards();
+
+      // Render Script Title and Narration
+      const titleEl = $("#script-scene-title");
+      if (titleEl && res.script.scene_title) titleEl.textContent = res.script.scene_title;
+
+      const tagEl = $("#script-scene-tag");
+      if (tagEl) tagEl.textContent = `SCENE ${res.stage_state.scene_number - 1}`;
+
+      const narrEl = $("#script-narration-text");
+      if (narrEl && res.script.narration) narrEl.textContent = res.script.narration;
+
+      // Render Dialogue Stream
+      const stream = $("#stage-dialogue-stream");
+      if (stream && res.script.dialogue) {
+        stream.innerHTML = "";
+        res.script.dialogue.forEach((d) => {
+          const cfg = CHAR_CONFIG[d.speaker] || { class: "julian", code: "?" };
+          const card = document.createElement("div");
+          card.className = "dialogue-card";
+          card.innerHTML = `
+            <div class="dialogue-avatar ${cfg.class}">${cfg.code}</div>
+            <div class="dialogue-content">
+              <strong>${d.speaker}</strong>
+              <p>"${d.line}"</p>
+            </div>
+          `;
+          stream.appendChild(card);
+        });
+      }
+
+      // Render Hazard & Physics Events
+      const hazardsStream = $("#stage-hazards-stream");
+      if (hazardsStream && res.turn_resolution.hazard_events) {
+        res.turn_resolution.hazard_events.forEach((ev) => {
+          const entry = document.createElement("div");
+          entry.className = "hazard-entry";
+          entry.textContent = ev;
+          hazardsStream.prepend(entry);
+        });
+      }
+
+      // Handle Verifier Banner
+      const verifierAlert = $("#stage-verifier-alert");
+      if (verifierAlert) {
+        if (res.repairs && res.repairs.length > 0) {
+          const rep = res.repairs[0];
+          $("#verifier-rule-label").textContent = `VERIFIER INTERCEPTION: ${rep.rule}`;
+          $("#verifier-rule-desc").textContent = `${rep.issue} -> ${rep.action}`;
+          verifierAlert.hidden = false;
+        } else {
+          verifierAlert.hidden = true;
+        }
+      }
+
+      // Handle Telemetry Pill
+      const costPill = $("#stage-cost-pill");
+      if (costPill && res.telemetry) {
+        costPill.textContent = `${res.telemetry.total_tokens} tokens · $${res.telemetry.amd_cost_usd.toFixed(6)} AMD (${res.telemetry.savings_pct}% savings)`;
+      }
+
+      // Check Game Status
+      if (res.stage_state.status === "won") {
+        alert("VICTORY: The Midnight Express has departed! The living cast crossed safely into sovereign territory.");
+      } else if (res.stage_state.status === "lost") {
+        alert("TRAGEDY: The Wailing Fog claimed the stage. The troupe has fallen.");
+      }
+
+    } catch (err) {
+      console.error(err);
+      alert("Turn failed: " + err.message);
+    } finally {
+      stageState.isProcessing = false;
+      stageTurnBtn.disabled = false;
+      stageTurnBtn.innerHTML = `<span>Raise Curtain on Scene</span><span>&rarr;</span>`;
+    }
+  });
+}
+
+const stageResetBtn = $("#stage-reset-btn");
+if (stageResetBtn) {
+  stageResetBtn.addEventListener("click", () => {
+    initStageEngine();
+  });
+}
+
+// Initialize on load
+initStageEngine();

@@ -10,9 +10,12 @@ from urllib.parse import unquote, urlparse
 
 from data_profiler import DataError, profile_csv, inspect_csv_headers
 from model_client import answer_guide, generate_consequence, generate_quest
+from stage_engine import StageEngine
+from stage_model_client import generate_stage_turn
 
 ROOT = Path(__file__).resolve().parent.parent
 CASES = {}
+STAGE_INSTANCE = StageEngine()
 SAMPLES = {
     "caravans_a": "The North Road (Trade Caravans · Baseline)",
     "caravans_b": "The Glasswood Trail (Frontier Pass · Exposure Paradox)",
@@ -198,7 +201,12 @@ class BayangHandler(BaseHTTPRequestHandler):
             live = (os.getenv("BAYANG_MODEL_MODE", "amd").lower() == "amd"
                     and bool(os.getenv("AMD_API_KEY")))
             return self.send_json(200, {"mode": "amd-configured" if live else "preview",
-                                        "model": os.getenv("AMD_MODEL_NAME", "Gemma-4-31B-IT")})
+                                        "model": os.getenv("AMD_MODEL_NAME", "google/gemma-2-9b-it")})
+        if path == "/api/stage/state":
+            return self.send_json(200, STAGE_INSTANCE.get_stage_state())
+        if path == "/api/stage/init":
+            STAGE_INSTANCE.reset()
+            return self.send_json(200, STAGE_INSTANCE.get_stage_state())
         relative = "index.html" if path in ("/", "") else path.lstrip("/")
         target = (ROOT / "client" / relative).resolve()
         if ROOT.joinpath("client").resolve() not in target.parents or not target.is_file():
@@ -216,6 +224,32 @@ class BayangHandler(BaseHTTPRequestHandler):
         route = urlparse(self.path).path
         try:
             payload = self.read_json()
+            if route == "/api/stage/init":
+                STAGE_INSTANCE.reset()
+                return self.send_json(200, STAGE_INSTANCE.get_stage_state())
+
+            if route == "/api/stage/director_action":
+                verb = payload.get("verb", "")
+                target = payload.get("target")
+                success, msg = STAGE_INSTANCE.apply_director_action(verb, target)
+                return self.send_json(200 if success else 400, {
+                    "success": success,
+                    "message": msg,
+                    "stage_state": STAGE_INSTANCE.get_stage_state(),
+                })
+
+            if route == "/api/stage/turn":
+                summary = payload.get("director_action_summary", "Director watches from the prompt box.")
+                script, repairs, telemetry = generate_stage_turn(STAGE_INSTANCE, summary)
+                turn_resolution = STAGE_INSTANCE.execute_turn_moves(script.get("character_intents", {}))
+                return self.send_json(200, {
+                    "script": script,
+                    "repairs": repairs,
+                    "telemetry": telemetry,
+                    "turn_resolution": turn_resolution,
+                    "stage_state": STAGE_INSTANCE.get_stage_state(),
+                })
+
             if route == "/api/inspect_headers":
                 inspection = inspect_csv_headers(payload.get("csv", ""))
                 return self.send_json(200, inspection)

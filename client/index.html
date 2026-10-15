@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#131b18">
-  <title>Bayang: The Living Ledger</title>
+  <title>The World's a Stage: Reverse: 1999 Director Engine</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
   <script src="/app.js" defer></script>
 </head>
@@ -15,140 +15,350 @@
   <div class="app-shell">
     <header class="topbar">
       <a class="brand" href="/" aria-label="Bayang home"><span class="brand-mark">B</span><span>BAYANG<span class="brand-dot">.</span></span></a>
-      <div class="top-meta"><span class="season">A LIVING DATA QUEST <i></i> FIELD NOTES</span><span id="model-status" class="model-badge"><b></b> Connecting to the story engine</span></div>
+      
+      <div class="experience-switcher" role="tablist" aria-label="Experience Mode">
+        <button id="mode-tab-stage" class="mode-tab-btn active" role="tab" aria-selected="true" type="button">
+          <span class="tab-tag">TRACK 4</span>
+          <strong>THE WORLD'S A STAGE</strong>
+          <small>Reverse: 1999 Autonomous Visual Novel</small>
+        </button>
+        <button id="mode-tab-ledger" class="mode-tab-btn" role="tab" aria-selected="false" type="button">
+          <span class="tab-tag">SUITE</span>
+          <strong>THE LIVING LEDGER</strong>
+          <small>Decision Intelligence &amp; Data Literacy</small>
+        </button>
+      </div>
+
+      <div class="top-meta">
+        <span id="model-status" class="model-badge"><b></b> Connecting to AMD GPU...</span>
+      </div>
     </header>
 
     <main>
-      <section class="intro">
-        <div class="intro-copy">
-          <p class="eyebrow"><span class="eyebrow-line"></span> A CAMPAIGN THAT GROWS FROM YOUR DATA</p>
-          <h1>Every ledger<br>opens a <em>world.</em></h1>
-          <p class="intro-text">Choose where to investigate. Find the evidence. Ask your field guide for a nudge. The hidden referee knows the truth, but never hears from you.</p>
-          <div class="lesson-chip"><span class="chip-icon">↗</span><span>LEARN BY PLAYING</span><strong>Counts &amp; rates</strong></div>
-        </div>
-        <div class="map-art dynamic-map" aria-label="A map of the current adventure">
-          <div class="map-grid"></div><div class="map-orbit orbit-a"></div><div class="map-orbit orbit-b"></div>
-          <div class="map-center"><span class="map-seal">✳</span><span id="map-title">UNCHARTED COUNTRY</span></div>
-          <div id="map-routes" class="map-routes"><span>Choose a ledger to draw the roads</span></div>
-          <div class="map-caption"><span id="map-caption-left">THE WORLD IS UNWRITTEN</span><span>✳ &nbsp; DATA BECOMES STORY</span></div>
-        </div>
-      </section>
-
-      <section class="workspace" aria-label="Quest workspace">
-        <nav class="steps" aria-label="Quest steps"><div class="step active" data-step="1"><span>01</span> SEED THE WORLD</div><div class="step-line"></div><div class="step" data-step="2"><span>02</span> INVESTIGATE</div><div class="step-line"></div><div class="step" data-step="3"><span>03</span> MAKE YOUR CASE</div></nav>
-        <div class="workspace-grid">
-          <aside class="case-panel">
-            <div class="panel-heading"><div><p class="eyebrow">THE CAMPAIGN SEED</p><h2>Bring a ledger</h2></div><span class="file-icon">▤</span></div>
-            <p class="panel-copy">Bayang turns a small dataset into a one-off investigation. Your figures stay sealed until you uncover them.</p>
-            <label class="field-label" for="dataset-select">CHOOSE A SAMPLE</label>
-            <select id="dataset-select" class="select-input"><option value="">Loading examples…</option></select>
-            <label class="upload-button" for="csv-upload"><span>＋</span> Or bring your own CSV <small>.csv · up to 100 KB</small></label><input id="csv-upload" type="file" accept=".csv,text/csv" hidden>
-            <div id="error-box" class="notice error" role="alert" hidden></div>
-            <div id="profile-card" class="profile-card" hidden>
-              <div class="profile-title"><span class="live-dot"></span><span>SEALED DOSSIER</span><div class="profile-title-actions"><button id="configure-schema-btn" class="text-button" type="button">Map Columns</button><button id="change-data" class="text-button" type="button">Change</button></div></div>
-              <p id="case-summary" class="case-summary"></p><div id="profile-groups" class="profile-groups"></div>
-              <div class="sealed-note">Counts and answer stay hidden until you investigate.</div>
+      <!-- ================================================================= -->
+      <!-- 1. THE WORLD'S A STAGE: REVERSE: 1999 AUTONOMOUS DIRECTOR VIEW    -->
+      <!-- ================================================================= -->
+      <div id="stage-experience" class="experience-view">
+        <section class="stage-hero">
+          <div class="stage-kicker">
+            <span class="stage-tag">REVERSE: 1999 THEATRICAL ENGINE</span>
+            <span class="telemetry-pill">AMD MI300X · GEMMA 2 9B BATCHED</span>
+            <span id="stage-cost-pill" class="telemetry-pill cost-receipt">0 tokens · $0.000000 AMD</span>
+          </div>
+          <div class="stage-headline-row">
+            <div>
+              <h1>The World's a Stage: <em>The Midnight Express</em></h1>
+              <p class="stage-subtitle">The four actors move and deliberate autonomously according to internal psychology. You are the invisible Director in the wings. Drop velvet curtains to sever deadly routes, swing spotlights to reveal rotted timbers, whisper psychological cues, and adjust the tension dial before the Wailing Fog swallows the stage.</p>
             </div>
-            <div class="mode-block"><label class="field-label">CHOOSE YOUR GUIDE STYLE</label><div class="mode-options" role="group" aria-label="Guidance style"><button class="mode-option selected" data-mode="apprentice" type="button"><span class="mode-glyph">✦</span><span><b>Apprentice</b><small>Two Lantern Sparks</small></span></button><button class="mode-option" data-mode="pathfinder" type="button"><span class="mode-glyph">⌁</span><span><b>Pathfinder</b><small>One subtle nudge</small></span></button></div></div>
-            <button id="begin-button" class="primary-button" type="button" disabled>Generate this world <span>→</span></button>
+            <div class="stage-director-stats">
+              <div class="stat-card">
+                <span class="stat-label">DIRECTOR AUTHORITY</span>
+                <span id="director-da-val" class="stat-num">4</span>
+                <small>Interventions Left</small>
+              </div>
+              <div class="stat-card">
+                <span class="stat-label">SCENE PACE</span>
+                <span id="scene-counter-val" class="stat-num">Scene 1 / 6</span>
+                <small id="act-name-val">Act I: Gathering</small>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- The Paper-Stage SVG Board Card -->
+        <section class="stage-board-card">
+          <div class="stage-board-header">
+            <div class="board-title">
+              <span class="board-seal">✦</span>
+              <div>
+                <h3>Victorian Mountain Pass · Stage Layout</h3>
+                <small>Autonomous Character Pathfinding · Physics &amp; Structural Limits Enforced</small>
+              </div>
+            </div>
+            <div class="stage-board-actions">
+              <div class="stage-legend">
+                <span><i class="legend-dot dot-lit"></i> Lit</span>
+                <span><i class="legend-dot dot-dim"></i> Dim / Rotted (150kg)</span>
+                <span><i class="legend-dot dot-dark"></i> Dark Scree</span>
+                <span><i class="legend-dot dot-fog"></i> Wailing Fog</span>
+              </div>
+              <button id="stage-reset-btn" class="text-button" type="button">Reset Stage</button>
+            </div>
+          </div>
+          
+          <div class="stage-svg-wrap">
+            <svg id="stage-svg" viewBox="0 0 840 340" class="stage-svg">
+              <!-- Dynamically populated by client/app.js -->
+            </svg>
+          </div>
+
+          <!-- Verifier Telemetry & Repair Interception Banner -->
+          <div id="stage-verifier-alert" class="stage-verifier-banner" hidden>
+            <div class="verifier-icon">🛡️</div>
+            <div class="verifier-details">
+              <strong id="verifier-rule-label">VERIFIER INTERCEPTION: Spatial Adjacency Enforced</strong>
+              <p id="verifier-rule-desc">Gemma 2 attempted an illegal move across unconnected nodes. The deterministic Python engine rejected the coordinate jump and auto-repaired the path.</p>
+            </div>
+            <span class="verifier-badge">Auto-Repaired</span>
+          </div>
+        </section>
+
+        <!-- Director Execution Grid: Interventions (Left) vs Theatrical Script (Right) -->
+        <div class="stage-execution-grid">
+          <!-- Left: Director Interventions Deck -->
+          <aside class="director-deck">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">DIRECTOR'S PROMPT BOX</p>
+                <h2>Stage Intervention</h2>
+              </div>
+              <span class="file-icon">🎭</span>
+            </div>
+            <p class="panel-copy">Select an indirect intervention to modify stage physics or character psychology before calling 'Action'.</p>
+
+            <label class="field-label">CHOOSE INTERVENTION</label>
+            <div class="verb-selector-grid">
+              <button class="verb-choice selected" data-verb="block_route" type="button">
+                <span class="verb-icon">▰</span>
+                <span class="verb-info">
+                  <strong>Drop Curtain</strong>
+                  <small>Sever a route edge</small>
+                </span>
+              </button>
+              <button class="verb-choice" data-verb="shift_spotlight" type="button">
+                <span class="verb-icon">☼</span>
+                <span class="verb-info">
+                  <strong>Shift Spotlight</strong>
+                  <small>Illuminate a node</small>
+                </span>
+              </button>
+              <button class="verb-choice" data-verb="plant_rumor" type="button">
+                <span class="verb-icon">💬</span>
+                <span class="verb-info">
+                  <strong>Plant Rumor</strong>
+                  <small>Whisper prompt cue</small>
+                </span>
+              </button>
+              <button class="verb-choice" data-verb="cue_prop" type="button">
+                <span class="verb-icon">🗝</span>
+                <span class="verb-info">
+                  <strong>Cue Prop</strong>
+                  <small>Stage an asset</small>
+                </span>
+              </button>
+            </div>
+
+            <!-- Dynamic Action Parameter Sub-panel -->
+            <div id="verb-param-box" class="verb-param-box">
+              <label id="verb-param-label" class="field-label" for="verb-param-select">ROUTE TO BLOCK</label>
+              <select id="verb-param-select" class="select-input">
+                <option value="1,2">Node 1 &rarr; Node 2 (The Trestle Bridge · Rotted 150kg)</option>
+                <option value="1,3">Node 1 &rarr; Node 3 (The Valley Bypass · Rugged Scree)</option>
+                <option value="4,5">Node 4 &rarr; Node 5 (Smuggler's Cut · Ambush Trap)</option>
+                <option value="4,6">Node 4 &rarr; Node 6 (Pilgrim's Stair · Moral Trial)</option>
+              </select>
+              <div id="rumor-text-wrap" class="rumor-text-wrap" hidden>
+                <input id="rumor-text-input" class="text-input" type="text" placeholder="Whisper: 'The bridge is rigged; Julian knows...'" maxlength="120">
+              </div>
+              <button id="apply-verb-btn" class="secondary-button apply-verb-btn" type="button">Apply Intervention <span>✦</span></button>
+              <div id="verb-status-msg" class="verb-status-msg" hidden></div>
+            </div>
+
+            <!-- Pacing Tension Dial -->
+            <div class="tension-control-block">
+              <div class="tension-head">
+                <label class="field-label" for="tension-dial-range">PACING TENSION DIAL</label>
+                <span id="tension-readout" class="tension-readout">2.0 · Moderato</span>
+              </div>
+              <input id="tension-dial-range" class="tension-slider" type="range" min="1.0" max="5.0" step="0.5" value="2.0">
+              <div class="tension-markers">
+                <span>1.0 Adagio (Calm)</span>
+                <span>3.0 Andante</span>
+                <span>5.0 Presto (Frantic)</span>
+              </div>
+              <small class="tension-note">High tension increases movement speed to escape the fog, but accelerates fatigue and panic collapses.</small>
+            </div>
+
+            <!-- Stage Scene Advance Button -->
+            <button id="stage-turn-btn" class="primary-button stage-advance-btn" type="button">
+              <span>Raise Curtain on Scene</span>
+              <span>&rarr;</span>
+            </button>
           </aside>
 
-          <section class="quest-panel" aria-live="polite">
-            <div id="empty-state" class="empty-state"><div class="seal">✳</div><p class="eyebrow">YOUR ADVENTURE, YOUR EVIDENCE</p><h2>No two ledgers<br>lead to the same world.</h2><p>Choose or upload a dataset. Bayang's AMD-powered referee will shape its labels and patterns into a fresh investigation.</p><div class="empty-rule"><span>✦</span></div><span class="empty-foot">THE REFEREE KNOWS THE ANSWER. IT NEVER HEARS YOUR QUESTIONS.</span></div>
-            <div id="loading-state" class="loading-state" hidden><div class="spinner"></div><p>The world is taking shape…</p></div>
-            <div id="quest-content" hidden>
-              <section class="quest-hero">
-                <div class="quest-kicker">
-                  <span class="quest-tag">THE CASE</span>
-                  <span id="quest-source" class="source-tag"></span>
-                  <span id="quest-telemetry" class="telemetry-pill" hidden></span>
-                  <span id="quest-repair-badge" class="telemetry-pill repair-badge" hidden></span>
-                  <span id="quest-cost-receipt" class="telemetry-pill cost-receipt" hidden></span>
-                </div>
-                <p id="quest-setting" class="quest-setting"></p><h2 id="quest-title" class="quest-title"></h2><p id="quest-premise" class="quest-premise"></p>
-                <div class="stakes"><span>THE STAKES</span><p id="quest-stakes"></p></div>
-              </section>
-              <div class="character-grid" id="characters"></div>
+          <!-- Right: Theatrical Script & Dialogue Transcript -->
+          <section class="stage-script-panel">
+            <div class="script-header">
+              <div>
+                <span id="script-scene-tag" class="scene-act-tag">SCENE I</span>
+                <h2 id="script-scene-title">The Whistle on the Marble</h2>
+              </div>
+              <span id="script-status-pill" class="telemetry-pill">Curtain Up</span>
+            </div>
 
-              <section class="investigation-section">
-                <div class="section-heading"><div><p class="eyebrow">INVESTIGATOR'S TOOLKIT</p><h3>Investigate the scene</h3></div><span id="investigation-progress" class="progress-pill">0 / 4 found</span></div>
-                <p class="section-copy">Pick an inquiry. Each opens a different page of the ledger; visit at least two before deciding.</p>
-                <div id="investigations" class="investigations"></div>
-                <div id="evidence-board" class="evidence-board" aria-live="polite"></div>
-              </section>
+            <div class="stage-narration-box">
+              <span class="stage-direction-label">STAGE DIRECTIONS</span>
+              <p id="script-narration-text">The brass lantern flickers against the damp Victorian ironwork. A low fog horn wails across the valley as the troupe prepares to cross the pass.</p>
+            </div>
 
-              <section class="guide-panel">
-                <div class="guide-header"><div class="guide-avatar">✦</div><div><p class="eyebrow">YOUR PLAYER-SIDE LLM</p><h3>The Field Guide</h3><span id="guide-subtitle">A companion for method questions, not answers.</span></div><span id="guide-sparks" class="spark-count">✧ ✧</span></div>
-                <div id="guide-messages" class="guide-messages" aria-live="polite"></div>
-                <div class="guide-prompts"><button type="button" data-question="How do I compare groups with different amounts of traffic?">How do I compare different traffic?</button><button type="button" data-question="What does a rate tell me that a count does not?">What does a rate tell me?</button></div>
-                <form id="guide-form" class="guide-form"><label class="sr-only" for="guide-question">Ask the Field Guide a method question</label><textarea id="guide-question" maxlength="700" rows="2" placeholder="Ask about the method…" required></textarea><button id="guide-send" type="submit">Ask <span>→</span></button></form>
-              </section>
+            <div class="script-dialogue-section">
+              <span class="dialogue-section-label">PERFORMED SCRIPT (GEMMA 2 9B)</span>
+              <div id="stage-dialogue-stream" class="dialogue-stream">
+                <!-- Dynamically populated dialogue lines -->
+              </div>
+            </div>
 
-              <section id="decision" class="decision locked">
-                <div class="decision-head"><span class="decision-step">FINAL DEDUCTION</span><span id="decision-question" class="decision-question"></span></div>
-                <p id="decision-hint" class="decision-hint">Investigate at least two records to unlock your verdict.</p>
-                <div id="answer-options" class="answer-options"></div>
-                <div class="rationale-block">
-                  <span class="field-label">YOUR ANALYTICAL RATIONALE</span>
-                  <div class="rationale-options" role="radiogroup" aria-label="Analytical rationale">
-                    <button class="rationale-choice selected" data-rationale="risk_density" type="button">
-                      <span class="rationale-glyph">✦</span>
-                      <span class="rationale-text">
-                        <strong>Risk Density</strong>
-                        <small>Incident frequency relative to exposure (per journey)</small>
-                      </span>
-                    </button>
-                    <button class="rationale-choice" data-rationale="incident_volume" type="button">
-                      <span class="rationale-glyph">⌁</span>
-                      <span class="rationale-text">
-                        <strong>Incident Volume</strong>
-                        <small>Gross unadjusted count of total recorded incidents</small>
-                      </span>
-                    </button>
-                    <button class="rationale-choice" data-rationale="random_variance" type="button">
-                      <span class="rationale-glyph">∿</span>
-                      <span class="rationale-text">
-                        <strong>Random Variance</strong>
-                        <small>Isolated fluke or statistical noise without systemic risk</small>
-                      </span>
-                    </button>
-                  </div>
-                </div>
-                <button id="submit-answer" class="primary-button answer-button" type="button" disabled>Commit your finding <span>→</span></button>
-                <div id="answer-result" class="answer-result" hidden></div>
-                <div id="consequence-box" class="consequence-box" hidden>
-                  <span class="consequence-label">IMMEDIATE REALM CONSEQUENCE</span>
-                  <p id="consequence-text"></p>
-                </div>
-                <div id="ending" class="ending" hidden></div>
-                <div id="compute-receipt" class="compute-receipt" hidden></div>
-              </section>
-              <div id="transfer-card" class="transfer-card" hidden>
-                <span class="eyebrow">THE SKILL TRAVELS</span>
-                <h3>Carry your method forward.</h3>
-                <p>A new dataset grows a new world. Your next story will follow its own evidence.</p>
-                <div class="instructor-metric">
-                  <div class="metric-row">
-                    <div class="metric-col">
-                      <span class="metric-val" id="metric-cost">$0.00015</span>
-                      <span class="metric-lbl">AMD Instinct + Gemma Compute</span>
-                    </div>
-                    <div class="metric-vs">vs</div>
-                    <div class="metric-col">
-                      <span class="metric-val">~45 min</span>
-                      <span class="metric-lbl">Manual Curriculum Authoring</span>
-                    </div>
-                  </div>
-                </div>
-                <button id="next-case" class="secondary-button" type="button">Seed another world <span>↗</span></button>
+            <div class="stage-hazards-section">
+              <span class="hazards-section-label">ENVIRONMENTAL &amp; PHYSICS LOG</span>
+              <div id="stage-hazards-stream" class="hazards-stream">
+                <div class="hazard-entry info">The cast has assembled at Node 1 (Station Platform). The Wailing Fog gathers in the lower valley.</div>
               </div>
             </div>
           </section>
         </div>
-        <footer class="workspace-footer"><span>THE HEAD REFEREE IS SEALED. THE EVIDENCE IS VERIFIED.</span><span>POWERED BY AMD RADEON CLOUD × GOOGLE DEEPMIND GEMMA <i>✳</i></span></footer>
-      </section>
+
+        <!-- The Cast Ensemble (Autonomous Character Cards) -->
+        <section class="stage-cast-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">THE ACTING TROUPE</p>
+              <h3>Autonomous Character Roster</h3>
+            </div>
+            <span class="progress-pill">4 Actors Active · Internal Levers Bound</span>
+          </div>
+          <p class="section-copy">Each character operates on distinct motivations, physical limits, and psychological flaws. They make their own choices; you direct their environment.</p>
+
+          <div id="cast-cards-grid" class="cast-cards-grid">
+            <!-- Dynamically populated character cards -->
+          </div>
+        </section>
+      </div>
+
+      <!-- ================================================================= -->
+      <!-- 2. THE LIVING LEDGER: ENTERPRISE DATA INTELLIGENCE VIEW           -->
+      <!-- ================================================================= -->
+      <div id="ledger-experience" class="experience-view" hidden>
+        <section class="intro">
+          <div class="intro-copy">
+            <p class="eyebrow"><span class="eyebrow-line"></span> A CAMPAIGN THAT GROWS FROM YOUR DATA</p>
+            <h1>Every ledger<br>opens a <em>world.</em></h1>
+            <p class="intro-text">Choose where to investigate. Find the evidence. Ask your field guide for a nudge. The hidden referee knows the truth, but never hears from you.</p>
+            <div class="lesson-chip"><span class="chip-icon">↗</span><span>LEARN BY PLAYING</span><strong>Counts &amp; rates</strong></div>
+          </div>
+          <div class="map-art dynamic-map" aria-label="A map of the current adventure">
+            <div class="map-grid"></div><div class="map-orbit orbit-a"></div><div class="map-orbit orbit-b"></div>
+            <div class="map-center"><span class="map-seal">✳</span><span id="map-title">UNCHARTED COUNTRY</span></div>
+            <div id="map-routes" class="map-routes"><span>Choose a ledger to draw the roads</span></div>
+            <div class="map-caption"><span id="map-caption-left">THE WORLD IS UNWRITTEN</span><span>✳ &nbsp; DATA BECOMES STORY</span></div>
+          </div>
+        </section>
+
+        <section class="workspace" aria-label="Quest workspace">
+          <nav class="steps" aria-label="Quest steps"><div class="step active" data-step="1"><span>01</span> SEED THE WORLD</div><div class="step-line"></div><div class="step" data-step="2"><span>02</span> INVESTIGATE</div><div class="step-line"></div><div class="step" data-step="3"><span>03</span> MAKE YOUR CASE</div></nav>
+          <div class="workspace-grid">
+            <aside class="case-panel">
+              <div class="panel-heading"><div><p class="eyebrow">THE CAMPAIGN SEED</p><h2>Bring a ledger</h2></div><span class="file-icon">▤</span></div>
+              <p class="panel-copy">Bayang turns a small dataset into a one-off investigation. Your figures stay sealed until you uncover them.</p>
+              <label class="field-label" for="dataset-select">CHOOSE A SAMPLE</label>
+              <select id="dataset-select" class="select-input"><option value="">Loading examples…</option></select>
+              <label class="upload-button" for="csv-upload"><span>＋</span> Or bring your own CSV <small>.csv · up to 100 KB</small></label><input id="csv-upload" type="file" accept=".csv,text/csv" hidden>
+              <div id="error-box" class="notice error" role="alert" hidden></div>
+              <div id="profile-card" class="profile-card" hidden>
+                <div class="profile-title"><span class="live-dot"></span><span>SEALED DOSSIER</span><div class="profile-title-actions"><button id="configure-schema-btn" class="text-button" type="button">Map Columns</button><button id="change-data" class="text-button" type="button">Change</button></div></div>
+                <p id="case-summary" class="case-summary"></p><div id="profile-groups" class="profile-groups"></div>
+                <div class="sealed-note">Counts and answer stay hidden until you investigate.</div>
+              </div>
+              <div class="mode-block"><label class="field-label">CHOOSE YOUR GUIDE STYLE</label><div class="mode-options" role="group" aria-label="Guidance style"><button class="mode-option selected" data-mode="apprentice" type="button"><span class="mode-glyph">✦</span><span><b>Apprentice</b><small>Two Lantern Sparks</small></span></button><button class="mode-option" data-mode="pathfinder" type="button"><span class="mode-glyph">⌁</span><span><b>Pathfinder</b><small>One subtle nudge</small></span></button></div></div>
+              <button id="begin-button" class="primary-button" type="button" disabled>Generate this world <span>&rarr;</span></button>
+            </aside>
+
+            <section class="quest-panel" aria-live="polite">
+              <div id="empty-state" class="empty-state"><div class="seal">✳</div><p class="eyebrow">YOUR ADVENTURE, YOUR EVIDENCE</p><h2>No two ledgers<br>lead to the same world.</h2><p>Choose or upload a dataset. Bayang's AMD-powered referee will shape its labels and patterns into a fresh investigation.</p><div class="empty-rule"><span>✦</span></div><span class="empty-foot">THE REFEREE KNOWS THE ANSWER. IT NEVER HEARS YOUR QUESTIONS.</span></div>
+              <div id="loading-state" class="loading-state" hidden><div class="spinner"></div><p>The world is taking shape…</p></div>
+              <div id="quest-content" hidden>
+                <section class="quest-hero">
+                  <div class="quest-kicker">
+                    <span class="quest-tag">THE CASE</span>
+                    <span id="quest-source" class="source-tag"></span>
+                    <span id="quest-telemetry" class="telemetry-pill" hidden></span>
+                    <span id="quest-repair-badge" class="telemetry-pill repair-badge" hidden></span>
+                    <span id="quest-cost-receipt" class="telemetry-pill cost-receipt" hidden></span>
+                  </div>
+                  <p id="quest-setting" class="quest-setting"></p><h2 id="quest-title" class="quest-title"></h2><p id="quest-premise" class="quest-premise"></p>
+                  <div class="stakes"><span>THE STAKES</span><p id="quest-stakes"></p></div>
+                </section>
+                <div class="character-grid" id="characters"></div>
+
+                <section class="investigation-section">
+                  <div class="section-heading"><div><p class="eyebrow">INVESTIGATOR'S TOOLKIT</p><h3>Investigate the scene</h3></div><span id="investigation-progress" class="progress-pill">0 / 4 found</span></div>
+                  <p class="section-copy">Pick an inquiry. Each opens a different page of the ledger; visit at least two before deciding.</p>
+                  <div id="investigations" class="investigations"></div>
+                  <div id="evidence-board" class="evidence-board" aria-live="polite"></div>
+                </section>
+
+                <section class="guide-panel">
+                  <div class="guide-header"><div class="guide-avatar">✦</div><div><p class="eyebrow">YOUR PLAYER-SIDE LLM</p><h3>The Field Guide</h3><span id="guide-subtitle">A companion for method questions, not answers.</span></div><span id="guide-sparks" class="spark-count">✧ ✧</span></div>
+                  <div id="guide-messages" class="guide-messages" aria-live="polite"></div>
+                  <div class="guide-prompts"><button type="button" data-question="How do I compare groups with different amounts of traffic?">How do I compare different traffic?</button><button type="button" data-question="What does a rate tell me that a count does not?">What does a rate tell me?</button></div>
+                  <form id="guide-form" class="guide-form"><label class="sr-only" for="guide-question">Ask the Field Guide a method question</label><textarea id="guide-question" maxlength="700" rows="2" placeholder="Ask about the method…" required></textarea><button id="guide-send" type="submit">Ask <span>&rarr;</span></button></form>
+                </section>
+
+                <section id="decision" class="decision locked">
+                  <div class="decision-head"><span class="decision-step">FINAL DEDUCTION</span><span id="decision-question" class="decision-question"></span></div>
+                  <p id="decision-hint" class="decision-hint">Investigate at least two records to unlock your verdict.</p>
+                  <div id="answer-options" class="answer-options"></div>
+                  <div class="rationale-block">
+                    <span class="field-label">YOUR ANALYTICAL RATIONALE</span>
+                    <div class="rationale-options" role="radiogroup" aria-label="Analytical rationale">
+                      <button class="rationale-choice selected" data-rationale="risk_density" type="button">
+                        <span class="rationale-glyph">✦</span>
+                        <span class="rationale-text">
+                          <strong>Risk Density</strong>
+                          <small>Incident frequency relative to exposure (per journey)</small>
+                        </span>
+                      </button>
+                      <button class="rationale-choice" data-rationale="incident_volume" type="button">
+                        <span class="rationale-glyph">▰</span>
+                        <span class="rationale-text">
+                          <strong>Incident Volume</strong>
+                          <small>Raw unadjusted total incident count</small>
+                        </span>
+                      </button>
+                      <button class="rationale-choice" data-rationale="random_variance" type="button">
+                        <span class="rationale-glyph">⌁</span>
+                        <span class="rationale-text">
+                          <strong>Random Variance</strong>
+                          <small>Statistical noise or anomaly fluke</small>
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                  <button id="answer-button" class="primary-button answer-button" type="button" disabled>Commit your finding <span>&rarr;</span></button>
+                  <div id="answer-result" class="answer-result" hidden></div>
+                  <div id="consequence-box" class="consequence-box" hidden>
+                    <span class="consequence-label">THE REALM RESOLVES</span>
+                    <p id="consequence-text"></p>
+                  </div>
+                  <div id="compute-receipt" class="compute-receipt" hidden>
+                    <span>COMPUTE RECEIPT (AMD INSTINCT)</span>
+                    <strong id="receipt-tokens-cost">0 tokens · $0.000000 AMD</strong>
+                  </div>
+                  <div id="transfer-card" class="transfer-card" hidden>
+                    <p class="eyebrow">WHAT YOU JUST UNLOCKED</p>
+                    <h3 id="transfer-title"></h3>
+                    <p id="transfer-lesson"></p>
+                    <button id="next-case-button" class="secondary-button" type="button">Load another ledger <span>&rarr;</span></button>
+                  </div>
+                </section>
+              </div>
+            </section>
+          </div>
+        </section>
+      </div>
     </main>
   </div>
+
+  <!-- Schema Configuration Modal Dialog -->
   <dialog id="schema-modal" class="schema-modal">
     <div class="modal-box">
       <div class="modal-header">

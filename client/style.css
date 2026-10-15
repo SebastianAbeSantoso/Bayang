@@ -144,6 +144,164 @@
 .profile-title-actions{float:right;display:flex;gap:8px}
 @media(max-width:600px){.mapper-grid{grid-template-columns:1fr}}
 
+/* =========================================================================
+   THE WORLD'S A STAGE: REVERSE: 1999 STAGE AESTHETIC & DIRECTOR SUITE
+   ========================================================================= */
+
+.experience-switcher{display:flex;gap:8px;align-items:center;background:#e7e1d2;padding:4px;border:1px solid #d2c8b4;border-radius:3px}
+.mode-tab-btn{display:flex;flex-direction:column;align-items:flex-start;background:transparent;border:0;padding:5px 12px;border-radius:2px;cursor:pointer;color:#676b63;text-align:left;transition:background .2s,color .2s}
+.mode-tab-btn strong{font-size:11px;font-family:var(--sans);font-weight:700;letter-spacing:.04em}
+.mode-tab-btn small{font-size:8px;font-family:var(--mono);color:#8d8778}
+.mode-tab-btn .tab-tag{display:inline-block;font:700 7px var(--mono);padding:1px 4px;border-radius:2px;background:#d8cfbe;color:#5a5446;margin-bottom:2px}
+.mode-tab-btn:hover{background:#ede6d8;color:#263b30}
+.mode-tab-btn.active{background:var(--green);color:#f7f4ea;box-shadow:0 1px 3px rgba(18,29,24,.25)}
+.mode-tab-btn.active small{color:#cad8cd}
+.mode-tab-btn.active .tab-tag{background:#162c24;color:#b8dfc4}
+
+.stage-hero{padding:28px 0 20px;border-bottom:1px solid var(--line)}
+.stage-kicker{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.stage-tag{font:9px var(--mono);letter-spacing:.1em;padding:5px 8px;background:#e5ded0;color:#614d2e;border:1px solid #d5c8b2;border-radius:2px}
+.stage-headline-row{display:grid;grid-template-columns:1fr 280px;gap:35px;align-items:center;margin-top:14px}
+.stage-headline-row h1{margin:0;font:600 clamp(32px,3.8vw,46px)/1.08 var(--serif);color:#1e3227;letter-spacing:-.025em}
+.stage-headline-row h1 em{font-weight:500;font-style:italic;color:#7e5b31}
+.stage-subtitle{margin:10px 0 0;font-size:12px;line-height:1.65;color:#585d54;max-width:680px}
+.stage-director-stats{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.stat-card{background:#f6f2e8;border:1px solid #dcd4c2;padding:10px 12px;border-radius:2px;text-align:center}
+.stat-label{display:block;font:8px var(--mono);letter-spacing:.08em;color:#857962}
+.stat-num{display:block;font:700 20px var(--mono);color:#244436;margin:4px 0 2px}
+.stat-card small{display:block;font:8px var(--sans);color:#8d8778}
+
+/* Paper Stage Board Canvas */
+.stage-board-card{margin-top:22px;border:1px solid #d5cebc;background:#faf6ed;box-shadow:0 6px 24px rgba(27,38,32,.06);border-radius:3px;overflow:hidden}
+.stage-board-header{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-bottom:1px solid #ded5c2;background:#f2ece0}
+.board-title{display:flex;align-items:center;gap:10px}
+.board-seal{font-size:18px;color:#a8874a}
+.board-title h3{margin:0;font:600 15px var(--serif);color:#22362a}
+.board-title small{display:block;font:9px var(--mono);color:#7b786c}
+.stage-board-actions{display:flex;align-items:center;gap:18px}
+.stage-legend{display:flex;gap:12px;font:8px var(--mono);color:#737166}
+.stage-legend span{display:flex;align-items:center;gap:4px}
+.legend-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.dot-lit{background:#bd9453;box-shadow:0 0 4px #bd945388}
+.dot-dim{background:#9e6a38}
+.dot-dark{background:#414844}
+.dot-fog{background:#627974}
+
+.stage-svg-wrap{position:relative;width:100%;height:320px;background:radial-gradient(ellipse at 50% 40%,#f5eedf 0%,#ebe3d2 85%,#e0d7c3 100%)}
+.stage-svg{width:100%;height:100%;display:block}
+
+/* Stage SVG styling */
+.stage-track{stroke:#c5bcab;stroke-width:3;fill:none;stroke-linecap:round}
+.stage-track.track-blocked{stroke:#8b2424;stroke-width:3.5;stroke-dasharray:5 4}
+.stage-track.track-active{stroke:#395f4c;stroke-width:3}
+.curtain-banner{fill:#8b1e1e;rx:2}
+.curtain-text{fill:#fbe8e8;font:700 8px var(--mono);text-anchor:middle;letter-spacing:.08em}
+.node-circle{fill:#fbf7ef;stroke:#b0a592;stroke-width:2.5;transition:fill .3s,stroke .3s}
+.node-circle.node-lit{stroke:#a87e38;stroke-width:3;fill:#fffdf7;filter:drop-shadow(0 0 6px rgba(189,148,83,.45))}
+.node-circle.node-dim{stroke:#9e6231;stroke-width:2.5;fill:#f6eee2}
+.node-circle.node-dark{stroke:#46524b;stroke-width:2.5;fill:#e1ddd2}
+.node-circle.node-fog{stroke:#57746f;fill:#cfdad7;filter:blur(.5px)}
+.node-label{font:600 10px var(--sans);fill:#25382c;text-anchor:middle}
+.node-subtext{font:8px var(--mono);fill:#7a7263;text-anchor:middle}
+.node-hazard{font:700 8px var(--mono);fill:#9c5828;text-anchor:middle}
+
+.char-token{cursor:pointer;transition:transform .4s cubic-bezier(.22,1,.36,1)}
+.token-circle{stroke-width:2;stroke:#fff}
+.token-circle.julian{fill:#4a6778}
+.token-circle.vesper{fill:#9e6a2b}
+.token-circle.beatrice{fill:#7e4334}
+.token-circle.curator{fill:#544163}
+.token-text{fill:#fff;font:700 9px var(--mono);text-anchor:middle;dominant-baseline:central}
+
+/* Verifier Interception Banner */
+.stage-verifier-banner{display:flex;align-items:center;gap:14px;padding:12px 18px;background:#fbf3e6;border-top:1px solid #ebd9bf;border-left:4px solid #b87532}
+.verifier-icon{font-size:20px}
+.verifier-details{flex:1}
+.verifier-details strong{display:block;font:700 10px var(--mono);letter-spacing:.06em;color:#854917;margin-bottom:2px}
+.verifier-details p{margin:0;font-size:10px;line-height:1.45;color:#5a493a}
+.verifier-badge{padding:3px 7px;background:#eed8bb;border:1px solid #dcb588;border-radius:2px;font:700 8px var(--mono);color:#734015;letter-spacing:.06em}
+
+/* Execution Grid: Director Deck & Script Log */
+.stage-execution-grid{display:grid;grid-template-columns:360px 1fr;gap:20px;margin-top:22px}
+.director-deck{background:#f8f5ee;border:1px solid #dcd4c3;padding:22px 20px;border-radius:3px}
+.verb-selector-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:8px 0 14px}
+.verb-choice{display:flex;gap:8px;align-items:flex-start;padding:9px 10px;background:#fffdf8;border:1px solid #dcd5c4;border-radius:2px;cursor:pointer;text-align:left;transition:border-color .15s,background .15s}
+.verb-choice:hover{border-color:#7f9785;background:#f4f7f1}
+.verb-choice.selected{border-color:#38604d;background:#edf3eb;box-shadow:0 0 0 1px #38604d33}
+.verb-icon{font-size:14px;color:var(--gold)}
+.verb-info strong{display:block;font-size:11px;font-weight:600;color:#243a2c}
+.verb-info small{display:block;font-size:8px;font-family:var(--mono);color:#858276}
+
+.verb-param-box{background:#f1ece0;border:1px solid #ded5c2;padding:12px;border-radius:2px;margin-bottom:16px}
+.apply-verb-btn{margin-top:8px;width:100%;height:34px;background:#e5ded0;color:#495a4c;border:1px solid #c9bfa9}
+.apply-verb-btn:hover{background:#dad0bf}
+.verb-status-msg{margin-top:7px;padding:6px 8px;background:#e5efe4;border-left:2px solid #528a62;font:9px/1.4 var(--sans);color:#2a4f35}
+.rumor-text-wrap{margin-top:8px}
+.text-input{width:100%;height:36px;border:1px solid var(--line);background:#fff;padding:0 10px;font:11px var(--sans);border-radius:2px}
+
+.tension-control-block{margin:16px 0 18px;padding-top:14px;border-top:1px solid #ded6c4}
+.tension-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.tension-readout{font:700 10px var(--mono);color:#925929}
+.tension-slider{width:100%;accent-color:#925929;cursor:pointer}
+.tension-markers{display:flex;justify-content:space-between;font:7px var(--mono);color:#918d80;margin-top:3px}
+.tension-note{display:block;font:8px/1.4 var(--sans);color:#827f74;margin-top:7px}
+
+.stage-advance-btn{height:46px;font-size:13px;letter-spacing:.04em}
+
+/* Script Panel & Performed Dialogue */
+.stage-script-panel{background:#faf8f2;border:1px solid #dcd4c3;padding:22px 24px;border-radius:3px;display:flex;flex-direction:column}
+.script-header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:12px;border-bottom:1px solid #ded5c2}
+.scene-act-tag{font:700 8px var(--mono);letter-spacing:.1em;color:#9b7a42}
+.script-header h2{margin:3px 0 0;font:600 22px var(--serif);color:#22362b}
+
+.stage-narration-box{margin:14px 0;padding:12px 14px;background:#f3eedf;border-left:3px solid #94723c;border-radius:0 2px 2px 0}
+.stage-direction-label,.dialogue-section-label,.hazards-section-label{display:block;font:700 8px var(--mono);letter-spacing:.09em;color:#886b3b;margin-bottom:5px}
+.stage-narration-box p{margin:0;font:italic 12px/1.65 var(--serif);color:#3c3933}
+
+.dialogue-stream{display:grid;gap:10px;margin-top:8px;max-height:260px;overflow-y:auto;padding-right:6px}
+.dialogue-card{display:flex;gap:12px;align-items:flex-start;background:#fffdf9;border:1px solid #ded7c6;padding:10px 12px;border-radius:2px}
+.dialogue-avatar{width:30px;height:30px;border-radius:50%;color:#fff;display:grid;place-items:center;font:700 11px var(--mono);flex-shrink:0}
+.dialogue-avatar.julian{background:#4a6778}
+.dialogue-avatar.vesper{background:#9e6a2b}
+.dialogue-avatar.beatrice{background:#7e4334}
+.dialogue-avatar.curator{background:#544163}
+.dialogue-content strong{display:block;font:600 11px var(--sans);color:#25392d;margin-bottom:2px}
+.dialogue-content p{margin:0;font:italic 11px/1.55 var(--serif);color:#474d44}
+
+.stage-hazards-section{margin-top:16px;border-top:1px solid #ded5c2;padding-top:12px}
+.hazards-stream{display:grid;gap:6px;max-height:140px;overflow-y:auto}
+.hazard-entry{padding:6px 9px;border-left:2px solid #8e5831;background:#f7efe5;font:9px/1.45 var(--mono);color:#6b3c1b}
+.hazard-entry.info{border-color:#5a786c;background:#edf3f0;color:#2f5446}
+
+/* Cast Ensemble Cards */
+.stage-cast-section{margin-top:28px;padding-top:22px;border-top:1px solid var(--line)}
+.cast-cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;margin-top:14px}
+.cast-card{background:#f8f5ee;border:1px solid #dad1bd;padding:14px;border-radius:3px}
+.cast-card.fallen{opacity:.55;filter:grayscale(60%)}
+.cast-card-head{display:flex;gap:10px;align-items:center}
+.cast-portrait{width:36px;height:36px;border-radius:50%;color:#fff;display:grid;place-items:center;font:700 13px var(--mono);flex-shrink:0}
+.cast-portrait.julian{background:#4a6778}
+.cast-portrait.vesper{background:#9e6a2b}
+.cast-portrait.beatrice{background:#7e4334}
+.cast-portrait.curator{background:#544163}
+.cast-meta strong{display:block;font:600 13px var(--serif);color:#22362b}
+.cast-meta small{display:block;font:8px var(--mono);color:#7f7768}
+.cast-vital-bars{margin:11px 0;display:grid;gap:6px}
+.vital-row{display:grid;grid-template-columns:55px 1fr 35px;gap:8px;align-items:center;font:8px var(--mono);color:#6f6c60}
+.vital-track{height:6px;background:#ded7c7;border-radius:3px;overflow:hidden}
+.vital-bar{height:100%;border-radius:3px}
+.vital-bar.hp{background:#4d7d59}
+.vital-bar.stress{background:#9e6a32}
+.vital-bar.fatigue{background:#7d4a3b}
+.cast-burden{padding:5px 8px;background:#f1ece0;border:1px dashed #d5ccba;border-radius:2px;font:8px var(--mono);color:#696355;margin-bottom:8px}
+.cast-flaw{margin:0;font:italic 10px/1.45 var(--serif);color:#62675e}
+
+@media(max-width:960px){
+  .stage-headline-row{grid-template-columns:1fr}
+  .stage-execution-grid{grid-template-columns:1fr}
+  .director-deck{order:2}
+  .stage-script-panel{order:1}
+}
 
 
 
