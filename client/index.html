@@ -17,7 +17,7 @@
       <div class="theatrical-brand">
         <span class="theatrical-seal">✦</span>
         <div class="theatrical-titles">
-          <span class="theatrical-super">THE ROYAL PASSENGER THEATER · ACT III TRACK 4</span>
+          
           <h1 class="theatrical-logo">THE WORLD'S A STAGE</h1>
         </div>
       </div>
@@ -38,238 +38,102 @@
       <!-- ================================================================= -->
       <!-- 1. THE WORLD'S A STAGE: REVERSE: 1999 AUTONOMOUS DIRECTOR VIEW    -->
       <!-- ================================================================= -->
-      <div id="stage-experience" class="experience-view">
-        <section class="stage-hero">
-          <div class="stage-proscenium-header">
-            <div class="marquee-block">
-              <span class="marquee-act" id="act-name-val">ACT I: GATHERING</span>
-              <h2 class="marquee-title" id="marquee-scene-title">The Midnight Express: A Winter Crossing</h2>
-              <p class="stage-subtitle">The four actors move and deliberate autonomously according to internal psychology. You are the invisible Director in the wings. Drop velvet curtains to sever deadly routes, train spotlights to reveal rotted timbers, whisper psychological cues, and adjust the tempo metronome before the Wailing Fog swallows the stage.</p>
-            </div>
-            <div class="stage-director-stats">
-              <div class="stat-card">
-                <span class="stat-label">DIRECTOR SEALS</span>
-                <span id="director-da-val" class="stat-num">4</span>
-                <small>Interventions Left</small>
-              </div>
-              <div class="stat-card">
-                <span class="stat-label">STAGE TEMPO</span>
-                <span id="scene-counter-val" class="stat-num">Scene 1 / 6</span>
-                <small id="scene-tempo-hint">Moderato · ♩=90</small>
-              </div>
-            </div>
-          </div>
-        </section>
+      <div id="stage-experience" class="experience-view game">
+        <div class="game-viewport">
+          <svg id="stage-svg" viewBox="0 0 840 400" preserveAspectRatio="xMidYMid meet" class="stage-svg" role="img" aria-label="Stage diorama of the current room"></svg>
 
-        <!-- The Paper-Stage SVG Board Card -->
-        <section class="stage-board-card">
-          <div class="stage-board-header">
-            <div class="board-title">
-              <span class="board-seal">✦</span>
-              <div>
-                <h3>Victorian Mountain Pass · Stage Journey</h3>
-                <small>Macro Route Tree &amp; Micro Room Stage Diorama · Deterministic Rules Enforced</small>
-              </div>
+          <!-- HUD: room name and progress -->
+          <div class="hud hud-room">
+            <span id="room-act-tag" class="hud-act">ACT I</span>
+            <strong id="room-title-name" class="hud-room-name">Room 1: The Station Office</strong>
+            <div class="hud-progress" title="Room progress">
+              <div class="room-progress-track"><div id="room-progress-fill" class="room-progress-fill" style="width: 15%"></div></div>
+              <span id="room-progress-pct" class="progress-val">15%</span>
             </div>
-            <div class="stage-board-actions">
-              <div class="stage-legend">
-                <span><i class="legend-dot dot-lit"></i> Active Room</span>
-                <span><i class="legend-dot dot-dim"></i> Unvisited Room</span>
-                <span><i class="legend-dot dot-dark"></i> Cleared Room</span>
-                <span><i class="legend-dot dot-fog"></i> Wailing Fog</span>
-              </div>
-              <button id="stage-reset-btn" class="text-button" type="button">Reset Stage</button>
-            </div>
+            <small id="room-consensus-status" class="consensus-hint">The cast is exploring the room.</small>
+            <span id="act-name-val" hidden></span>
+            <span id="room-desc-text" hidden></span>
           </div>
 
-          <!-- Macro Route Ribbon: Roguelike Mountain Path Progression -->
-          <div id="stage-route-ribbon" class="stage-route-ribbon">
-            <!-- Dynamically populated by client/app.js -->
+          <!-- HUD: route -->
+          <div id="stage-route-ribbon" class="hud hud-route" aria-label="Route through the mountain pass"></div>
+
+          <!-- HUD: counters and reset -->
+          <div class="hud hud-counters">
+            <span class="counter" title="Director seals left"><i class="counter-icon">&#10022;</i><b id="director-da-val">4</b></span>
+            <span class="counter" title="Scene"><b id="scene-counter-val">Scene 1 / 6</b></span>
+            <button id="stage-reset-btn" class="hud-btn" type="button" title="Restart the play">Restart</button>
           </div>
 
-          <!-- Micro Room Stage Banner -->
-          <div id="room-stage-info" class="room-stage-info">
-            <div class="room-info-meta">
-              <span id="room-act-tag" class="room-act-tag">ACT I · GATHERING</span>
-              <h4 id="room-title-name">Room 1: The Station Office</h4>
-              <p id="room-desc-text">The cold marble ticket hall and telegraph post where the cast first gathers.</p>
-            </div>
-            <div class="room-progress-box">
-              <div class="room-progress-head">
-                <span class="progress-label">ROOM PROGRESS</span>
-                <span id="room-progress-pct" class="progress-val">15%</span>
-              </div>
-              <div class="room-progress-track">
-                <div id="room-progress-fill" class="room-progress-fill" style="width: 15%"></div>
-              </div>
-              <small id="room-consensus-status" class="consensus-hint">Cast exploring room fixtures; awaiting exit consensus.</small>
-            </div>
-          </div>
-          
-          <div class="stage-svg-wrap">
-            <svg id="stage-svg" viewBox="0 0 840 340" class="stage-svg">
-              <!-- Dynamically populated room interior diorama by client/app.js -->
-            </svg>
-          </div>
-
-          <!-- Verifier Telemetry & Repair Interception Banner -->
-          <div id="stage-verifier-alert" class="stage-verifier-banner" hidden>
-            <div class="verifier-icon">🛡️</div>
+          <!-- Verifier toast -->
+          <div id="stage-verifier-alert" class="hud hud-verifier" hidden role="status">
+            <span class="verifier-badge">Verifier repaired</span>
             <div class="verifier-details">
-              <strong id="verifier-rule-label">VERIFIER INTERCEPTION: Spatial Adjacency Enforced</strong>
-              <p id="verifier-rule-desc">Gemma 2 attempted an illegal move across unconnected nodes. The deterministic Python engine rejected the coordinate jump and auto-repaired the path.</p>
+              <strong id="verifier-rule-label">Rule enforced</strong>
+              <p id="verifier-rule-desc"></p>
             </div>
-            <span class="verifier-badge">Auto-Repaired</span>
           </div>
-        </section>
+        </div>
 
-        <!-- Director Execution Grid: Interventions (Left) vs Theatrical Script (Right) -->
-        <div class="stage-execution-grid">
-          <!-- Left: Director Interventions Deck (Prompter's Box) -->
-          <aside class="director-deck prompter-box">
-            <div class="panel-heading">
-              <div>
-                <span class="panel-kicker">PROMPTER'S STATION</span>
-                <h2>Theatrical Levers</h2>
-              </div>
-              <span class="prompter-seal">✦</span>
+        <!-- Bottom deck: cast on the left, script on the right -->
+        <div class="game-deck">
+          <div id="cast-cards-grid" class="cast-roster" aria-label="The cast"></div>
+
+          <section class="script-box">
+            <div class="script-head">
+              <span id="script-scene-tag" class="scene-act-tag">SCENE 1</span>
+              <strong id="script-scene-title">The Whistle in the Ticket Hall</strong>
+              <details class="stage-log">
+                <summary>Stage log</summary>
+                <div id="stage-hazards-stream" class="hazards-stream">
+                  <div class="hazard-entry info">The cast has gathered in the Station Office. The Wailing Fog gathers in the lower valley.</div>
+                </div>
+              </details>
             </div>
-            <p class="panel-copy">Manipulate physical stage conditions, lighting, and cues from the wings before calling action.</p>
-
-            <label class="field-label">INDIRECT INTERVENTION</label>
-            <div class="verb-selector-grid">
-              <button class="verb-choice selected" data-verb="block_route" type="button">
-                <span class="verb-icon-svg">
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <path d="M4 3h16v3H4zM4 6c0 5 3 9 8 13 5-4 8-8 8-13"/>
-                    <path d="M7 6v10M17 6v10"/>
-                  </svg>
-                </span>
-                <span class="verb-info">
-                  <strong>Drop Curtain</strong>
-                  <small>Barricade exit door</small>
-                </span>
-              </button>
-              <button class="verb-choice" data-verb="shift_spotlight" type="button">
-                <span class="verb-icon-svg">
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <circle cx="12" cy="7" r="4"/>
-                    <path d="M5 21l4-10M19 21l-4-10M12 11v10"/>
-                  </svg>
-                </span>
-                <span class="verb-info">
-                  <strong>Train Limelight</strong>
-                  <small>Spotlight fixture or trap</small>
-                </span>
-              </button>
-              <button class="verb-choice" data-verb="plant_rumor" type="button">
-                <span class="verb-icon-svg">
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                  </svg>
-                </span>
-                <span class="verb-info">
-                  <strong>Whisper Cue</strong>
-                  <small>Prompt an actor's ear</small>
-                </span>
-              </button>
-              <button class="verb-choice" data-verb="cue_prop" type="button">
-                <span class="verb-icon-svg">
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
-                  </svg>
-                </span>
-                <span class="verb-info">
-                  <strong>Stage Prop</strong>
-                  <small>Place tool at fixture</small>
-                </span>
-              </button>
-            </div>
-
-            <!-- Dynamic Action Parameter Sub-panel -->
-            <div id="verb-param-box" class="verb-param-box">
-              <label id="verb-param-label" class="field-label" for="verb-param-select">EXIT DOOR TO BLOCK</label>
-              <select id="verb-param-select" class="select-input">
-                <option value="2">Upper Door &rarr; Node 2 (The Trestle Bridge · Rotted 150kg)</option>
-                <option value="3">Lower Hatch &rarr; Node 3 (The Valley Bypass · Rugged Scree)</option>
-              </select>
-              <div id="rumor-text-wrap" class="rumor-text-wrap" hidden>
-                <input id="rumor-text-input" class="text-input" type="text" placeholder="Whisper: 'The bridge is rigged; Julian knows...'" maxlength="120">
-              </div>
-              <button id="apply-verb-btn" class="secondary-button apply-verb-btn" type="button">Apply Stage Cue <span>✦</span></button>
-              <div id="verb-status-msg" class="verb-status-msg" hidden></div>
-            </div>
-
-            <!-- Pacing Tension Dial (Metronome) -->
-            <div class="tension-control-block brass-metronome">
-              <div class="tension-head">
-                <label class="field-label" for="tension-dial-range">STAGE METRONOME &amp; TEMPO</label>
-                <span id="tension-readout" class="tension-readout">2.0 · Moderato (♩=90)</span>
-              </div>
-              <input id="tension-dial-range" class="tension-slider" type="range" min="1.0" max="5.0" step="0.5" value="2.0">
-              <div class="tension-markers">
-                <span>Largo (1.0)</span>
-                <span>Adagio (2.0)</span>
-                <span>Andante (3.0)</span>
-                <span>Allegro (4.0)</span>
-                <span>Presto (5.0)</span>
-              </div>
-              <small class="tension-note">Higher tempo drives urgent decisions before the fog closes in, but accelerates panic and exhaustion collapses.</small>
-            </div>
-
-            <!-- Stage Scene Advance Button -->
-            <button id="stage-turn-btn" class="primary-button stage-advance-btn" type="button">
-              <span>Prompt The Troupe &amp; Raise Curtain</span>
-              <span class="btn-glyph">✦</span>
-            </button>
-          </aside>
-
-          <!-- Right: Theatrical Script & Dialogue Transcript (Prompt Book) -->
-          <section class="stage-script-panel play-prompt-book">
-            <div class="script-header">
-              <div>
-                <span id="script-scene-tag" class="scene-act-tag">ACT I · SCENE I</span>
-                <h2 id="script-scene-title">The Whistle in the Ticket Hall</h2>
-              </div>
-              <span id="script-status-pill" class="telemetry-pill">Curtain Up</span>
-            </div>
-
-            <div class="stage-narration-box">
-              <span class="stage-direction-label">PROMPTER'S MARGIN DIRECTIONS</span>
-              <p id="script-narration-text">The brass lantern flickers against the damp Victorian ironwork. A low fog horn wails across the valley as the troupe prepares to cross the pass.</p>
-            </div>
-
-            <div class="script-dialogue-section">
-              <span class="dialogue-section-label">PERFORMED SCRIPT (GEMMA 2 9B · AMD MI300X)</span>
-              <div id="stage-dialogue-stream" class="dialogue-stream">
-                <!-- Dynamically populated dialogue lines -->
-              </div>
-            </div>
-
-            <div class="stage-hazards-section">
-              <span class="hazards-section-label">STAGE MANAGER'S PHYSICAL LEDGER</span>
-              <div id="stage-hazards-stream" class="hazards-stream">
-                <div class="hazard-entry info">The cast has assembled in Room 1 (The Station Office). The Wailing Fog gathers in the lower valley.</div>
-              </div>
-            </div>
+            <p id="script-narration-text" class="script-narration">The brass lantern flickers against the damp ironwork. A low horn wails across the valley as the troupe prepares to cross the pass.</p>
+            <div id="stage-dialogue-stream" class="dialogue-stream"></div>
           </section>
         </div>
 
-        <!-- The Cast Ensemble (Autonomous Character Cards) -->
-        <section class="stage-cast-section">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">DRAMATIS PERSONAE</p>
-              <h3>The Acting Troupe</h3>
-            </div>
-            <span class="progress-pill">4 Autonomous Actors · Governed by Engine Invariants</span>
+        <!-- Command bar: the director's controls -->
+        <div class="command-bar">
+          <div class="verb-row" role="group" aria-label="Director actions">
+            <button class="verb-choice selected" data-verb="block_route" type="button" title="Drop a curtain over an exit door">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 3h16v3H4zM4 6c0 5 3 9 8 13 5-4 8-8 8-13"/><path d="M7 6v10M17 6v10"/></svg>
+              <span>Curtain</span>
+            </button>
+            <button class="verb-choice" data-verb="shift_spotlight" type="button" title="Train a spotlight on a fixture or door">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="7" r="4"/><path d="M5 21l4-10M19 21l-4-10M12 11v10"/></svg>
+              <span>Spotlight</span>
+            </button>
+            <button class="verb-choice" data-verb="plant_rumor" type="button" title="Whisper a cue to one actor">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span>Whisper</span>
+            </button>
+            <button class="verb-choice" data-verb="cue_prop" type="button" title="Place a prop at a fixture">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+              <span>Prop</span>
+            </button>
           </div>
-          <p class="section-copy">Each character operates on distinct motivations, physical limits, and psychological flaws. They make their own choices; you direct their environment.</p>
 
-          <div id="cast-cards-grid" class="cast-cards-grid">
-            <!-- Dynamically populated character cards -->
+          <div class="target-row">
+            <label id="verb-param-label" for="verb-param-select">Exit to block</label>
+            <select id="verb-param-select" class="select-input"></select>
+            <span id="rumor-text-wrap" class="rumor-text-wrap" hidden>
+              <input id="rumor-text-input" class="text-input" type="text" placeholder="What do you whisper?" maxlength="120">
+            </span>
+            <button id="apply-verb-btn" class="apply-verb-btn" type="button">Apply</button>
+            <div id="verb-status-msg" class="verb-status-msg" hidden></div>
           </div>
-        </section>
+
+          <div class="tempo-row">
+            <label for="tension-dial-range">Tempo</label>
+            <input id="tension-dial-range" class="tension-slider" type="range" min="1.0" max="5.0" step="0.5" value="2.0">
+            <span id="tension-readout" class="tension-readout">2.0 Moderato</span>
+          </div>
+
+          <button id="stage-turn-btn" class="stage-advance-btn" type="button"><span>Raise Curtain</span></button>
+        </div>
       </div>
 
       <!-- ================================================================= -->

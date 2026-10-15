@@ -1042,19 +1042,13 @@ function renderRoomInfo() {
     const consensus = stageState.data.room_consensus;
     if (consensus && consensus.reached) {
       consensusHint.textContent = `Consensus Reached! Party preparing to advance toward Node ${consensus.target_node}.`;
-      consensusHint.style.color = "#355642";
-      consensusHint.style.fontWeight = "600";
     } else if (consensus && consensus.votes) {
       const votePairs = Object.entries(consensus.votes).filter(([_, v]) => v != null);
       if (votePairs.length > 0) {
         const summary = votePairs.map(([cid, v]) => `${cid}: Node ${v}`).join(", ");
         consensusHint.textContent = `Exit Votes: ${summary}. Awaiting consensus to depart.`;
-        consensusHint.style.color = "#854917";
-        consensusHint.style.fontWeight = "normal";
       } else {
         consensusHint.textContent = `Cast exploring room fixtures (Turn ${stageState.data.room_turn || 1}).`;
-        consensusHint.style.color = "#736c5c";
-        consensusHint.style.fontWeight = "normal";
       }
     }
   }
@@ -1075,8 +1069,8 @@ function renderRoomStageSVG() {
 
   // Generate Stage Footlights
   const footlights = [60, 140, 220, 300, 380, 460, 540, 620, 700, 780].map((fx) => `
-    <circle cx="${fx}" cy="334" r="3.5" class="footlight-lamp" />
-    <polygon points="${fx - 14},334 ${fx},318 ${fx + 14},334" fill="#fae6a2" opacity="0.07" />
+    <circle cx="${fx}" cy="392" r="3.5" class="footlight-lamp" />
+    <polygon points="${fx - 16},392 ${fx},364 ${fx + 16},392" fill="#fae6a2" opacity="0.07" />
   `).join("");
 
   svg.innerHTML = `
@@ -1103,30 +1097,31 @@ function renderRoomStageSVG() {
     </defs>
 
     <!-- Room Architecture: Walls & Floor -->
-    <rect x="0" y="0" width="840" height="340" class="room-wall-bg" />
+    <rect x="0" y="0" width="840" height="290" class="room-wall-bg" />
+    <rect x="0" y="290" width="840" height="110" fill="#e9dcc2" />
     <line x1="28" y1="45" x2="812" y2="45" stroke="#d5cabb" stroke-width="1.2" />
     
     <!-- Wainscoting Wall Panels -->
-    <line x1="160" y1="45" x2="160" y2="275" stroke="#e0d6c4" stroke-width="1" stroke-dasharray="6 8" />
-    <line x1="320" y1="45" x2="320" y2="275" stroke="#e0d6c4" stroke-width="1" stroke-dasharray="6 8" />
-    <line x1="480" y1="45" x2="480" y2="275" stroke="#e0d6c4" stroke-width="1" stroke-dasharray="6 8" />
-    <line x1="640" y1="45" x2="640" y2="275" stroke="#e0d6c4" stroke-width="1" stroke-dasharray="6 8" />
+    <line x1="160" y1="45" x2="160" y2="290" stroke="#e0d6c4" stroke-width="1" stroke-dasharray="6 8" />
+    <line x1="320" y1="45" x2="320" y2="290" stroke="#e0d6c4" stroke-width="1" stroke-dasharray="6 8" />
+    <line x1="480" y1="45" x2="480" y2="290" stroke="#e0d6c4" stroke-width="1" stroke-dasharray="6 8" />
+    <line x1="640" y1="45" x2="640" y2="290" stroke="#e0d6c4" stroke-width="1" stroke-dasharray="6 8" />
 
     <!-- Hardwood Floorboards -->
-    <line x1="0" y1="275" x2="840" y2="275" class="room-floor-line" />
-    <line x1="0" y1="290" x2="840" y2="290" stroke="#ded5c4" stroke-width="1" />
-    <line x1="0" y1="305" x2="840" y2="305" stroke="#e4dcce" stroke-width="1" />
-    <line x1="0" y1="320" x2="840" y2="320" stroke="#ede5d8" stroke-width="1" />
+    <line x1="0" y1="290" x2="840" y2="290" stroke="#b9a984" stroke-width="2" />
+    <line x1="0" y1="315" x2="840" y2="315" stroke="#d3c3a1" stroke-width="1" />
+    <line x1="0" y1="343" x2="840" y2="343" stroke="#d3c3a1" stroke-width="1" />
+    <line x1="0" y1="375" x2="840" y2="375" stroke="#d3c3a1" stroke-width="1" />
 
     <!-- Top Proscenium Valance Drapery -->
     <path d="M 0 0 L 840 0 L 840 28 Q 735 44 630 28 Q 525 44 420 28 Q 315 44 210 28 Q 105 44 0 28 Z" fill="url(#velvet-fold)" />
     <path d="M 0 28 Q 105 44 210 28 Q 315 44 420 28 Q 525 44 630 28 Q 735 44 840 28" stroke="#c59b48" stroke-width="2.5" fill="none" />
 
     <!-- Left & Right Fluted Mahogany Pilasters -->
-    <rect x="0" y="0" width="28" height="340" class="proscenium-column" />
-    <line x1="14" y1="28" x2="14" y2="340" stroke="#c59b48" stroke-width="1.5" stroke-dasharray="8 6" />
-    <rect x="812" y="0" width="28" height="340" class="proscenium-column" />
-    <line x1="826" y1="28" x2="826" y2="340" stroke="#c59b48" stroke-width="1.5" stroke-dasharray="8 6" />
+    <rect x="0" y="0" width="28" height="400" class="proscenium-column" />
+    <line x1="14" y1="28" x2="14" y2="400" stroke="#c59b48" stroke-width="1.5" stroke-dasharray="8 6" />
+    <rect x="812" y="0" width="28" height="400" class="proscenium-column" />
+    <line x1="826" y1="28" x2="826" y2="400" stroke="#c59b48" stroke-width="1.5" stroke-dasharray="8 6" />
 
     <!-- Stage Footlight Lamps -->
     ${footlights}
@@ -1479,46 +1474,23 @@ function renderCastCards() {
   Object.values(stageState.data.characters).forEach((c) => {
     const cfg = CHAR_CONFIG[c.id] || { code: "A", class: "julian" };
     const card = document.createElement("div");
-    card.className = `cast-card ${c.is_alive ? "" : "fallen"}`;
-
+    card.className = `cast-card ${cfg.class} ${c.is_alive ? "" : "fallen"}`;
     const hpPct = Math.max(0, Math.min(100, Math.round((c.hp / c.max_hp) * 100)));
     const stressPct = Math.max(0, Math.min(100, c.stress));
     const fatiguePct = Math.max(0, Math.min(100, c.fatigue));
-    const carriedItems = c.items && c.items.length > 0 ? c.items.join(", ") : "None";
-
+    const gear = c.items && c.items.length > 0 ? c.items.join(", ") : "";
+    card.title = `${c.name}, ${c.role}\n"${c.flaw}"\nLoad: ${c.total_weight_kg} kg${gear ? "\nGear: " + gear : ""}\nAction: ${c.room_action || "Observing"}`;
     card.innerHTML = `
-      <div class="cast-card-head">
-        <div class="cast-portrait ${cfg.class}">${cfg.code}</div>
-        <div class="cast-meta">
-          <strong>${c.name}</strong>
-          <small>${c.role} · At: ${c.current_fixture || "Room Set"}</small>
+      <div class="cast-portrait ${cfg.class}">${cfg.code}</div>
+      <div class="cast-body">
+        <strong class="cast-name">${c.name}</strong>
+        <div class="cast-bars">
+          <div class="vital-track" title="Health ${c.hp}/${c.max_hp}"><div class="vital-bar hp" style="width: ${hpPct}%"></div></div>
+          <div class="vital-track" title="Stress ${c.stress}%"><div class="vital-bar stress" style="width: ${stressPct}%"></div></div>
+          <div class="vital-track" title="Fatigue ${c.fatigue}%"><div class="vital-bar fatigue" style="width: ${fatiguePct}%"></div></div>
         </div>
+        <span class="cast-action">${c.is_alive ? (c.room_action || "Observing") : "Fallen"}</span>
       </div>
-      <div class="cast-vital-bars">
-        <div class="vital-row">
-          <span>HP</span>
-          <div class="vital-track"><div class="vital-bar hp" style="width: ${hpPct}%"></div></div>
-          <span>${c.hp}/${c.max_hp}</span>
-        </div>
-        <div class="vital-row">
-          <span>Stress</span>
-          <div class="vital-track"><div class="vital-bar stress" style="width: ${stressPct}%"></div></div>
-          <span>${c.stress}%</span>
-        </div>
-        <div class="vital-row">
-          <span>Fatigue</span>
-          <div class="vital-track"><div class="vital-bar fatigue" style="width: ${fatiguePct}%"></div></div>
-          <span>${c.fatigue}%</span>
-        </div>
-      </div>
-      <div class="cast-burden">
-        <span>Load: <strong>${c.total_weight_kg} kg</strong> · Gear: ${carriedItems}</span>
-        ${c.id === "Vesper" && c.total_weight_kg > 100 ? `<span style="color:#8c5828;margin-left:6px">(Heavy Contraband Payload)</span>` : ""}
-      </div>
-      <div style="font-size:9.5px;color:#544d41;margin-bottom:6px;font-style:italic">
-        Action: "${c.room_action || "Observing"}"
-      </div>
-      <p class="cast-flaw">"${c.flaw}"</p>
     `;
     container.appendChild(card);
   });
@@ -1539,7 +1511,7 @@ function updateDirectorDeckUI() {
   select.hidden = false;
 
   if (verb === "block_route") {
-    label.textContent = "EXIT DOOR TO BLOCK (DROP VELVET CURTAIN)";
+    label.textContent = "Exit to block";
     if (exits.length > 0) {
       select.innerHTML = exits.map((e) => `
         <option value="${e.target_node}">${e.name} (To Node ${e.target_node})</option>
@@ -1548,7 +1520,7 @@ function updateDirectorDeckUI() {
       select.innerHTML = `<option value="">No exit doors in this final room</option>`;
     }
   } else if (verb === "shift_spotlight") {
-    label.textContent = "ROOM FIXTURE OR DOOR TO ILLUMINATE";
+    label.textContent = "Light up";
     const fixtureOptions = fixtures.map((f) => `
       <option value="${f.id}">${f.name} [${(f.type || "SET").toUpperCase()}]</option>
     `).join("");
@@ -1557,14 +1529,14 @@ function updateDirectorDeckUI() {
     `).join("");
     select.innerHTML = fixtureOptions + exitOptions;
   } else if (verb === "plant_rumor") {
-    label.textContent = "WHISPER PROMPT CUE TO ACTOR";
+    label.textContent = "Whisper to";
     const living = Object.values(stageState.data.characters).filter((c) => c.is_alive);
     select.innerHTML = living.map((c) => `
       <option value="${c.id}">${c.name} (${c.role})</option>
     `).join("");
     rumorWrap.hidden = false;
   } else if (verb === "cue_prop") {
-    label.textContent = "STAGE ITEM PLACEMENT AT FIXTURE";
+    label.textContent = "Place prop";
     if (fixtures.length > 0) {
       select.innerHTML = fixtures.map((f) => `
         <option value="${f.id},Cold Iron Crowbar">${f.name}: Cold Iron Crowbar</option>
@@ -1595,10 +1567,10 @@ if (tensionSlider) {
     const readout = $("#tension-readout");
     if (readout) {
       let desc = "Andante";
-      if (val <= 1.5) desc = "Adagio (Calm & Meticulous)";
+      if (val <= 1.5) desc = "Adagio";
       else if (val <= 2.5) desc = "Moderato";
-      else if (val <= 3.5) desc = "Allegro (Tense)";
-      else desc = "Presto (Frantic & Rushed)";
+      else if (val <= 3.5) desc = "Allegro";
+      else desc = "Presto";
       readout.textContent = `${val.toFixed(1)} · ${desc}`;
     }
   });
@@ -1659,7 +1631,7 @@ if (stageTurnBtn) {
     if (stageState.isProcessing) return;
     stageState.isProcessing = true;
     stageTurnBtn.disabled = true;
-    stageTurnBtn.innerHTML = `<span>Gemma 2 staging Scene on AMD MI300X...</span>`;
+    stageTurnBtn.innerHTML = `<span>The cast is acting...</span>`;
 
     const summary = `Director applied ${stageState.selectedVerb} with tension ${stageState.tension.toFixed(1)}`;
 
@@ -1730,25 +1702,54 @@ if (stageTurnBtn) {
 
       // Check Game Status
       if (res.stage_state.status === "won") {
-        alert("VICTORY: The Midnight Express has departed! The living cast crossed safely into sovereign territory.");
+        showStageEnd(true, "The Midnight Express has departed. The cast crossed the border safely.");
       } else if (res.stage_state.status === "lost") {
-        alert("TRAGEDY: The Wailing Fog claimed the stage. The troupe has fallen.");
+        showStageEnd(false, "The Wailing Fog claimed the stage. The troupe has fallen.");
       }
 
     } catch (err) {
       console.error(err);
-      alert("Turn failed: " + err.message);
+      showStageToast("The scene failed: " + err.message);
     } finally {
       stageState.isProcessing = false;
       stageTurnBtn.disabled = false;
-      stageTurnBtn.innerHTML = `<span>Raise Curtain on Scene</span><span>&rarr;</span>`;
+      stageTurnBtn.innerHTML = `<span>Raise Curtain</span>`;
     }
   });
+}
+
+function showStageToast(message) {
+  const box = $("#verb-status-msg");
+  if (!box) return;
+  box.textContent = message;
+  box.hidden = false;
+  setTimeout(() => { box.hidden = true; }, 4500);
+}
+
+function showStageEnd(won, message) {
+  const viewport = document.querySelector(".game-viewport");
+  if (!viewport) return;
+  let overlay = $("#stage-end");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "stage-end";
+    viewport.appendChild(overlay);
+  }
+  overlay.className = `stage-end ${won ? "won" : "lost"}`;
+  overlay.innerHTML = `
+    <div class="stage-end-card">
+      <h2>${won ? "Curtain Call" : "The Play Ends"}</h2>
+      <p>${message}</p>
+      <button type="button" class="stage-advance-btn" id="stage-end-restart"><span>Play again</span></button>
+    </div>`;
+  $("#stage-end-restart").addEventListener("click", () => { overlay.remove(); initStageEngine(); });
 }
 
 const stageResetBtn = $("#stage-reset-btn");
 if (stageResetBtn) {
   stageResetBtn.addEventListener("click", () => {
+    const endOverlay = $("#stage-end");
+    if (endOverlay) endOverlay.remove();
     initStageEngine();
   });
 }

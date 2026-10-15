@@ -1020,3 +1020,132 @@
   .theatrical-super { display: none; }
 }
 
+
+/* =========================================================================
+   GAME LAYOUT: full-screen stage, HUD overlays, bottom deck, command bar
+   ========================================================================= */
+html, body { height: 100%; }
+body { background: #14110e; overflow: hidden; }
+.app-shell { max-width: none; padding: 0; height: 100vh; display: flex; flex-direction: column; background: #14110e; }
+.theatrical-topbar { height: 48px; flex: none; padding: 0 18px; box-shadow: none; }
+.theatrical-seal { width: 28px; height: 28px; font-size: 13px; }
+.theatrical-logo { font-size: 15px; margin: 0; }
+.telemetry-badge { padding: 4px 10px; font-size: 9.5px; }
+main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.experience-view.game { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+#ledger-experience { flex: 1; overflow: auto; padding: 0 6%; background: var(--paper); }
+
+/* Stage */
+.game-viewport { position: relative; flex: 1; min-height: 0; background: radial-gradient(ellipse at 50% 45%, #2a2118 0%, #14110e 80%); overflow: hidden; }
+.game-viewport .stage-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* HUD chips */
+.hud { position: absolute; z-index: 5; color: #f3ead6; background: rgba(20, 16, 12, 0.8); border: 1px solid rgba(197, 155, 72, 0.55); backdrop-filter: blur(4px); }
+.hud-room { top: 12px; left: 44px; width: 270px; padding: 8px 12px; border-radius: 4px; display: grid; gap: 4px; }
+.hud-act { font: 700 9px var(--mono); letter-spacing: .12em; color: var(--theater-gold-bright); text-transform: uppercase; }
+.hud-room-name { font: 600 15px "Cinzel", Georgia, serif; line-height: 1.2; }
+.hud-progress { display: flex; align-items: center; gap: 8px; }
+.hud-progress .room-progress-track { flex: 1; background: #3a3026; }
+.hud-progress .progress-val { color: var(--theater-gold-bright); font-size: 10px; }
+.hud-room .consensus-hint { color: #cbbd9b; font: italic 10.5px/1.35 "Libre Baskerville", Georgia, serif; margin: 0; }
+
+.hud-route { top: 12px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 999px; }
+.hud-route .ribbon-node { padding: 0; gap: 6px; background: transparent; border: 0; box-shadow: none; opacity: 1; color: #bfae8a; }
+.hud-route .ribbon-title { display: none; font: 600 11px "Cinzel", Georgia, serif; }
+.hud-route .ribbon-node.active .ribbon-title { display: inline; color: #fff3d0; }
+.hud-route .ribbon-badge { width: 22px; height: 22px; background: #3a3026; color: #cbbd9b; border: 1px solid #5a4730; }
+.hud-route .ribbon-node.active .ribbon-badge { background: var(--theater-gold); color: #1d1408; border-color: #f3d58c; box-shadow: 0 0 10px rgba(230, 190, 109, .7); }
+.hud-route .ribbon-node.visited .ribbon-badge { background: #34503f; color: #d7efdd; border-color: #4f7a61; }
+.hud-route .ribbon-node.fogged .ribbon-badge { background: #4a5a58; color: #dbe7e4; border-color: #6d8985; opacity: .8; }
+.hud-route .ribbon-arrow { color: #6e5b3d; font-size: 10px; }
+
+.hud-counters { top: 12px; right: 44px; display: flex; align-items: center; gap: 12px; padding: 6px 12px; border-radius: 4px; }
+.counter { display: inline-flex; align-items: center; gap: 6px; font: 500 11px var(--mono); }
+.counter b { font-weight: 600; }
+.counter-icon { color: var(--theater-gold-bright); font-style: normal; }
+.hud-btn { background: transparent; border: 1px solid #5a4730; color: #d8c8a3; font: 600 10.5px var(--sans); padding: 4px 10px; border-radius: 3px; cursor: pointer; }
+.hud-btn:hover { border-color: var(--theater-gold); color: #fff3d0; }
+
+.hud-verifier { top: 76px; left: 50%; transform: translateX(-50%); width: min(560px, 80%); display: flex; gap: 12px; align-items: flex-start; padding: 10px 14px; border-radius: 4px; border-color: #d99a48; background: rgba(48, 30, 12, 0.92); animation: toastIn .3s ease-out; }
+.hud-verifier .verifier-badge { background: #d99a48; color: #2b1705; border: 0; white-space: nowrap; }
+.hud-verifier .verifier-details strong { color: #ffd9a1; margin-bottom: 2px; }
+.hud-verifier .verifier-details p { color: #ecdcc0; font-size: 11px; }
+@keyframes toastIn { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* Bottom deck */
+.game-deck { flex: none; height: 184px; display: grid; grid-template-columns: 410px 1fr; background: #1b1612; border-top: 2px solid var(--brass-trim); }
+.cast-roster { display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: 8px; padding: 10px; margin: 0; border-right: 1px solid #3a2f23; }
+.cast-roster .cast-card { display: flex; align-items: center; gap: 10px; padding: 6px 10px; margin: 0; background: #261e17; border: 1px solid #3a2f23; border-left: 3px solid #8a6f3c; border-radius: 3px; box-shadow: none; min-width: 0; cursor: default; }
+.cast-roster .cast-card.julian { border-left-color: #5c8aa6; }
+.cast-roster .cast-card.vesper { border-left-color: #c58a4a; }
+.cast-roster .cast-card.beatrice { border-left-color: #6d9a82; }
+.cast-roster .cast-card.curator { border-left-color: #9a6a9c; }
+.cast-roster .cast-card.fallen { opacity: .45; filter: grayscale(1); }
+.cast-roster .cast-portrait { width: 34px; height: 34px; font: 700 13px "Cinzel", Georgia, serif; border: 2px solid #e7ddca; }
+.cast-body { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.cast-name { font: 600 14px "Cormorant Garamond", Georgia, serif; color: #f3ead6; line-height: 1; }
+.cast-bars { display: grid; gap: 3px; }
+.cast-bars .vital-track { height: 4px; background: #3a3026; }
+.cast-action { font: italic 10px "Libre Baskerville", Georgia, serif; color: #b9a982; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.script-box { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 10px 18px; min-width: 0; min-height: 0; color: #f3ead6; }
+.script-head { display: flex; align-items: baseline; gap: 12px; }
+.script-head .scene-act-tag { color: var(--theater-gold-bright); }
+.script-head strong { font: 600 14px "Cinzel", Georgia, serif; color: #fff3d0; }
+.script-narration { margin: 0; font: italic 12px/1.5 "Libre Baskerville", Georgia, serif; color: #d9cdb0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.script-box .dialogue-stream { flex: 1; min-height: 0; max-height: none; margin: 0; gap: 2px; overflow-y: auto; padding: 0 4px 0 0; }
+.script-box .dialogue-card { background: transparent; border: 0; padding: 2px 0; gap: 8px; align-items: baseline; }
+.script-box .dialogue-avatar { width: 20px; height: 20px; font-size: 9px; align-self: center; }
+.script-box .dialogue-content { display: flex; gap: 8px; align-items: baseline; }
+.script-box .dialogue-content strong { color: var(--theater-gold-bright); font: 600 13px "Cormorant Garamond", Georgia, serif; margin: 0; white-space: nowrap; }
+.script-box .dialogue-content p { color: #f3ead6; font: italic 12px/1.45 "Libre Baskerville", Georgia, serif; }
+
+.stage-log { margin-left: auto; position: relative; }
+.stage-log summary { cursor: pointer; list-style: none; font: 600 10.5px var(--sans); color: #d8c8a3; border: 1px solid #5a4730; border-radius: 3px; padding: 3px 10px; }
+.stage-log summary::-webkit-details-marker { display: none; }
+.stage-log[open] summary { border-color: var(--theater-gold); color: #fff3d0; }
+.stage-log .hazards-stream { position: absolute; right: 0; bottom: calc(100% + 8px); width: 400px; max-height: 260px; overflow-y: auto; padding: 10px; background: rgba(20, 16, 12, .96); border: 1px solid var(--brass-trim); border-radius: 4px; z-index: 30; }
+.stage-log .hazard-entry { background: #2b221a; color: #ecdcc0; border-left-color: #c58a4a; }
+.stage-log .hazard-entry.info { background: #1f2a24; color: #cfe6d7; border-left-color: #5d9a76; }
+
+/* Command bar */
+.command-bar { position: relative; flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: 14px 22px; padding: 10px 18px; background: linear-gradient(#2a2017, #1d160f); border-top: 2px solid var(--brass-trim); }
+.verb-row { display: flex; gap: 6px; }
+.command-bar .verb-choice { flex-direction: column; align-items: center; justify-content: center; gap: 4px; width: 68px; height: 56px; padding: 4px; background: #33281c; border: 1px solid #4d3b27; border-radius: 4px; color: #d8c8a3; font: 600 10.5px var(--sans); box-shadow: none; }
+.command-bar .verb-choice:hover { background: #3f3123; border-color: var(--brass-trim); color: #fff3d0; }
+.command-bar .verb-choice.selected { background: #5a4220; border-color: var(--theater-gold-bright); color: #fff3d0; box-shadow: 0 0 12px rgba(230, 190, 109, .35); }
+.target-row { display: flex; align-items: center; gap: 8px; }
+.target-row label { font: 600 11px var(--sans); color: #bfa879; white-space: nowrap; }
+.command-bar .select-input, .command-bar .text-input { height: 36px; width: auto; min-width: 200px; max-width: 300px; background: #14100c; color: #f3ead6; border: 1px solid #5a4730; border-radius: 3px; font: 12px var(--sans); }
+.command-bar .text-input { width: 240px; }
+.rumor-text-wrap { margin: 0; }
+.command-bar .apply-verb-btn { width: auto; height: 36px; margin: 0; padding: 0 18px; background: #6a4f27; color: #fff3d0; border: 1px solid var(--theater-gold); border-radius: 3px; font: 600 12px var(--sans); }
+.command-bar .apply-verb-btn:hover { background: #7d5d2d; }
+.command-bar .verb-status-msg { position: absolute; left: 18px; bottom: calc(100% + 10px); margin: 0; padding: 8px 12px; background: rgba(24, 40, 30, .96); border: 1px solid #4d815c; border-left-width: 3px; color: #d7efdd; border-radius: 3px; z-index: 20; }
+.tempo-row { display: flex; align-items: center; gap: 8px; }
+.tempo-row label { font: 600 11px var(--sans); color: #bfa879; }
+.tempo-row .tension-slider { width: 140px; }
+.tempo-row .tension-readout { font: 600 11px var(--mono); color: var(--theater-gold-bright); min-width: 86px; }
+.command-bar .stage-advance-btn { margin-left: auto; width: auto; min-width: 190px; height: 48px; padding: 0 28px; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(#8e232d, #6a1820); color: #fbf0d8; border: 1px solid var(--theater-gold); border-radius: 4px; font: 600 15px "Cinzel", Georgia, serif; letter-spacing: .06em; cursor: pointer; box-shadow: 0 0 16px rgba(142, 35, 45, .5); }
+.command-bar .stage-advance-btn:hover:not(:disabled) { background: linear-gradient(#a42a35, #7c1c25); transform: none; }
+.command-bar .stage-advance-btn:disabled { opacity: .6; cursor: wait; }
+
+/* End screen */
+.stage-end { position: absolute; inset: 0; z-index: 40; display: grid; place-items: center; background: rgba(10, 8, 6, .85); }
+.stage-end-card { text-align: center; max-width: 440px; padding: 28px 34px; background: #1b1612; border: 2px solid var(--theater-gold); border-radius: 4px; color: #f3ead6; }
+.stage-end-card h2 { margin: 0 0 8px; font: 700 26px "Cinzel", Georgia, serif; color: var(--theater-gold-bright); }
+.stage-end.lost .stage-end-card h2 { color: #e07a7a; }
+.stage-end-card p { margin: 0 0 18px; font: italic 13px/1.6 "Libre Baskerville", Georgia, serif; color: #d9cdb0; }
+.stage-end-card .stage-advance-btn { margin: 0 auto; }
+
+@media (max-width: 960px) {
+  body { overflow: auto; }
+  .app-shell { height: auto; min-height: 100vh; }
+  .game-viewport { min-height: 300px; flex: none; aspect-ratio: 2.1 / 1; }
+  .game-deck { grid-template-columns: 1fr; height: auto; }
+  .cast-roster { border-right: 0; border-bottom: 1px solid #3a2f23; }
+  .script-box { min-height: 150px; }
+  .hud-room { width: 200px; }
+  .hud-room .consensus-hint { display: none; }
+  .command-bar .stage-advance-btn { margin-left: 0; width: 100%; }
+}
