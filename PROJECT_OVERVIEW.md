@@ -1,6 +1,6 @@
 # Bayang: The Living Ledger
 
-A dataset-seeded investigation game that transforms raw statistical tables into narrative roleplaying mysteries. The system teaches statistical deduction (specifically the exposure trap: counts vs. rates) by grounding every character, clue, and realm consequence in empirical data.
+A dataset-seeded investigation game that transforms raw operational data tables into narrative roleplaying mysteries. The system teaches statistical deduction (specifically base-rate neglect, exposure bias, and confounding variables) by grounding every character, clue, and realm consequence in empirical data.
 
 Built for the **AMD Developer Hackathon: ACT III** (Track 4: Create a New Kind of Experience) and the **Google DeepMind Gemma** bonus prize.
 
@@ -21,9 +21,10 @@ Bayang uses a split-brain architecture that separates deterministic numerical tr
                      │                         │
       Statistical Profile                      Sealed Ground Truth
       (groups, rates, anomalies,               (highest_rate_group)
-      equalized projections)                   Kept private on server
-                     │                                 │
-                     ▼                                 │
+      equalized projections,                   Kept private on server
+      stratified confounders)                  │
+                     │                         │
+                     ▼                         │
                ┌─────────────────────────────────────┐ │
                │   Generate-Verify-Repair Pipeline   │ │
                │      (server/model_client.py)       │ │
@@ -52,7 +53,7 @@ Bayang uses a split-brain architecture that separates deterministic numerical tr
 ### The Architectural Invariant
 
 No language model calculates numbers or determines win conditions.
-1. The deterministic engine calculates counts, exposure, rates, anomaly thresholds, and equalized projections.
+1. The deterministic engine calculates counts, exposure, rates, anomaly thresholds, equalized projections, and confounding strata.
 2. The language model receives the calculated facts and wraps them in a coherent narrative setting.
 3. The language model's output passes through an autonomous verification loop. If it violates schema or ground truth, it is repaired before reaching the client.
 4. Player choices are verified against the sealed ground truth stored in server memory.
@@ -63,14 +64,19 @@ No language model calculates numbers or determines win conditions.
 
 ### A. Deterministic Profiler (`server/data_profiler.py`)
 
-The profiler ingests tabular data (up to 100 KB) and outputs an immutable case dossier.
+The profiler ingests tabular data (up to 100 KB) and outputs an immutable case dossier:
 
+- **Raw Event Log Ingestion**:
+  Automatically ingests unaggregated chronological event streams (e.g. 5,000 rows of individual server events or incident reports). Detects outcome flags (`error`, `fail`, `timeout`, `crash`, `1`), groups by entity, and derives exposure denominators directly from row counts.
 - **Smart Schema Inference (`resolve_columns`)**:
-  Matches user headers against alias dictionaries:
-  - `group`: route, name, category, region, ward, service, system, cohort, entity, cluster, hospital.
+  Matches user headers against alias dictionaries across groups, events, exposure, and confounding conditions:
+  - `group`: route, name, category, region, ward, service, system, cohort, entity, cluster, hospital, host.
   - `events`: incidents, errors, failures, accidents, adverse_events, deaths, cases, defects, complaints.
   - `opportunities`: journeys, trips, exposure, total, population, requests, trials, patients, traffic.
-  - 3-column fallback: If exactly three columns exist and standard headers are missing, defaults to 1 text column and 2 numeric columns.
+  - `confounder`: condition, weather, stratum, subgroup, severity, environment, shift.
+  - 3-column fallback: If standard headers are missing in a 3-column table, defaults to 1 text column and 2 numeric columns.
+- **True Simpson's Paradox & Confounder Stratification**:
+  When a 4th confounding column is provided (e.g. `weather` or `severity`), evaluates rates within each stratum. Detects true Simpson's reversals where Group A has a higher aggregate casualty rate, but Group B has a higher rate across every single individual stratum.
 - **Mathematical Outlier Detection**:
   Calculates non-circular anomaly classifications:
   - Baseline rate: `sum(events) / sum(opportunities)`
@@ -140,22 +146,28 @@ The Field Guide system prompt is sealed:
 - Compatible with all modern desktop and mobile browsers.
 
 #### Key Features:
-1. **Dynamic Map & SVG Overlay**:
-   Visualizes the setting and routes. Highlights active roads on hover and displays anomaly indicators for statistical outliers.
+1. **Domain-Adaptive Map Canvas**:
+   Dynamically transforms its SVG layout and CSS visual grammar based on the dataset domain:
+   - *Cloud DevOps*: Dark infrastructure topology graph with cluster nodes and latency orbits.
+   - *Clinical Healthcare*: Clean medical vector array and protocol surveillance crosshairs.
+   - *Overland Trade*: Topographical wayfinding map with compass rose and road vectors.
+   - *Tactical Sector*: Radar sweep surveillance grid.
 2. **Interactive What-If Equalized Exposure Simulator**:
    Located in the Incident Rates investigation note. Provides a real-time slider that scales traffic exposure from 20% to 250% of the maximum observed volume. Proves visually why rate trumps count: high-rate paths compound casualties dramatically at scale.
-3. **Investigation Lock**:
+3. **Stratified Subgroup Analysis Panel**:
+   When confounding variables are present, renders a side-by-side environmental breakdown and surfaces true Simpson's Paradox alerts.
+4. **Tactical Map Synchronization**:
+   Bidirectional highlighting between route chips on the SVG canvas, verdict buttons, and table rows, including anomaly alert indicators (`has-anomaly`).
+5. **Investigation Lock**:
    Players must explore at least 2 records before submitting a verdict, preventing guessing without evidence.
-4. **Analytical Rationale Selection**:
+6. **Analytical Rationale Selection**:
    Players commit both a route and their reasoning:
    - *Risk Density*: Incident frequency relative to exposure.
    - *Incident Volume*: Raw unadjusted incident count.
    - *Random Variance*: Statistical noise or fluke.
-5. **Immediate Realm Consequence**:
-   The backend generates narrative consequences reflecting the player's choice:
-   - Correct verdict: Resources deployed effectively, securing the territory.
-   - Incorrect verdict: Reinforcements dispatched to the wrong sector, while the true hazard escalates.
-6. **Telemetry & Cost Accounting**:
+7. **Immediate Realm Consequence**:
+   The backend generates narrative consequences reflecting the player's choice.
+8. **Telemetry & Cost Accounting**:
    Displays verification attempt count, inference latency, token counts, and compute economics ($0.0002/1k tokens on AMD Instinct vs $0.0050/1k tokens on commercial cloud).
 
 ---
@@ -168,9 +180,9 @@ All endpoints communicate via JSON over standard HTTP:
 |---|---|---|
 | `GET` | `/api/status` | Reports backend mode (`amd-configured` or `local-preview`) and model name. |
 | `GET` | `/api/samples` | Lists registered starter datasets. |
-| `POST` | `/api/profile` | Ingests CSV string, validates columns, returns case ID, groups, and schema mapping. |
+| `POST` | `/api/profile` | Ingests CSV string, validates columns, returns case ID, groups, domain, and schema mapping. |
 | `POST` | `/api/quest` | Generates verified quest narrative. Strips private referee secret. |
-| `POST` | `/api/investigate` | Returns evidence records for `counts`, `exposure`, `rates`, or `outliers`. |
+| `POST` | `/api/investigate` | Returns evidence records for `counts`, `exposure`, `rates`, or `outliers` (with stratification if present). |
 | `POST` | `/api/guide` | Queries the isolated Field Guide tutor. Decrements sparks. |
 | `POST` | `/api/answer` | Evaluates player finding and rationale against sealed referee. Emits consequence. |
 
@@ -183,9 +195,11 @@ Located in `data/`:
 | File | Domain | Target Group | Anomaly / Contrast |
 |---|---|---|---|
 | `caravans_a.csv` | Frontier fantasy | 3 routes | Straightforward baseline. High volume aligns with high rate. |
-| `caravans_b.csv` | Frontier fantasy | 4 routes | Simpson's contrast: Glasswood has 9 incidents (5.0%), Ashen Pass has 4 incidents (20.0%). |
-| `cloud_ops.csv` | DevOps / Cloud | 3 services | `eu-central-ingress` has 48 errors in 1,600 reqs (3.0%); `us-east-canary` has 14 errors in 35 reqs (40.0%). |
-| `clinical_trials.csv` | Healthcare | 3 cohorts | `Cohort Alpha` has 36 adverse events in 1,200 patients (3.0%); `Cohort Beta` has 15 in 50 patients (30.0%). |
+| `caravans_b.csv` | Frontier fantasy | 4 routes | Exposure paradox: Glasswood has 9 incidents (5.0%), Ashen Pass has 4 incidents (20.0%). |
+| `simpsons_paradox.csv` | Frontier fantasy | 2 routes | True Simpson's Paradox: Highland has 15.5% overall vs Lowland's 10.5%, but Lowland is worse in every weather condition (36% vs 30% in storm, 2% vs 1% in clear). |
+| `server_logs_raw.csv` | DevOps / Cloud | 3 services | Unaggregated chronological event log: 40 raw lines auto-grouped into 3 microservices with error rates. |
+| `cloud_ops.csv` | DevOps / Cloud | 3 services | Pre-aggregated telemetry: `eu-central-ingress` has 48 errors in 1,600 reqs (3.0%); `us-east-canary` has 14 errors in 35 reqs (40.0%). |
+| `clinical_trials.csv` | Healthcare | 3 cohorts | Healthcare cohorts: `Cohort Alpha` has 36 adverse events in 1,200 patients (3.0%); `Cohort Beta` has 15 in 50 patients (30.0%). |
 
 Arbitrary user CSV files up to 100 KB are accepted via the file upload button.
 
@@ -212,15 +226,17 @@ Bayang/
 ├── client/
 │   ├── app.js             # Client state, event handlers, what-if simulator, map sync
 │   ├── index.html         # Single-page layout, SVG dynamic map, investigation cards
-│   └── style.css          # Design system, telemetry pills, responsive layout
+│   └── style.css          # Design system, domain-adaptive maps, compute receipts
 ├── data/
 │   ├── caravans_a.csv     # Starter sample: basic route safety
 │   ├── caravans_b.csv     # Starter sample: exposure paradox (Ashen Pass vs Glasswood)
+│   ├── simpsons_paradox.csv# Starter sample: true Simpson's paradox with weather confounder
+│   ├── server_logs_raw.csv# Starter sample: raw unaggregated server log ingestion
 │   ├── clinical_trials.csv# Starter sample: healthcare cohort adverse events
 │   └── cloud_ops.csv      # Starter sample: cloud infrastructure microservice errors
 ├── server/
 │   ├── app.py             # HTTP server, routing, session store, referee evaluation
-│   ├── data_profiler.py   # Schema inference, rate profiling, anomaly detection
+│   ├── data_profiler.py   # Raw log ingestion, Simpson's stratification, anomaly detection
 │   ├── model_client.py    # AMD vLLM client, Generate-Verify-Repair loop, Field Guide
 │   ├── test_pipeline.py   # Unit test suite for verification, math, and isolation
 │   └── test_server_api.py # Integration test suite for HTTP API endpoints
@@ -247,6 +263,9 @@ python server/test_server_api.py
 
 ### Test Assertions Verified:
 - Profiler correctly detects when incident volume contradicts risk density (`ranking_differs=True`).
+- Raw unaggregated event logs parse chronological streams and derive denominators from row counts.
+- Confounding strata test detects true Simpson's Paradox reversals where aggregate risk inverts across every subgroup.
+- Domain classifier accurately differentiates Cloud, Healthcare, Fantasy, and Tactical vocabularies.
 - Mathematical outlier conditions catch 2.0x baseline spikes and thin-sample traps.
 - Cost calculator computes accurate comparative billing metrics.
 - Generate-Verify-Repair loop validates schema, group coverage, and grounds truth consistency.

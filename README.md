@@ -148,6 +148,14 @@ Bayang requires committing an analytical rationale:
 
 Submitting the right route with the wrong rationale (e.g. picking the dangerous pass because of "gross volume") fails, triggering narrative fallout explaining why volume unadjusted for traffic was rejected.
 
+### Beyond toy division: Raw logs, What-If simulation, and true Simpson's paradox
+
+Bayang handles real-world complexity:
+* **Raw Unaggregated Event Logs**: Uploading raw chronological logs (e.g. 5,000 lines of `timestamp, service, status`) automatically groups by entity, identifies outcome flags, and derives exposure counts without pre-aggregation.
+* **Interactive What-If Equalized Exposure Simulator**: Normalizes traffic exposure across all sectors in real time with an interactive slider, visually proving how hazard rates compound casualties at scale.
+* **True Simpson's Paradox Stratification**: Detects confounding variables (e.g. weather conditions or severity tiers) where aggregate risk completely reverses when conditioning on each individual stratum.
+* **Domain-Adaptive Map Canvas**: The SVG map dynamically re-skins its visual grammar: cloud cluster topologies for DevOps, clinical vector arrays for trials, and topographical routes for frontier trade.
+
 ### Real hardware economics: AMD Instinct vs. closed APIs
 
 Running autonomous generate-verify-repair loops requires 2 to 4 inference calls per scenario. On proprietary closed cloud APIs, running high-volume multi-turn verification for thousands of training scenarios is cost-prohibitive.
@@ -192,7 +200,9 @@ Ran across 100 test runs on sample ledgers:
 Bayang/
 ├── data/                      sample ledgers across 4 distinct domains
 │   ├── caravans_a.csv         trade guild (aligned baseline)
-│   ├── caravans_b.csv         frontier pass (Simpson's volume-rate conflict)
+│   ├── caravans_b.csv         frontier pass (exposure paradox: count vs. rate)
+│   ├── simpsons_paradox.csv   true Simpson's paradox (lurking weather confounder)
+│   ├── server_logs_raw.csv    raw unaggregated event log ingestion
 │   ├── cloud_ops.csv          cloud microservices canary outage
 │   └── clinical_trials.csv    clinical drug safety trial cohorts
 ├── prompts/
@@ -209,6 +219,7 @@ Bayang/
 │   ├── app.js                 client state, telemetry, rationales
 │   └── style.css              typography, cards, and compute receipts
 ├── SUBMISSION_PLAYBOOK.md     3-minute video script & judge Q&A defenses
+├── PROJECT_OVERVIEW.md        complete architectural and technical reference
 └── README.md
 ```
 

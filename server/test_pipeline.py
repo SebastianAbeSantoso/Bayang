@@ -140,6 +140,32 @@ def test_schema_inference_and_whatif_projection():
     print("[PASS] Smart schema inference and equalized exposure projections verified.")
 
 
+def test_raw_event_logs_and_simpsons_stratification():
+    # 1. Test unaggregated event log ingestion
+    raw_csv = (ROOT / "data" / "server_logs_raw.csv").read_text(encoding="utf-8")
+    raw_profile = profile_csv(raw_csv)
+    assert raw_profile["is_raw_log"] is True
+    assert raw_profile["raw_row_count"] == 40
+    assert len(raw_profile["groups"]) == 3
+    assert raw_profile["domain"] == "cloud"
+    assert raw_profile["highest_rate_group"] == "us-east-canary"
+    canary = next(g for g in raw_profile["groups"] if g["group"] == "us-east-canary")
+    assert canary["events"] == 5
+    assert canary["opportunities"] == 10
+    assert canary["rate"] == 0.50
+    print("[PASS] Unaggregated event logs aggregated accurately across raw rows.")
+
+    # 2. Test true Simpson's Paradox reversal
+    simpson_csv = (ROOT / "data" / "simpsons_paradox.csv").read_text(encoding="utf-8")
+    simpson_profile = profile_csv(simpson_csv)
+    assert simpson_profile["stratified"] is not None
+    assert simpson_profile["stratified"]["is_simpsons_paradox"] is True
+    assert simpson_profile["lesson_pattern"] == "simpsons_paradox"
+    assert simpson_profile["stratified"]["higher_overall"] == "Highland Crossing"
+    assert simpson_profile["stratified"]["higher_in_strata"] == "Lowland Valley"
+    print("[PASS] True Simpson's Paradox reversal detected and validated across strata.")
+
+
 if __name__ == "__main__":
     test_profiler_and_outliers()
     test_cost_calculation()
@@ -147,4 +173,5 @@ if __name__ == "__main__":
     test_answer_deduction_and_consequence()
     test_field_guide_isolation()
     test_schema_inference_and_whatif_projection()
+    test_raw_event_logs_and_simpsons_stratification()
     print("\nALL GENERATE-VERIFY-REPAIR TESTS PASSED!")

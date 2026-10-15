@@ -14,8 +14,10 @@ from model_client import answer_guide, generate_consequence, generate_quest
 ROOT = Path(__file__).resolve().parent.parent
 CASES = {}
 SAMPLES = {
-    "caravans_a": "The North Road (Trade Caravans)",
-    "caravans_b": "The Glasswood Trail (Frontier Pass)",
+    "caravans_a": "The North Road (Trade Caravans · Baseline)",
+    "caravans_b": "The Glasswood Trail (Frontier Pass · Exposure Paradox)",
+    "simpsons_paradox": "Highland vs Lowland (True Simpson's Paradox)",
+    "server_logs_raw": "Live Datacenter Logs (Raw Event Ingestion)",
     "cloud_ops": "Apex Infrastructure (Cloud DevOps)",
     "clinical_trials": "BioVanguard Phase II (Clinical Trials)",
 }
@@ -43,10 +45,16 @@ load_local_env()
 
 def public_case_summary(profile):
     """Expose only group labels before the player investigates."""
-    return {"groups": [row["group"] for row in profile["groups"]],
-            "group_count": len(profile["groups"]),
-            "ranking_differs": profile.get("ranking_differs", False),
-            "schema_mapping": profile.get("schema_mapping", {})}
+    return {
+        "groups": [row["group"] for row in profile["groups"]],
+        "group_count": len(profile["groups"]),
+        "ranking_differs": profile.get("ranking_differs", False),
+        "schema_mapping": profile.get("schema_mapping", {}),
+        "domain": profile.get("domain", "fantasy"),
+        "is_raw_log": profile.get("is_raw_log", False),
+        "raw_row_count": profile.get("raw_row_count", 0),
+        "stratified": profile.get("stratified"),
+    }
 
 
 def public_quest(quest):
@@ -94,7 +102,13 @@ def investigation_evidence(profile, action, mode):
         label = "Events per journey"
         explanation = ("Rate = events ÷ journeys. Compare these to judge risk per journey."
                        if mode == "apprentice" else "Compare events ÷ journeys across groups.")
-    return {"label": label, "explanation": explanation, "rows": rows, "equalized_exposure": profile.get("equalized_exposure")}
+    return {
+        "label": label,
+        "explanation": explanation,
+        "rows": rows,
+        "equalized_exposure": profile.get("equalized_exposure"),
+        "stratified": profile.get("stratified"),
+    }
 
 
 

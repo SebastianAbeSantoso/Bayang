@@ -102,7 +102,13 @@ function renderCaseSummary() {
       profileCard.insertBefore(schemaEl, profileGroups);
     }
   }
-  if (info.schema_mapping && info.schema_mapping.is_aliased) {
+  if (info.is_raw_log) {
+    schemaEl.innerHTML = `<span class="schema-glyph">⚡</span> Raw log aggregation: <code>${info.raw_row_count}</code> event rows aggregated into <code>${info.group_count}</code> entities`;
+    schemaEl.hidden = false;
+  } else if (info.stratified) {
+    schemaEl.innerHTML = `<span class="schema-glyph">✦</span> Stratified dataset: Confounder <code>${info.stratified.confounder_col}</code> detected (${info.stratified.strata.length} strata)`;
+    schemaEl.hidden = false;
+  } else if (info.schema_mapping && info.schema_mapping.is_aliased) {
     schemaEl.innerHTML = `<span class="schema-glyph">✓</span> Inferred headers: <code>${info.schema_mapping.group_col}</code> → Group, <code>${info.schema_mapping.events_col}</code> → Events, <code>${info.schema_mapping.opportunities_col}</code> → Exposure`;
     schemaEl.hidden = false;
   } else if (schemaEl) {
@@ -111,19 +117,41 @@ function renderCaseSummary() {
 
   const list = $("#profile-groups"); list.replaceChildren();
   info.groups.forEach((label) => list.append(createText("span", "group-chip", label)));
+
+  // Domain-adaptive map canvas
+  const mapArt = document.querySelector(".map-art");
+  if (mapArt) {
+    mapArt.classList.remove("domain-cloud", "domain-healthcare", "domain-fantasy", "domain-tactical");
+    const dom = info.domain || "fantasy";
+    mapArt.classList.add(`domain-${dom}`);
+  }
+
   const routes = $("#map-routes"); routes.replaceChildren();
+  const domainLabel = info.domain === "cloud" ? "Service" : info.domain === "healthcare" ? "Cohort" : "Route";
   info.groups.slice(0, 5).forEach((label, index) => {
     const route = createText("span", `route-chip route-${index % 4}`, label);
     route.dataset.group = label;
-    route.title = `Route: ${label} (Click to select)`;
+    route.title = `${domainLabel}: ${label} (Click to select)`;
     route.addEventListener("mouseenter", () => highlightRoute(label, true));
     route.addEventListener("mouseleave", () => highlightRoute(label, false));
     route.addEventListener("click", () => selectRouteFromMap(label));
     routes.append(route);
   });
   if (info.groups.length > 5) routes.append(createText("span", "route-more", `+${info.groups.length - 5} more`));
-  $("#map-title").textContent = "A NEW REGION";
-  $("#map-caption-left").textContent = `${info.group_count} ROUTES · ONE MYSTERY`;
+
+  if (info.domain === "cloud") {
+    $("#map-title").textContent = "CLOUD TOPOLOGY";
+    $("#map-caption-left").textContent = `${info.group_count} MICROSERVICES · CLUSTER TELEMETRY`;
+  } else if (info.domain === "healthcare") {
+    $("#map-title").textContent = "CLINICAL VECTORS";
+    $("#map-caption-left").textContent = `${info.group_count} COHORTS · PROTOCOL SURVEILLANCE`;
+  } else if (info.domain === "tactical") {
+    $("#map-title").textContent = "TACTICAL RADAR";
+    $("#map-caption-left").textContent = `${info.group_count} SECTORS · SECTOR GRID`;
+  } else {
+    $("#map-title").textContent = "A NEW REGION";
+    $("#map-caption-left").textContent = `${info.group_count} ROUTES · ONE MYSTERY`;
+  }
 }
 
 async function loadCsv(csv) {
@@ -320,6 +348,48 @@ function renderEvidence(action, investigation, evidence) {
 
     updateWhatIfBars(equalizedExposure);
     card.append(whatIf);
+
+    if (evidence.stratified) {
+      const strat = evidence.stratified;
+      const stratPanel = document.createElement("div");
+      stratPanel.className = "stratified-panel";
+      let alertHtml = "";
+      if (strat.is_simpsons_paradox) {
+        alertHtml = `
+          <div class="simpsons-alert">
+            <span class="simpsons-tag">⚠️ TRUE SIMPSON'S PARADOX UNCOVERED</span>
+            <p>Controlling for <strong>${strat.confounder_col}</strong> reverses the risk hierarchy! While <strong>${strat.higher_overall}</strong> has the higher aggregate casualty rate, <strong>${strat.higher_in_strata}</strong> has a higher casualty rate in EVERY individual stratum. Naive aggregation concealed the true hazard.</p>
+          </div>
+        `;
+      }
+      stratPanel.innerHTML = `
+        <div class="whatif-header">
+          <div class="whatif-badge"><span class="whatif-glyph">∿</span> STRATIFIED SUBGROUP ANALYSIS</div>
+          <h4>Lurking Confounder: ${strat.confounder_col.toUpperCase()}</h4>
+          <p class="whatif-sub">Evaluating risk within each environmental condition to test for confounding bias:</p>
+        </div>
+        ${alertHtml}
+        <table class="stratified-table">
+          <thead>
+            <tr>
+              <th>Condition (${strat.confounder_col})</th>
+              <th>${strat.records[0]?.group_1 || "Group 1"}</th>
+              <th>${strat.records[0]?.group_2 || "Group 2"}</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${strat.records.map((r) => `
+              <tr>
+                <td><strong>${r.stratum}</strong></td>
+                <td>${(r.rate_1 * 100).toFixed(1)}% <small>(${r.events_1}/${r.opp_1})</small></td>
+                <td>${(r.rate_2 * 100).toFixed(1)}% <small>(${r.events_2}/${r.opp_2})</small></td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+      card.append(stratPanel);
+    }
   }
 
   if (state.mode === "apprentice") {
