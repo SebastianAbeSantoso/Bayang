@@ -960,155 +960,12 @@ async function initStageEngine() {
 }
 
 function renderStageBoard() {
-  const svg = $("#stage-svg");
-  if (!svg || !stageState.data) return;
+  if (!stageState.data) return;
+  renderMacroRibbon();
+  renderRoomInfo();
+  renderRoomStageSVG();
 
-  svg.innerHTML = `
-    <defs>
-      <filter id="glow-gold" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur stdDeviation="4" result="blur" />
-        <feComposite in="SourceGraphic" in2="blur" operator="over" />
-      </filter>
-      <radialGradient id="spotlight-beam" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stop-color="#fff8e6" stop-opacity="0.8" />
-        <stop offset="40%" stop-color="#f6dfb2" stop-opacity="0.5" />
-        <stop offset="100%" stop-color="#e8cf99" stop-opacity="0" />
-      </radialGradient>
-    </defs>
-  `;
-
-  const edges = stageState.data.edges || [];
-  const blocked = stageState.data.blocked_edges || [];
-  const spotlights = stageState.data.spotlighted_nodes || [];
-  const fogNode = stageState.data.fog_node || 0;
-
-  // 1. Draw Edges
-  edges.forEach(([u, v]) => {
-    const fromCoord = STAGE_NODE_COORDS[u];
-    const toCoord = STAGE_NODE_COORDS[v];
-    if (!fromCoord || !toCoord) return;
-
-    const isBlocked = blocked.some(([bu, bv]) => (bu === u && bv === v) || (bu === v && bv === u));
-    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    line.setAttribute("x1", fromCoord.x);
-    line.setAttribute("y1", fromCoord.y);
-    line.setAttribute("x2", toCoord.x);
-    line.setAttribute("y2", toCoord.y);
-    line.setAttribute("class", isBlocked ? "stage-track track-blocked" : "stage-track track-active");
-    svg.appendChild(line);
-
-    if (isBlocked) {
-      const midX = (fromCoord.x + toCoord.x) / 2;
-      const midY = (fromCoord.y + toCoord.y) / 2;
-      const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-
-      const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      rect.setAttribute("x", midX - 44);
-      rect.setAttribute("y", midY - 10);
-      rect.setAttribute("width", 88);
-      rect.setAttribute("height", 20);
-      rect.setAttribute("class", "curtain-banner");
-
-      const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      txt.setAttribute("x", midX);
-      txt.setAttribute("y", midY + 4);
-      txt.setAttribute("class", "curtain-text");
-      txt.textContent = "DROPPED CURTAIN";
-
-      g.appendChild(rect);
-      g.appendChild(txt);
-      svg.appendChild(g);
-    }
-  });
-
-  // 2. Draw Nodes
-  Object.entries(STAGE_NODE_COORDS).forEach(([nodeIdStr, coord]) => {
-    const nid = Number(nodeIdStr);
-    const nodeData = (stageState.data.nodes && (stageState.data.nodes[nid] || stageState.data.nodes[nodeIdStr])) || { light_level: "Lit" };
-    const isSpotlight = spotlights.includes(nid);
-    const isFogged = nid <= fogNode;
-
-    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    g.setAttribute("transform", `translate(${coord.x}, ${coord.y})`);
-
-    // Spotlight beam
-    if (isSpotlight) {
-      const beam = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      beam.setAttribute("r", "44");
-      beam.setAttribute("fill", "url(#spotlight-beam)");
-      beam.setAttribute("filter", "url(#glow-gold)");
-      g.appendChild(beam);
-    }
-
-    // Node Circle
-    let circleClass = "node-circle";
-    if (isFogged) circleClass += " node-fog";
-    else if (isSpotlight) circleClass += " node-lit";
-    else if (nodeData.light_level === "Dark") circleClass += " node-dark";
-    else circleClass += " node-dim";
-
-    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    circle.setAttribute("r", "28");
-    circle.setAttribute("class", circleClass);
-    g.appendChild(circle);
-
-    // Node Label
-    const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    label.setAttribute("y", "-34");
-    label.setAttribute("class", "node-label");
-    label.textContent = coord.label;
-    g.appendChild(label);
-
-    const sub = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    sub.setAttribute("y", "44");
-    sub.setAttribute("class", isFogged ? "node-hazard" : "node-subtext");
-    sub.textContent = isFogged ? "[WAILING FOG ENGULFED]" : coord.sub;
-    g.appendChild(sub);
-
-    svg.appendChild(g);
-  });
-
-  // 3. Draw Character Tokens
-  const charTokensByNode = {};
-  Object.values(stageState.data.characters).forEach((char) => {
-    if (!char.is_alive) return;
-    charTokensByNode[char.node] = charTokensByNode[char.node] || [];
-    charTokensByNode[char.node].push(char);
-  });
-
-  Object.entries(charTokensByNode).forEach(([nidStr, charList]) => {
-    const nid = Number(nidStr);
-    const coord = STAGE_NODE_COORDS[nid];
-    if (!coord) return;
-
-    const count = charList.length;
-    charList.forEach((char, idx) => {
-      const cfg = CHAR_CONFIG[char.id] || { code: "?", color: "#333", class: "julian" };
-      // Distribute tokens horizontally within the node circle
-      const offset = (idx - (count - 1) / 2) * 16;
-      const tg = document.createElementNS("http://www.w3.org/2000/svg", "g");
-      tg.setAttribute("class", "char-token");
-      tg.setAttribute("transform", `translate(${coord.x + offset}, ${coord.y})`);
-
-      const tc = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      tc.setAttribute("r", "10");
-      tc.setAttribute("class", `token-circle ${cfg.class}`);
-
-      const tt = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      tt.setAttribute("class", "token-text");
-      tt.textContent = cfg.code;
-
-      const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
-      title.textContent = `${char.name} (HP: ${char.hp}, Stress: ${char.stress}, Weight: ${char.total_weight_kg}kg)`;
-
-      tg.appendChild(tc);
-      tg.appendChild(tt);
-      tg.appendChild(title);
-      svg.appendChild(tg);
-    });
-  });
-
-  // 4. Update Header Stats
+  // Update Header Stats
   const daVal = $("#director-da-val");
   if (daVal) daVal.textContent = stageState.data.director_authority;
 
@@ -1117,10 +974,340 @@ function renderStageBoard() {
 
   const actVal = $("#act-name-val");
   if (actVal) {
-    const actNames = ["Act I: Gathering", "Act II: The Crossing", "Act III: The Threshold", "Act IV: The Ascent", "Act V: The Departure"];
-    const curAct = actNames[Math.min(actNames.length - 1, stageState.data.scene_number - 1)];
-    actVal.textContent = curAct;
+    const curRoom = stageState.data.current_room || {};
+    actVal.textContent = curRoom.act || `Act ${stageState.data.scene_number}`;
   }
+}
+
+function renderMacroRibbon() {
+  const ribbon = $("#stage-route-ribbon");
+  if (!ribbon || !stageState.data) return;
+
+  const currentId = stageState.data.current_room_id || 1;
+  const fogNode = stageState.data.fog_node || 0;
+  const nodes = stageState.data.nodes || {};
+
+  ribbon.innerHTML = "";
+
+  const routeOrder = [1, 2, 3, 4, 5, 6, 7];
+  // Simple linear/branch representation for the ribbon
+  const ribbonSequence = [1, 2, 4, 5, 7];
+
+  Object.entries(STAGE_NODE_COORDS).forEach(([nidStr, coord], idx) => {
+    const nid = Number(nidStr);
+    const nodeData = nodes[nid] || { name: coord.label };
+    const isActive = nid === currentId;
+    const isVisited = nid < currentId;
+    const isFogged = nid <= fogNode;
+
+    const nodeEl = document.createElement("div");
+    let stateClass = "";
+    if (isActive) stateClass = "active";
+    else if (isFogged) stateClass = "fogged";
+    else if (isVisited) stateClass = "visited";
+
+    nodeEl.className = `ribbon-node ${stateClass}`;
+    nodeEl.title = `${nodeData.name} (${nodeData.act || "Act"})`;
+
+    nodeEl.innerHTML = `
+      <span class="ribbon-badge">${nid}</span>
+      <span class="ribbon-title">${nodeData.name.split(" ")[0]}</span>
+    `;
+
+    ribbon.appendChild(nodeEl);
+
+    if (idx < Object.keys(STAGE_NODE_COORDS).length - 1) {
+      const arrow = document.createElement("span");
+      arrow.className = "ribbon-arrow";
+      arrow.innerHTML = "&rarr;";
+      ribbon.appendChild(arrow);
+    }
+  });
+}
+
+function renderRoomInfo() {
+  const curRoom = stageState.data.current_room || {};
+  const actTag = $("#room-act-tag");
+  const titleName = $("#room-title-name");
+  const descText = $("#room-desc-text");
+  const progressPct = $("#room-progress-pct");
+  const progressFill = $("#room-progress-fill");
+  const consensusHint = $("#room-consensus-status");
+
+  if (actTag) actTag.textContent = (curRoom.act || "ACT I").toUpperCase();
+  if (titleName) titleName.textContent = `Room ${stageState.data.current_room_id}: ${curRoom.name || "Station Office"}`;
+  if (descText) descText.textContent = curRoom.description || "The cast gathers in this mountain sanctuary.";
+
+  const pct = Math.max(5, Math.min(100, stageState.data.room_progress || 15));
+  if (progressPct) progressPct.textContent = `${pct}%`;
+  if (progressFill) progressFill.style.width = `${pct}%`;
+
+  if (consensusHint) {
+    const consensus = stageState.data.room_consensus;
+    if (consensus && consensus.reached) {
+      consensusHint.textContent = `Consensus Reached! Party preparing to advance toward Node ${consensus.target_node}.`;
+      consensusHint.style.color = "#355642";
+      consensusHint.style.fontWeight = "600";
+    } else if (consensus && consensus.votes) {
+      const votePairs = Object.entries(consensus.votes).filter(([_, v]) => v != null);
+      if (votePairs.length > 0) {
+        const summary = votePairs.map(([cid, v]) => `${cid}: Node ${v}`).join(", ");
+        consensusHint.textContent = `Exit Votes: ${summary}. Awaiting consensus to depart.`;
+        consensusHint.style.color = "#854917";
+        consensusHint.style.fontWeight = "normal";
+      } else {
+        consensusHint.textContent = `Cast exploring room fixtures (Turn ${stageState.data.room_turn || 1}).`;
+        consensusHint.style.color = "#736c5c";
+        consensusHint.style.fontWeight = "normal";
+      }
+    }
+  }
+}
+
+function renderRoomStageSVG() {
+  const svg = $("#stage-svg");
+  if (!svg || !stageState.data) return;
+
+  const curRoom = stageState.data.current_room || {};
+  const fixtures = curRoom.fixtures || [];
+  const exits = curRoom.exits || [];
+  const blocked = stageState.data.blocked_edges || [];
+  const currentRoomId = stageState.data.current_room_id || 1;
+  const spotlightedFixture = stageState.data.spotlighted_fixture;
+  const spotlightedNodes = stageState.data.spotlighted_nodes || [];
+  const characters = Object.values(stageState.data.characters || {});
+
+  svg.innerHTML = `
+    <defs>
+      <filter id="glow-gold" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="5" result="blur" />
+        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+      </filter>
+      <linearGradient id="spotlight-beam" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#fff8e6" stop-opacity="0.9" />
+        <stop offset="40%" stop-color="#f6dfb2" stop-opacity="0.5" />
+        <stop offset="100%" stop-color="#e8cf99" stop-opacity="0.05" />
+      </linearGradient>
+    </defs>
+
+    <!-- Room Architecture: Walls & Floor -->
+    <rect x="0" y="0" width="840" height="340" class="room-wall-bg" />
+    <rect x="0" y="0" width="840" height="24" fill="#eee5d3" stroke="#d5cbbb" stroke-width="1.5" />
+    <line x1="0" y1="75" x2="840" y2="75" stroke="#dcd3c1" stroke-width="1" />
+    <line x1="0" y1="285" x2="840" y2="285" class="room-floor-line" />
+    <line x1="0" y1="305" x2="840" y2="305" stroke="#ded5c4" stroke-width="1" />
+    <line x1="0" y1="325" x2="840" y2="325" stroke="#e6dece" stroke-width="1" />
+
+    <!-- Architectural Pillars -->
+    <rect x="40" y="24" width="18" height="261" class="room-pillar" />
+    <rect x="635" y="24" width="18" height="261" class="room-pillar" />
+  `;
+
+  // 1. Render Interactive Fixtures
+  fixtures.forEach((f) => {
+    const isLit = spotlightedFixture === f.id || spotlightedNodes.includes(currentRoomId);
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g.setAttribute("class", "fixture-group");
+
+    // Spotlight beam on fixture
+    if (isLit) {
+      const beam = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+      beam.setAttribute("points", `${f.x},24 ${f.x - 75},${f.y + 35} ${f.x + 75},${f.y + 35}`);
+      beam.setAttribute("fill", "url(#spotlight-beam)");
+      beam.setAttribute("class", "spotlight-cone");
+      beam.setAttribute("filter", "url(#glow-gold)");
+      svg.appendChild(beam);
+    }
+
+    // Fixture Card Rect
+    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rect.setAttribute("x", f.x - 70);
+    rect.setAttribute("y", f.y - 35);
+    rect.setAttribute("width", 140);
+    rect.setAttribute("height", 70);
+    rect.setAttribute("class", "fixture-box");
+    g.appendChild(rect);
+
+    // Type Badge
+    const badge = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    badge.setAttribute("x", f.x - 58);
+    badge.setAttribute("y", f.y - 18);
+    badge.setAttribute("class", "fixture-badge");
+    badge.textContent = `[${(f.type || "SET").toUpperCase()}]`;
+    g.appendChild(badge);
+
+    // Fixture Title
+    const title = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    title.setAttribute("x", f.x - 58);
+    title.setAttribute("y", f.y + 2);
+    title.setAttribute("class", "fixture-title");
+    title.textContent = f.name;
+    g.appendChild(title);
+
+    // Fixture Short Description
+    const sub = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    sub.setAttribute("x", f.x - 58);
+    sub.setAttribute("y", f.y + 20);
+    sub.setAttribute("class", "fixture-desc");
+    const descShort = f.desc.length > 26 ? f.desc.slice(0, 24) + "..." : f.desc;
+    sub.textContent = descShort;
+    g.appendChild(sub);
+
+    const fullTitle = document.createElementNS("http://www.w3.org/2000/svg", "title");
+    fullTitle.textContent = `${f.name}: ${f.desc}`;
+    g.appendChild(fullTitle);
+
+    svg.appendChild(g);
+  });
+
+  // 2. Render Exit Doors
+  exits.forEach((exit) => {
+    const isBlocked = blocked.some(([u, v]) => u === currentRoomId && v === exit.target_node);
+    const isLit = spotlightedFixture === String(exit.target_node);
+
+    const dg = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    dg.setAttribute("class", "room-exit-door");
+
+    // Door Spotlight
+    if (isLit) {
+      const beam = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+      beam.setAttribute("points", `${exit.x},24 ${exit.x - 55},${exit.y + 45} ${exit.x + 55},${exit.y + 45}`);
+      beam.setAttribute("fill", "url(#spotlight-beam)");
+      beam.setAttribute("class", "spotlight-cone");
+      beam.setAttribute("filter", "url(#glow-gold)");
+      svg.appendChild(beam);
+    }
+
+    // Door Frame Rect
+    const door = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    door.setAttribute("x", exit.x - 50);
+    door.setAttribute("y", exit.y - 45);
+    door.setAttribute("width", 100);
+    door.setAttribute("height", 90);
+    door.setAttribute("class", "door-frame");
+    dg.appendChild(door);
+
+    // Arch outline
+    const arch = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    arch.setAttribute("d", `M ${exit.x - 45} ${exit.y - 20} Q ${exit.x} ${exit.y - 42} ${exit.x + 45} ${exit.y - 20}`);
+    arch.setAttribute("class", "door-arch");
+    dg.appendChild(arch);
+
+    // Door Text
+    const dTitle = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    dTitle.setAttribute("x", exit.x);
+    dTitle.setAttribute("y", exit.y - 2);
+    dTitle.setAttribute("class", "door-title");
+    const nameShort = exit.name.split(" to ")[0];
+    dTitle.textContent = nameShort.length > 14 ? nameShort.slice(0, 12) + ".." : nameShort;
+    dg.appendChild(dTitle);
+
+    const dSub = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    dSub.setAttribute("x", exit.x);
+    dSub.setAttribute("y", exit.y + 16);
+    dSub.setAttribute("class", "door-sub");
+    dSub.textContent = `-> Node ${exit.target_node}`;
+    dg.appendChild(dSub);
+
+    // Dropped Velvet Curtain if Blocked
+    if (isBlocked) {
+      const curtain = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      curtain.setAttribute("x", exit.x - 50);
+      curtain.setAttribute("y", exit.y - 45);
+      curtain.setAttribute("width", 100);
+      curtain.setAttribute("height", 90);
+      curtain.setAttribute("class", "curtain-drape");
+      dg.appendChild(curtain);
+
+      // Gold fringe line
+      const fringe = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      fringe.setAttribute("x1", exit.x - 50);
+      fringe.setAttribute("y1", exit.y + 45);
+      fringe.setAttribute("x2", exit.x + 50);
+      fringe.setAttribute("y2", exit.y + 45);
+      fringe.setAttribute("class", "curtain-gold-trim");
+      dg.appendChild(fringe);
+
+      // Seal badge
+      const sealRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      sealRect.setAttribute("x", exit.x - 42);
+      sealRect.setAttribute("y", exit.y - 10);
+      sealRect.setAttribute("width", 84);
+      sealRect.setAttribute("height", 20);
+      sealRect.setAttribute("class", "curtain-seal-rect");
+      dg.appendChild(sealRect);
+
+      const sealText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      sealText.setAttribute("x", exit.x);
+      sealText.setAttribute("y", exit.y + 3);
+      sealText.setAttribute("class", "curtain-seal-text");
+      sealText.textContent = "CURTAIN LOWERED";
+      dg.appendChild(sealText);
+    }
+
+    // Cast votes indicator
+    const voters = characters.filter((c) => c.is_alive && c.voted_exit === exit.target_node);
+    if (voters.length > 0) {
+      const vPill = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      vPill.setAttribute("x", exit.x - 38);
+      vPill.setAttribute("y", exit.y + 26);
+      vPill.setAttribute("width", 76);
+      vPill.setAttribute("height", 14);
+      vPill.setAttribute("class", "door-vote-pill");
+      dg.appendChild(vPill);
+
+      const vText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      vText.setAttribute("x", exit.x);
+      vText.setAttribute("y", exit.y + 36);
+      vText.setAttribute("class", "door-vote-text");
+      const initials = voters.map((c) => CHAR_CONFIG[c.id]?.code || c.id[0]).join(", ");
+      vText.textContent = `Votes: ${initials}`;
+      dg.appendChild(vText);
+    }
+
+    svg.appendChild(dg);
+  });
+
+  // 3. Render Character Tokens at Room Fixtures
+  const charsByFixture = {};
+  characters.forEach((char) => {
+    if (!char.is_alive) return;
+    const fixId = char.current_fixture || fixtures[0]?.id || "stove";
+    charsByFixture[fixId] = charsByFixture[fixId] || [];
+    charsByFixture[fixId].push(char);
+  });
+
+  Object.entries(charsByFixture).forEach(([fixId, charList]) => {
+    const fixture = fixtures.find((f) => f.id === fixId) || fixtures[0] || { x: 300, y: 150 };
+    const count = charList.length;
+
+    charList.forEach((char, idx) => {
+      const cfg = CHAR_CONFIG[char.id] || { code: "?", color: "#333", class: "julian" };
+      const offset = (idx - (count - 1) / 2) * 26;
+      const posX = fixture.x + offset;
+      const posY = fixture.y + 25;
+
+      const tg = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      tg.setAttribute("class", "char-token");
+      tg.setAttribute("transform", `translate(${posX}, ${posY})`);
+
+      const tc = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      tc.setAttribute("r", "12");
+      tc.setAttribute("class", `token-circle ${cfg.class}`);
+
+      const tt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      tt.setAttribute("class", "token-text");
+      tt.textContent = cfg.code;
+
+      const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+      title.textContent = `${char.name} at ${fixture.name}\nAction: ${char.room_action || "Investigating"}\nVoted Exit: Node ${char.voted_exit || "Undecided"}\nHP: ${char.hp}/${char.max_hp}, Stress: ${char.stress}%, Weight: ${char.total_weight_kg}kg`;
+
+      tg.appendChild(tc);
+      tg.appendChild(tt);
+      tg.appendChild(title);
+      svg.appendChild(tg);
+    });
+  });
 }
 
 function renderCastCards() {
@@ -1142,7 +1329,7 @@ function renderCastCards() {
         <div class="cast-portrait ${cfg.class}">${cfg.code}</div>
         <div class="cast-meta">
           <strong>${c.name}</strong>
-          <small>${c.role} · Node ${c.node} (${c.node_name})</small>
+          <small>${c.role} · At: ${c.current_fixture || "Room Set"}</small>
         </div>
       </div>
       <div class="cast-vital-bars">
@@ -1166,6 +1353,9 @@ function renderCastCards() {
         <span>Load Weight: <strong>${c.total_weight_kg} kg</strong></span>
         ${c.id === "Vesper" && c.total_weight_kg > 100 ? `<span style="color:#9e6a32;margin-left:6px">(Heavy Contraband Payload!)</span>` : ""}
       </div>
+      <div style="font-size:9px;color:#5a5345;margin-bottom:6px;font-style:italic">
+        Action: "${c.room_action || "Observing"}"
+      </div>
       <p class="cast-flaw">"${c.flaw}"</p>
     `;
     container.appendChild(card);
@@ -1177,43 +1367,51 @@ function updateDirectorDeckUI() {
   const label = $("#verb-param-label");
   const select = $("#verb-param-select");
   const rumorWrap = $("#rumor-text-wrap");
-  if (!label || !select || !rumorWrap) return;
+  if (!label || !select || !rumorWrap || !stageState.data) return;
+
+  const curRoom = stageState.data.current_room || {};
+  const fixtures = curRoom.fixtures || [];
+  const exits = curRoom.exits || [];
 
   rumorWrap.hidden = true;
   select.hidden = false;
 
   if (verb === "block_route") {
-    label.textContent = "ROUTE TO BLOCK (DROP CURTAIN)";
-    select.innerHTML = `
-      <option value="1,2">Node 1 &rarr; Node 2 (The Trestle Bridge · Rotted 150kg)</option>
-      <option value="1,3">Node 1 &rarr; Node 3 (The Valley Bypass · Rugged Scree)</option>
-      <option value="4,5">Node 4 &rarr; Node 5 (Smuggler's Cut · Ambush Trap)</option>
-      <option value="4,6">Node 4 &rarr; Node 6 (Pilgrim's Stair · Moral Trial)</option>
-    `;
+    label.textContent = "EXIT DOOR TO BLOCK (DROP VELVET CURTAIN)";
+    if (exits.length > 0) {
+      select.innerHTML = exits.map((e) => `
+        <option value="${e.target_node}">${e.name} (To Node ${e.target_node})</option>
+      `).join("");
+    } else {
+      select.innerHTML = `<option value="">No exit doors in this final room</option>`;
+    }
   } else if (verb === "shift_spotlight") {
-    label.textContent = "NODE TO ILLUMINATE (SPOTLIGHT)";
-    select.innerHTML = `
-      <option value="2">Node 2: The Trestle Bridge (Reveal Rot / Avert Plunge)</option>
-      <option value="3">Node 3: The Valley Bypass (Reveal Safe Footholds)</option>
-      <option value="4">Node 4: The Signal Tower (Inspect Padlocked Gate)</option>
-      <option value="5">Node 5: Smuggler's Cut (Pierce Pitch-Black Ambush)</option>
-    `;
+    label.textContent = "ROOM FIXTURE OR DOOR TO ILLUMINATE";
+    const fixtureOptions = fixtures.map((f) => `
+      <option value="${f.id}">${f.name} [${(f.type || "SET").toUpperCase()}]</option>
+    `).join("");
+    const exitOptions = exits.map((e) => `
+      <option value="${e.target_node}">Exit: ${e.name}</option>
+    `).join("");
+    select.innerHTML = fixtureOptions + exitOptions;
   } else if (verb === "plant_rumor") {
     label.textContent = "WHISPER PROMPT CUE TO ACTOR";
-    select.innerHTML = `
-      <option value="Vesper">Vesper Cross (The Smuggler)</option>
-      <option value="Julian">Julian Vance (The Archivist)</option>
-      <option value="Beatrice">Beatrice Thorne (The Machinist)</option>
-      <option value="The Curator">The Curator (The Infiltrator)</option>
-    `;
+    const living = Object.values(stageState.data.characters).filter((c) => c.is_alive);
+    select.innerHTML = living.map((c) => `
+      <option value="${c.id}">${c.name} (${c.role})</option>
+    `).join("");
     rumorWrap.hidden = false;
   } else if (verb === "cue_prop") {
-    label.textContent = "STAGE ITEM PLACEMENT";
-    select.innerHTML = `
-      <option value="4,Cold Iron Crowbar">Node 4: Cold Iron Crowbar (Pry Gate Lock)</option>
-      <option value="3,Restorative Tonic">Node 3: Restorative Tonic (Soothe Fatigue)</option>
-      <option value="2,Safety Harness">Node 2: Safety Harness (Bridge Reinforcement)</option>
-    `;
+    label.textContent = "STAGE ITEM PLACEMENT AT FIXTURE";
+    if (fixtures.length > 0) {
+      select.innerHTML = fixtures.map((f) => `
+        <option value="${f.id},Cold Iron Crowbar">${f.name}: Cold Iron Crowbar</option>
+        <option value="${f.id},Restorative Tonic">${f.name}: Restorative Tonic</option>
+        <option value="${f.id},Brass Lantern">${f.name}: Brass Lantern</option>
+      `).join("");
+    } else {
+      select.innerHTML = `<option value="stove,Cold Iron Crowbar">Cold Iron Crowbar</option>`;
+    }
   }
 }
 
@@ -1262,16 +1460,16 @@ if (applyVerbBtn) {
     const statusMsg = $("#verb-status-msg");
 
     if (verb === "block_route") {
-      target = select.value.split(",").map(Number);
-    } else if (verb === "shift_spotlight") {
       target = Number(select.value);
+    } else if (verb === "shift_spotlight") {
+      target = select.value;
     } else if (verb === "plant_rumor") {
       const char = select.value;
       const text = $("#rumor-text-input").value.trim() || "The path ahead is rigged.";
       target = { character: char, rumor: text };
     } else if (verb === "cue_prop") {
-      const [nid, prop] = select.value.split(",");
-      target = { node: Number(nid), prop: prop.trim() };
+      const [fix, prop] = select.value.split(",");
+      target = { fixture: fix, prop: (prop || "Item").trim() };
     }
 
     try {

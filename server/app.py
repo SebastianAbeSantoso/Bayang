@@ -241,7 +241,13 @@ class BayangHandler(BaseHTTPRequestHandler):
             if route == "/api/stage/turn":
                 summary = payload.get("director_action_summary", "Director watches from the prompt box.")
                 script, repairs, telemetry = generate_stage_turn(STAGE_INSTANCE, summary)
-                turn_resolution = STAGE_INSTANCE.execute_turn_moves(script.get("character_intents", {}))
+                if "character_actions" in script and script["character_actions"]:
+                    turn_resolution = STAGE_INSTANCE.execute_room_turn(
+                        script["character_actions"],
+                        script.get("dialogue", []),
+                    )
+                else:
+                    turn_resolution = STAGE_INSTANCE.execute_turn_moves(script.get("character_intents", {}))
                 return self.send_json(200, {
                     "script": script,
                     "repairs": repairs,

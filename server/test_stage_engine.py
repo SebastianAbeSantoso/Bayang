@@ -110,6 +110,41 @@ def test_tension_dial_and_fog():
     print("[PASS] Tension dial and fog encroachment verified.")
 
 
+def test_room_fixtures_and_consensus_transition():
+    engine = StageEngine()
+    assert engine.current_room_id == 1
+    assert engine.validate_fixture(1, "telegraph")
+    assert engine.validate_fixture(1, "stove")
+    assert not engine.validate_fixture(1, "non_existent_fixture")
+
+    # Turn 1: Freeform movement inside Room 1
+    intents = {
+        "Julian": {"target_fixture": "telegraph", "action": "decodes telegraph ticker", "voted_exit": 2},
+        "Vesper": {"target_fixture": "cabinets", "action": "picks lock on ledger cabinet", "voted_exit": 2},
+        "Beatrice": {"target_fixture": "stove", "action": "warms hands by coals", "voted_exit": 3},
+        "The Curator": {"target_fixture": "floorboards", "action": "inspects damp timber", "voted_exit": 3},
+    }
+    res1 = engine.execute_room_turn(intents)
+    assert not res1["transitioned"], "Should not transition on split vote before progress full"
+    assert engine.current_room_id == 1
+    assert engine.characters["Julian"]["current_fixture"] == "telegraph"
+    assert engine.room_progress > 15
+
+    # Turn 2: Consensus reached on Node 3 (Beatrice, Curator, Julian pivot)
+    intents2 = {
+        "Julian": {"target_fixture": "telegraph", "action": "warns about the bridge", "voted_exit": 3},
+        "Vesper": {"target_fixture": "cabinets", "action": "reluctantly agrees", "voted_exit": 2},
+        "Beatrice": {"target_fixture": "stove", "action": "prepares climbing gear", "voted_exit": 3},
+        "The Curator": {"target_fixture": "floorboards", "action": "points to trapdoor", "voted_exit": 3},
+    }
+    res2 = engine.execute_room_turn(intents2)
+    assert res2["transitioned"], "Party should have transitioned on majority consensus"
+    assert engine.current_room_id == 3, f"Expected room 3, got {engine.current_room_id}"
+    assert engine.scene_number == 2
+    assert any("THE TROUPE HAS REACHED CONSENSUS" in log for log in res2["action_log"])
+    print("[PASS] Room fixtures, freeform actions, and consensus transitions verified.")
+
+
 if __name__ == "__main__":
     print("Running StageEngine Verification Tests...")
     test_spatial_adjacency()
@@ -117,4 +152,5 @@ if __name__ == "__main__":
     test_ghost_speech_verification()
     test_rotten_timber_weight_trap()
     test_tension_dial_and_fog()
+    test_room_fixtures_and_consensus_transition()
     print("\nALL STAGE ENGINE TESTS PASSED CLEANLY!")

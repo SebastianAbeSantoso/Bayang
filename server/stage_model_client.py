@@ -4,10 +4,11 @@ server/stage_model_client.py
 AI Theatrical Script Generator and Generate-Verify-Repair loop
 for "The World's a Stage", powered by Google DeepMind Gemma 2 on AMD MI300X.
 
-Validates spatial adjacency, ghost dialogue prevention, and inventory consistency
-against the deterministic StageEngine before rendering to the client.
+Validates spatial adjacency, room fixture occupancy, ghost dialogue prevention,
+and inventory consistency against the deterministic StageEngine before rendering
+to the client.
 
-Strictly zero em dashes across all code and text. Zero external dependencies.
+Strictly zero em dashes across all code, prompt strings, and comments. Zero external dependencies.
 """
 
 import json
@@ -38,29 +39,52 @@ def compute_cost_usd(prompt_tokens: int, completion_tokens: int) -> Dict[str, An
 STAGE_DIRECTOR_SYSTEM_PROMPT = """You are the Lead Playwright and Stage Director for 'The World's a Stage', a dark Victorian theatrical visual novel.
 Your cast consists of 4 autonomous actors (Julian the Archivist, Vesper the Smuggler, Beatrice the Machinist, and The Curator).
 
-The player is the Stage Director who manipulates environmental cues, stage lighting, blocked routes, and tension levels.
-You write the scene's narration, character dialogue reactions, and decide where each character attempts to move based on their personality traits and psychological flaws.
+The player is the Stage Director who manipulates environmental cues, stage lighting, blocked doors, and tension levels.
+The game takes place inside a physical room on a mountain journey. Each room has interactive architectural fixtures and forward exit doors.
+Characters move freeform inside the room, investigate fixtures, converse, react to Director interventions, and advocate for which exit door the troupe should take next.
 
 STRICT DRAMATIC CONSTRAINTS:
-1. SPATIAL REALITY: Characters can ONLY move along connected edges in the stage graph. They CANNOT teleport across unconnected nodes.
-2. STAGE CURTAINS: If a pathway is blocked by a dropped curtain, characters CANNOT cross it. They must react to the barrier and choose an alternate adjacent path.
+1. SPATIAL REALITY: Characters can ONLY move between fixtures that exist in the active room, and can ONLY vote to exit through connected unblocked doors.
+2. STAGE CURTAINS: If an exit door is blocked by a dropped velvet curtain, characters CANNOT cross it. They must react to the barrier and pivot to an unblocked alternative door.
 3. MORTALITY: Deceased characters CANNOT speak, move, or act. Living characters must react somberly to fallen companions.
 4. PERSONALITY LEVERS:
-   - Julian (cautious, fearful of dark nodes without spotlight, high curiosity).
-   - Vesper (agile, selfish, carries 110kg heavy contraband, wants fastest route).
-   - Beatrice (frail, hates rugged paths, skilled with tools and locks).
+   - Julian (cautious, fearful of dark areas without spotlight, high curiosity, reviews records).
+   - Vesper (agile, pragmatic, carries 110kg heavy contraband, pushes for fastest route).
+   - Beatrice (frail, hates rugged scree, skilled with tools, examines locks and machinery).
    - The Curator (cryptic, speaks in stage directions, impervious to fog).
 
 You MUST output strictly valid JSON matching this schema:
 {
   "scene_title": "string (theatrical scene title)",
-  "narration": "string (atmospheric stage directions describing movement and tension)",
+  "narration": "string (atmospheric stage directions describing movements and room tension)",
   "dialogue": [
     {
       "speaker": "Julian | Vesper | Beatrice | The Curator",
       "line": "string"
     }
   ],
+  "character_actions": {
+    "Julian": {
+      "target_fixture": "string (valid fixture id in current room)",
+      "action": "string (natural physical action performed)",
+      "voted_exit": integer (target next node id)
+    },
+    "Vesper": {
+      "target_fixture": "string",
+      "action": "string",
+      "voted_exit": integer
+    },
+    "Beatrice": {
+      "target_fixture": "string",
+      "action": "string",
+      "voted_exit": integer
+    },
+    "The Curator": {
+      "target_fixture": "string",
+      "action": "string",
+      "voted_exit": integer
+    }
+  },
   "character_intents": {
     "Julian": integer (target node id),
     "Vesper": integer (target node id),
@@ -101,112 +125,157 @@ def _call_amd_api(messages: List[Dict[str, str]], max_tokens: int = 800) -> Tupl
 def _generate_local_preview_turn(stage: StageEngine, director_action_summary: str) -> Dict[str, Any]:
     """
     High-fidelity deterministic script generator when no live AMD API key is present.
-    Enforces 100% reliable local preview without crashes.
+    Enforces 100% reliable local preview with natural freeform room movement and dialogue.
     """
-    scene = stage.scene_number
+    current_room = stage.nodes[stage.current_room_id]
+    room_id = stage.current_room_id
     living_chars = [cid for cid, c in stage.characters.items() if c["is_alive"]]
-    dead_chars = [cid for cid, c in stage.characters.items() if not c["is_alive"]]
 
     dialogue = []
+    actions = {}
     intents = {}
 
-    # Scene 1: Platform gathering
-    if scene == 1:
-        scene_title = "Scene I: The Whistle on the Marble"
+    # Check blocked edges from this room
+    blocked_targets = [to_n for (frm, to_n) in stage.blocked_edges if frm == room_id]
+
+    if room_id == 1:
+        scene_title = "Scene I: The Whistle in the Ticket Hall"
         narration = (
-            "The brass lantern flickers against the damp Victorian ironwork. "
-            "A low fog horn wails across the valley as the troupe prepares to cross the pass."
+            f"Inside the {current_room['name']}, cold mountain mist seeps beneath the door jamb. "
+            "The brass telegraph keys chatter softly in the silence as the cast gathers around the iron stove."
         )
+
+        # Decide voted exits
+        if 2 in blocked_targets:
+            vesper_vote = 3
+            vesper_line = "Someone dropped the velvet curtain across the upper bridge door! Blast it... we are forced into the valley scree."
+        else:
+            vesper_vote = 2
+            vesper_line = "I am not trudging through mud and wet scree with my satchel. The Trestle Bridge is 92% safe in company records. I say we take the bridge."
+
+        beatrice_vote = 3
+        beatrice_line = "Company records were written before the winter freeze, Vesper. Those timber supports creak in the wind. The ravine shelter is rough, but safe."
+
+        if 2 in blocked_targets:
+            julian_vote = 3
+            julian_line = "With the upper door barricaded, the telegraph records agree: our only viable crossing is through the lower ravine hatch."
+        else:
+            julian_vote = 2
+            julian_line = "The telegraph records confirm the express leaves at midnight. We cannot afford the extra hour in the ravine unless the bridge is truly impassable."
+
+        curator_vote = vesper_vote
+        curator_line = "The stage directions are clear. Every decision carries weight across the chasm."
+
+        # Assign room fixtures and actions
         if "Julian" in living_chars:
-            dialogue.append({
-                "speaker": "Julian",
-                "line": "The archives record two routes ahead: the high Trestle Bridge and the rugged Valley Bypass. The bridge looks far faster on paper.",
-            })
+            actions["Julian"] = {"target_fixture": "telegraph", "action": "decodes telegraph ticker", "voted_exit": julian_vote}
+            intents["Julian"] = julian_vote
+            dialogue.append({"speaker": "Julian", "line": julian_line})
+
         if "Vesper" in living_chars:
-            # Check if Route 1->2 is blocked
-            if (1, 2) in stage.blocked_edges:
-                dialogue.append({
-                    "speaker": "Vesper",
-                    "line": "Someone dropped the velvet stage curtain across the Trestle Bridge! Blast it... we are forced into the valley scree.",
-                })
-                intents["Vesper"] = 3
-            else:
-                dialogue.append({
-                    "speaker": "Vesper",
-                    "line": "I am not crawling through muddy ditches with my satchel. The Trestle Bridge is 92% safe in company records. I am crossing.",
-                })
-                intents["Vesper"] = 2
+            actions["Vesper"] = {"target_fixture": "cabinets", "action": "inspects the locked ledger drawer", "voted_exit": vesper_vote}
+            intents["Vesper"] = vesper_vote
+            dialogue.append({"speaker": "Vesper", "line": vesper_line})
 
         if "Beatrice" in living_chars:
-            intents["Beatrice"] = 3 if (1, 2) in stage.blocked_edges else (2 if "Vesper" in living_chars and intents.get("Vesper") == 2 else 3)
-            dialogue.append({
-                "speaker": "Beatrice",
-                "line": "My wrench is packed, but these old timbers look fragile beneath the frost. Mind your step.",
-            })
-
-        if "Julian" in living_chars:
-            intents["Julian"] = intents.get("Beatrice", 3)
+            actions["Beatrice"] = {"target_fixture": "stove", "action": "warms numb fingers over coal embers", "voted_exit": beatrice_vote}
+            intents["Beatrice"] = beatrice_vote
+            dialogue.append({"speaker": "Beatrice", "line": beatrice_line})
 
         if "The Curator" in living_chars:
-            intents["The Curator"] = intents.get("Vesper", 2)
-            dialogue.append({
-                "speaker": "The Curator",
-                "line": "The stage directions are clear. Every decision carries weight across the chasm.",
-            })
+            actions["The Curator"] = {"target_fixture": "floorboards", "action": "examines the creaking floorboards", "voted_exit": curator_vote}
+            intents["The Curator"] = curator_vote
+            dialogue.append({"speaker": "The Curator", "line": curator_line})
 
-    elif scene == 2:
-        scene_title = "Scene II: Fractured Timber & Scree"
-        narration = "The wind bites violently as the first leg of the journey reveals the hidden reality of the mountain."
+    elif room_id == 2:
+        scene_title = "Scene II: Over the Gaping Abyss"
+        narration = (
+            "The wooden trestle groans violently beneath the wind. Frost glazes the narrow ties, "
+            "and hundreds of feet below, the wailing fog churns across jagged rocks."
+        )
         for cid in living_chars:
-            intents[cid] = 4  # Converge toward Signal Tower (Node 4)
+            intents[cid] = 4
+            actions[cid] = {"target_fixture": "rotted_timber", "action": "carefully tests footing on the timber span", "voted_exit": 4}
 
         if "Vesper" in living_chars:
-            if stage.characters["Vesper"]["node"] == 2:
+            if stage.characters["Vesper"]["node"] == 2 and 2 in stage.spotlighted_nodes:
                 dialogue.append({
                     "speaker": "Vesper",
-                    "line": "The timber groaned under my boots! I had to jettison the contraband to keep from plunging into the abyss!",
+                    "line": "The spotlight beam caught the fractured beam just in time! I had to ditch the heavy satchel to keep the span from splitting!",
                 })
             else:
                 dialogue.append({
                     "speaker": "Vesper",
-                    "line": "The valley rocks tore through my boots, but at least the ground did not swallow us whole.",
+                    "line": "The timber groaned under my boots! That was far too close... keep moving toward the Signal Tower!",
                 })
-        if "Julian" in living_chars:
-            dialogue.append({
-                "speaker": "Julian",
-                "line": "The Signal Tower stands ahead. If we can reach the telegraph switch, we can signal the train.",
-            })
 
-    elif scene == 3:
-        scene_title = "Scene III: The Signal Outpost"
-        narration = "A heavy iron gate bars the pass before the Signal Tower. The fog creeps up the mountainside."
         if "Beatrice" in living_chars:
             dialogue.append({
                 "speaker": "Beatrice",
-                "line": "The padlock is rusted shut. Stand back, let me put my spanner to the bolt.",
+                "line": "Do not look down. Step only where the iron bolts hold the stringers together.",
             })
-        if (4, 5) in stage.blocked_edges:
-            for cid in living_chars:
-                intents[cid] = 6
-        else:
-            for cid in living_chars:
-                intents[cid] = 5 if cid in ("Vesper", "The Curator") else 6
 
-    else:
-        scene_title = f"Scene {scene}: The Terminal Beckons"
-        narration = "The locomotive's white steam plume cuts through the gathering gloom. The end of the stage is in sight."
+    elif room_id == 3:
+        scene_title = "Scene II: Sheltered in the Canyon Scree"
+        narration = (
+            "The canyon walls loom like black monoliths. The wind is muffled here, but the sharp scree "
+            "bites through leather soles with every step."
+        )
         for cid in living_chars:
-            intents[cid] = 7  # All head to goal
+            intents[cid] = 4
+            actions[cid] = {"target_fixture": "hearth", "action": "takes momentary shelter near the stone hearth", "voted_exit": 4}
+
+        if "Beatrice" in living_chars:
+            dialogue.append({
+                "speaker": "Beatrice",
+                "line": "My boots are shredded, but the cliff wall holds steady. The ascending tunnel to the Signal Tower is just ahead.",
+            })
         if "Julian" in living_chars:
             dialogue.append({
                 "speaker": "Julian",
-                "line": "The terminal gates! Keep moving, do not let the fog claim our steps!",
+                "line": "The compass needle is steadying. Up the stone stairs, everyone.",
+            })
+
+    elif room_id == 4:
+        scene_title = "Scene III: The Locked Junction Tower"
+        narration = (
+            "Inside the Signal Tower, the massive iron track-switch gate stands padlocked. "
+            "Behind, the wailing fog climbs the gorge, devouring the lower paths."
+        )
+        next_vote = 6 if (4, 5) in stage.blocked_edges else 5
+        for cid in living_chars:
+            intents[cid] = next_vote
+            actions[cid] = {"target_fixture": "gate_lock", "action": "attempts to breach the chained gate", "voted_exit": next_vote}
+
+        if "Beatrice" in living_chars:
+            dialogue.append({
+                "speaker": "Beatrice",
+                "line": "The padlock is seized with rust. Stand back, let me put the cold iron spanner to the hasp!",
+            })
+        if "Julian" in living_chars:
+            dialogue.append({
+                "speaker": "Julian",
+                "line": "The fog has already swallowed the crossing behind us! Break the lock, Beatrice!",
+            })
+
+    else:
+        scene_title = f"Scene {stage.scene_number}: The Final Ascent"
+        narration = "The white steam plume of the Midnight Express cuts through the freezing mountain twilight. Salvation is at hand."
+        for cid in living_chars:
+            intents[cid] = 7
+            actions[cid] = {"target_fixture": "locomotive", "action": "sprints toward the departure platform", "voted_exit": 7}
+
+        if "Julian" in living_chars:
+            dialogue.append({
+                "speaker": "Julian",
+                "line": "The terminal gates! Keep running, do not let the fog claim our steps!",
             })
 
     return {
         "scene_title": scene_title,
         "narration": narration,
         "dialogue": dialogue,
+        "character_actions": actions,
         "character_intents": intents,
     }
 
@@ -216,7 +285,7 @@ def _validate_turn_script(stage: StageEngine, script: Dict[str, Any]) -> List[Di
     Strict verifier asserting:
     1. Schema completeness.
     2. Speaker validity (no ghost dialogue).
-    3. Movement validity (no spatial breaches, no crossing blocked curtains).
+    3. Room fixture validity and exit legality (no spatial breaches, no crossing blocked curtains).
 
     Returns a list of repairs performed or raises AssertionError on irrecoverable payload.
     """
@@ -227,9 +296,6 @@ def _validate_turn_script(stage: StageEngine, script: Dict[str, Any]) -> List[Di
 
     if "dialogue" not in script or not isinstance(script["dialogue"], list):
         raise AssertionError("Missing or malformed 'dialogue' list.")
-
-    if "character_intents" not in script or not isinstance(script["character_intents"], dict):
-        raise AssertionError("Missing or malformed 'character_intents' map.")
 
     # 1. Verify Dialogue Speakers
     cleaned_dialogue = []
@@ -246,11 +312,30 @@ def _validate_turn_script(stage: StageEngine, script: Dict[str, Any]) -> List[Di
             cleaned_dialogue.append(entry)
     script["dialogue"] = cleaned_dialogue
 
-    # 2. Verify Character Movement Intents
+    # 2. Verify Character Movement & Exit Intents
+    # Handle either character_actions or character_intents
+    raw_intents = script.get("character_intents", {})
+    raw_actions = script.get("character_actions", {})
+
     repaired_intents = {}
-    for cid, target_node in script["character_intents"].items():
-        if cid not in stage.characters:
+    repaired_actions = {}
+
+    for cid in stage.characters.keys():
+        char = stage.characters[cid]
+        if not char["is_alive"]:
             continue
+
+        # Extract target node intent
+        target_node = None
+        if cid in raw_intents and isinstance(raw_intents[cid], int):
+            target_node = raw_intents[cid]
+        elif cid in raw_actions and isinstance(raw_actions[cid], dict):
+            target_node = raw_actions[cid].get("voted_exit")
+
+        if target_node is None:
+            target_node = char.get("node", stage.current_room_id)
+
+        # Validate macro move or exit vote
         valid_move, reason = stage.validate_move(cid, target_node)
         if not valid_move:
             # Fallback: keep at current node or find legal adjacent node
@@ -265,11 +350,33 @@ def _validate_turn_script(stage: StageEngine, script: Dict[str, Any]) -> List[Di
                 "issue": f"{cid} attempted illegal move to Node {target_node} ({reason}).",
                 "action": f"Rerouted {cid} to legal Node {repaired_node}.",
             })
-            repaired_intents[cid] = repaired_node
+            target_node = repaired_node
+
+        repaired_intents[cid] = target_node
+
+        # Validate fixture action
+        if cid in raw_actions and isinstance(raw_actions[cid], dict):
+            act_dict = dict(raw_actions[cid])
+            target_fix = act_dict.get("target_fixture")
+            if target_fix and not stage.validate_fixture(stage.current_room_id, target_fix):
+                default_fix = stage.nodes[stage.current_room_id].get("default_fixture", "stove")
+                repairs.append({
+                    "rule": "Fixture Adjacency Enforced",
+                    "issue": f"Fixture '{target_fix}' does not exist in {stage.nodes[stage.current_room_id]['name']}.",
+                    "action": f"Positioned {cid} at default fixture '{default_fix}'.",
+                })
+                act_dict["target_fixture"] = default_fix
+            act_dict["voted_exit"] = target_node
+            repaired_actions[cid] = act_dict
         else:
-            repaired_intents[cid] = target_node
+            repaired_actions[cid] = {
+                "target_fixture": char.get("current_fixture", "stove"),
+                "action": "Standing guard in the room.",
+                "voted_exit": target_node,
+            }
 
     script["character_intents"] = repaired_intents
+    script["character_actions"] = repaired_actions
     return repairs
 
 
@@ -302,19 +409,20 @@ def generate_stage_turn(
     user_prompt = f"""
 CURRENT STAGE STATE:
 Scene: {stage_state['scene_number']} of {stage_state['max_scenes']}
+Active Room: Node {stage_state['current_room_id']} ({stage_state['current_room']['name']})
+Room Progress: {stage_state['room_progress']}%
+Room Fixtures: {[f['id'] + ': ' + f['name'] for f in stage_state['current_room'].get('fixtures', [])]}
+Room Exits: {[e['name'] + ' -> Node ' + str(e['target_node']) for e in stage_state['current_room'].get('exits', [])]}
 Tension Dial: {stage_state['tension_dial']}
 Fog Position: Node {stage_state['fog_node']} (Lethal)
-Spotlight: Nodes {stage_state['spotlighted_nodes']}
+Spotlight: Nodes {stage_state['spotlighted_nodes']}, Fixture {stage_state.get('spotlighted_fixture')}
 Blocked Routes: {stage_state['blocked_edges']}
 
 DIRECTOR'S INTERVENTION THIS TURN:
 {director_action_summary}
 
-CHARACTERS:
+CHARACTERS IN ROOM:
 {json.dumps(stage_state['characters'], indent=2)}
-
-STAGE GRAPH EDGES:
-{stage_state['edges']}
 
 Write the theatrical turn script in valid JSON matching the schema.
 """
@@ -343,7 +451,7 @@ Write the theatrical turn script in valid JSON matching the schema.
                 messages.append({"role": "assistant", "content": str(raw_text) if 'raw_text' in locals() else "{}"})
                 messages.append({
                     "role": "user",
-                    "content": f"VALIDATION ERROR: {str(exc)}. Repair the JSON output to strictly adhere to graph adjacency and alive characters.",
+                    "content": f"VALIDATION ERROR: {str(exc)}. Repair the JSON output to strictly adhere to room fixtures, graph adjacency, and alive characters.",
                 })
             else:
                 # Fall back to deterministic script on exhaustion

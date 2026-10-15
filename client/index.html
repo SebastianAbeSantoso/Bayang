@@ -71,24 +71,48 @@
             <div class="board-title">
               <span class="board-seal">✦</span>
               <div>
-                <h3>Victorian Mountain Pass · Stage Layout</h3>
-                <small>Autonomous Character Pathfinding · Physics &amp; Structural Limits Enforced</small>
+                <h3>Victorian Mountain Pass · Stage Journey</h3>
+                <small>Macro Route Tree &amp; Micro Room Stage Diorama · Deterministic Rules Enforced</small>
               </div>
             </div>
             <div class="stage-board-actions">
               <div class="stage-legend">
-                <span><i class="legend-dot dot-lit"></i> Lit</span>
-                <span><i class="legend-dot dot-dim"></i> Dim / Rotted (150kg)</span>
-                <span><i class="legend-dot dot-dark"></i> Dark Scree</span>
+                <span><i class="legend-dot dot-lit"></i> Active Room</span>
+                <span><i class="legend-dot dot-dim"></i> Unvisited Room</span>
+                <span><i class="legend-dot dot-dark"></i> Cleared Room</span>
                 <span><i class="legend-dot dot-fog"></i> Wailing Fog</span>
               </div>
               <button id="stage-reset-btn" class="text-button" type="button">Reset Stage</button>
             </div>
           </div>
+
+          <!-- Macro Route Ribbon: Roguelike Mountain Path Progression -->
+          <div id="stage-route-ribbon" class="stage-route-ribbon">
+            <!-- Dynamically populated by client/app.js -->
+          </div>
+
+          <!-- Micro Room Stage Banner -->
+          <div id="room-stage-info" class="room-stage-info">
+            <div class="room-info-meta">
+              <span id="room-act-tag" class="room-act-tag">ACT I · GATHERING</span>
+              <h4 id="room-title-name">Room 1: The Station Office</h4>
+              <p id="room-desc-text">The cold marble ticket hall and telegraph post where the cast first gathers.</p>
+            </div>
+            <div class="room-progress-box">
+              <div class="room-progress-head">
+                <span class="progress-label">ROOM PROGRESS</span>
+                <span id="room-progress-pct" class="progress-val">15%</span>
+              </div>
+              <div class="room-progress-track">
+                <div id="room-progress-fill" class="room-progress-fill" style="width: 15%"></div>
+              </div>
+              <small id="room-consensus-status" class="consensus-hint">Cast exploring room fixtures; awaiting exit consensus.</small>
+            </div>
+          </div>
           
           <div class="stage-svg-wrap">
             <svg id="stage-svg" viewBox="0 0 840 340" class="stage-svg">
-              <!-- Dynamically populated by client/app.js -->
+              <!-- Dynamically populated room interior diorama by client/app.js -->
             </svg>
           </div>
 
