@@ -77,13 +77,15 @@ The profiler ingests tabular data (up to 100 KB) and outputs an immutable case d
   - 3-column fallback: If standard headers are missing in a 3-column table, defaults to 1 text column and 2 numeric columns.
 - **True Simpson's Paradox & Confounder Stratification**:
   When a 4th confounding column is provided (e.g. `weather` or `severity`), evaluates rates within each stratum. Detects true Simpson's reversals where Group A has a higher aggregate casualty rate, but Group B has a higher rate across every single individual stratum.
-- **Mathematical Outlier Detection**:
-  Calculates non-circular anomaly classifications:
-  - Baseline rate: `sum(events) / sum(opportunities)`
-  - Difference ratio: `group_rate / baseline_rate`
-  - Thin sample threshold: `group_opportunities < 0.12 * total_opportunities`
-  - Rate spike: `diff_ratio >= 2.0`
-  - Anomaly condition: `diff_ratio >= 2.0` or (`diff_ratio >= 1.75` and `is_thin_sample`).
+- **Biostatistical Anomaly Detection (Wilson Score & Binomial Z-Score)**:
+  Replaces arbitrary magic-number heuristics with peer-reviewed statistical confidence:
+  - Global baseline rate: $p_0 = \sum \text{events} / \sum \text{opportunities}$
+  - Two-sided 95% Wilson Score Interval (`wilson_score_interval`): Calculates asymmetric confidence intervals bounded in $[0, 1]$ that remain robust even on small sample sizes ($n < 30$) without producing negative bounds.
+  - Binomial Z-score (`binomial_z_score`): Evaluates standardized deviations from the baseline rate $Z = \frac{p - p_0}{\sqrt{p_0(1-p_0)/n}}$.
+  - Dynamic Exposure Sufficiency: A group is marked as thin-sample only when its expected events under the null hypothesis are sparse ($n \times p_0 < 4.0$) or its exposure represents less than half an equal share ($n < \text{total} / (2 \times \text{groups})$).
+  - Statistically Grounded Outlier: An anomaly is flagged when the group's Wilson lower bound exceeds the baseline rate ($ci_{\text{lower}} > p_0$), or when its binomial Z-score is statistically significant ($|Z| \ge 2.0$), or when a moderate rate elevation coincides with dynamic sample thinness.
+- **Interactive Schema Inspection & Custom Mapping**:
+  `inspect_csv_headers(csv_text)` parses headers, runs alias matching to predict the optimal configuration, and extracts a 3-row data preview. Allows users to override or remap arbitrary enterprise column names.
 - **Equalized Exposure Projections**:
   Normalizes exposure to the maximum observed volume (`max_opp`):
   `projected_events = round(rate * max_opp)`
@@ -165,9 +167,11 @@ The Field Guide system prompt is sealed:
    - *Risk Density*: Incident frequency relative to exposure.
    - *Incident Volume*: Raw unadjusted incident count.
    - *Random Variance*: Statistical noise or fluke.
-7. **Immediate Realm Consequence**:
+7. **Interactive Schema Mapping Modal**:
+   Provides a native `<dialog id="schema-modal">` featuring 4 dropdown column selectors (Group, Events, Exposure, Confounder) and a live 3-row data preview. Empowers users to ingest any arbitrary CSV or Kaggle dataset without editing column names.
+8. **Immediate Realm Consequence**:
    The backend generates narrative consequences reflecting the player's choice.
-8. **Telemetry & Cost Accounting**:
+9. **Telemetry & Cost Accounting**:
    Displays verification attempt count, inference latency, token counts, and compute economics ($0.0002/1k tokens on AMD Instinct vs $0.0050/1k tokens on commercial cloud).
 
 ---
@@ -180,7 +184,8 @@ All endpoints communicate via JSON over standard HTTP:
 |---|---|---|
 | `GET` | `/api/status` | Reports backend mode (`amd-configured` or `local-preview`) and model name. |
 | `GET` | `/api/samples` | Lists registered starter datasets. |
-| `POST` | `/api/profile` | Ingests CSV string, validates columns, returns case ID, groups, domain, and schema mapping. |
+| `POST` | `/api/inspect_headers` | Extracts CSV fieldnames, runs alias heuristic suggestions, and returns a 3-row preview for user mapping. |
+| `POST` | `/api/profile` | Ingests CSV string with optional `custom_mapping`, validates columns, returns case ID, groups, domain, and schema mapping. |
 | `POST` | `/api/quest` | Generates verified quest narrative. Strips private referee secret. |
 | `POST` | `/api/investigate` | Returns evidence records for `counts`, `exposure`, `rates`, or `outliers` (with stratification if present). |
 | `POST` | `/api/guide` | Queries the isolated Field Guide tutor. Decrements sparks. |
@@ -263,13 +268,14 @@ python server/test_server_api.py
 
 ### Test Assertions Verified:
 - Profiler correctly detects when incident volume contradicts risk density (`ranking_differs=True`).
+- Biostatistical anomaly detection computes asymmetric 95% Wilson Score intervals and standardized binomial Z-scores without external dependencies.
+- Dynamic exposure sufficiency correctly distinguishes true data sparsity ($n \times p_0 < 4$) from healthy sample volume.
 - Raw unaggregated event logs parse chronological streams and derive denominators from row counts.
 - Confounding strata test detects true Simpson's Paradox reversals where aggregate risk inverts across every subgroup.
 - Domain classifier accurately differentiates Cloud, Healthcare, Fantasy, and Tactical vocabularies.
-- Mathematical outlier conditions catch 2.0x baseline spikes and thin-sample traps.
+- Header inspector extracts schema candidates, produces 3-row previews, and accepts user custom mapping overrides.
 - Cost calculator computes accurate comparative billing metrics.
 - Generate-Verify-Repair loop validates schema, group coverage, and grounds truth consistency.
 - Field Guide rejects adversarial prompt injection attempts and refuses to leak route names.
-- Schema inference maps ad-hoc headers (`Region,Deaths,Population`) without errors.
 - What-If Equalized Exposure calculations scale casualties accurately.
-- HTTP server handles all routes with valid status codes and JSON envelopes.
+- HTTP server handles all routes (`/api/status`, `/api/samples`, `/api/inspect_headers`, `/api/profile`, `/api/quest`, `/api/investigate`, `/api/guide`, `/api/answer`) with valid status codes and JSON envelopes.
