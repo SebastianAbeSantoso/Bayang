@@ -917,30 +917,26 @@ const CHAR_CONFIG = {
   "The Curator": { code: "C", color: "#544163", class: "curator", name: "The Curator" },
 };
 
-// Mode Switcher between Stage Director and Living Ledger
-const tabStage = $("#mode-tab-stage");
-const tabLedger = $("#mode-tab-ledger");
+// Mode Switcher between Stage Director and Archival Folio Ledger
+const toggleLedgerBtn = $("#toggle-ledger-btn");
 const viewStage = $("#stage-experience");
 const viewLedger = $("#ledger-experience");
 
-if (tabStage && tabLedger) {
-  tabStage.addEventListener("click", () => {
-    tabStage.classList.add("active");
-    tabStage.setAttribute("aria-selected", "true");
-    tabLedger.classList.remove("active");
-    tabLedger.setAttribute("aria-selected", "false");
-    viewStage.hidden = false;
-    viewLedger.hidden = true;
-    renderStageBoard();
-  });
-
-  tabLedger.addEventListener("click", () => {
-    tabLedger.classList.add("active");
-    tabLedger.setAttribute("aria-selected", "true");
-    tabStage.classList.remove("active");
-    tabStage.setAttribute("aria-selected", "false");
-    viewStage.hidden = true;
-    viewLedger.hidden = false;
+if (toggleLedgerBtn && viewStage && viewLedger) {
+  toggleLedgerBtn.addEventListener("click", () => {
+    const isShowingLedger = !viewLedger.hidden;
+    if (isShowingLedger) {
+      viewStage.hidden = false;
+      viewLedger.hidden = true;
+      toggleLedgerBtn.innerHTML = `<span>⚜ Archival Folio</span>`;
+      toggleLedgerBtn.classList.remove("active");
+      renderStageBoard();
+    } else {
+      viewStage.hidden = true;
+      viewLedger.hidden = false;
+      toggleLedgerBtn.innerHTML = `<span>✦ Return to Stage</span>`;
+      toggleLedgerBtn.classList.add("active");
+    }
   });
 }
 
@@ -1077,30 +1073,63 @@ function renderRoomStageSVG() {
   const spotlightedNodes = stageState.data.spotlighted_nodes || [];
   const characters = Object.values(stageState.data.characters || {});
 
+  // Generate Stage Footlights
+  const footlights = [60, 140, 220, 300, 380, 460, 540, 620, 700, 780].map((fx) => `
+    <circle cx="${fx}" cy="334" r="3.5" class="footlight-lamp" />
+    <polygon points="${fx - 14},334 ${fx},318 ${fx + 14},334" fill="#fae6a2" opacity="0.07" />
+  `).join("");
+
   svg.innerHTML = `
     <defs>
-      <filter id="glow-gold" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur stdDeviation="5" result="blur" />
+      <filter id="glow-gold" x="-30%" y="-30%" width="160%" height="160%">
+        <feGaussianBlur stdDeviation="6" result="blur" />
         <feComposite in="SourceGraphic" in2="blur" operator="over" />
       </filter>
-      <linearGradient id="spotlight-beam" x1="0%" y1="0%" x2="0%" y2="100%">
+      <linearGradient id="spotlight-beam" x1="50%" y1="0%" x2="50%" y2="100%">
         <stop offset="0%" stop-color="#fff8e6" stop-opacity="0.9" />
-        <stop offset="40%" stop-color="#f6dfb2" stop-opacity="0.5" />
-        <stop offset="100%" stop-color="#e8cf99" stop-opacity="0.05" />
+        <stop offset="35%" stop-color="#fae3b4" stop-opacity="0.5" />
+        <stop offset="100%" stop-color="#dfcaa0" stop-opacity="0.02" />
       </linearGradient>
+      <linearGradient id="velvet-fold" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#551218" />
+        <stop offset="25%" stop-color="#7e1d25" />
+        <stop offset="50%" stop-color="#5a141b" />
+        <stop offset="75%" stop-color="#88222b" />
+        <stop offset="100%" stop-color="#4d1016" />
+      </linearGradient>
+      <filter id="paper-standee-shadow" x="-40%" y="-40%" width="180%" height="180%">
+        <feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-color="#2d2215" flood-opacity="0.25" />
+      </filter>
     </defs>
 
     <!-- Room Architecture: Walls & Floor -->
     <rect x="0" y="0" width="840" height="340" class="room-wall-bg" />
-    <rect x="0" y="0" width="840" height="24" fill="#eee5d3" stroke="#d5cbbb" stroke-width="1.5" />
-    <line x1="0" y1="75" x2="840" y2="75" stroke="#dcd3c1" stroke-width="1" />
-    <line x1="0" y1="285" x2="840" y2="285" class="room-floor-line" />
-    <line x1="0" y1="305" x2="840" y2="305" stroke="#ded5c4" stroke-width="1" />
-    <line x1="0" y1="325" x2="840" y2="325" stroke="#e6dece" stroke-width="1" />
+    <line x1="28" y1="45" x2="812" y2="45" stroke="#d5cabb" stroke-width="1.2" />
+    
+    <!-- Wainscoting Wall Panels -->
+    <line x1="160" y1="45" x2="160" y2="275" stroke="#e0d6c4" stroke-width="1" stroke-dasharray="6 8" />
+    <line x1="320" y1="45" x2="320" y2="275" stroke="#e0d6c4" stroke-width="1" stroke-dasharray="6 8" />
+    <line x1="480" y1="45" x2="480" y2="275" stroke="#e0d6c4" stroke-width="1" stroke-dasharray="6 8" />
+    <line x1="640" y1="45" x2="640" y2="275" stroke="#e0d6c4" stroke-width="1" stroke-dasharray="6 8" />
 
-    <!-- Architectural Pillars -->
-    <rect x="40" y="24" width="18" height="261" class="room-pillar" />
-    <rect x="635" y="24" width="18" height="261" class="room-pillar" />
+    <!-- Hardwood Floorboards -->
+    <line x1="0" y1="275" x2="840" y2="275" class="room-floor-line" />
+    <line x1="0" y1="290" x2="840" y2="290" stroke="#ded5c4" stroke-width="1" />
+    <line x1="0" y1="305" x2="840" y2="305" stroke="#e4dcce" stroke-width="1" />
+    <line x1="0" y1="320" x2="840" y2="320" stroke="#ede5d8" stroke-width="1" />
+
+    <!-- Top Proscenium Valance Drapery -->
+    <path d="M 0 0 L 840 0 L 840 28 Q 735 44 630 28 Q 525 44 420 28 Q 315 44 210 28 Q 105 44 0 28 Z" fill="url(#velvet-fold)" />
+    <path d="M 0 28 Q 105 44 210 28 Q 315 44 420 28 Q 525 44 630 28 Q 735 44 840 28" stroke="#c59b48" stroke-width="2.5" fill="none" />
+
+    <!-- Left & Right Fluted Mahogany Pilasters -->
+    <rect x="0" y="0" width="28" height="340" class="proscenium-column" />
+    <line x1="14" y1="28" x2="14" y2="340" stroke="#c59b48" stroke-width="1.5" stroke-dasharray="8 6" />
+    <rect x="812" y="0" width="28" height="340" class="proscenium-column" />
+    <line x1="826" y1="28" x2="826" y2="340" stroke="#c59b48" stroke-width="1.5" stroke-dasharray="8 6" />
+
+    <!-- Stage Footlight Lamps -->
+    ${footlights}
   `;
 
   // 1. Render Interactive Fixtures
@@ -1112,7 +1141,7 @@ function renderRoomStageSVG() {
     // Spotlight beam on fixture
     if (isLit) {
       const beam = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-      beam.setAttribute("points", `${f.x},24 ${f.x - 75},${f.y + 35} ${f.x + 75},${f.y + 35}`);
+      beam.setAttribute("points", `${f.x},28 ${f.x - 75},${f.y + 42} ${f.x + 75},${f.y + 42}`);
       beam.setAttribute("fill", "url(#spotlight-beam)");
       beam.setAttribute("class", "spotlight-cone");
       beam.setAttribute("filter", "url(#glow-gold)");
@@ -1122,23 +1151,126 @@ function renderRoomStageSVG() {
     // Fixture Card Rect
     const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     rect.setAttribute("x", f.x - 70);
-    rect.setAttribute("y", f.y - 35);
+    rect.setAttribute("y", f.y - 38);
     rect.setAttribute("width", 140);
-    rect.setAttribute("height", 70);
+    rect.setAttribute("height", 76);
     rect.setAttribute("class", "fixture-box");
     g.appendChild(rect);
 
+    // Handcrafted Vector Prop Vignette
+    const ftype = (f.type || "").toLowerCase();
+    const fid = (f.id || "").toLowerCase();
+    if (fid.includes("telegraph") || ftype.includes("desk")) {
+      // Brass Telegraph Key
+      const keyBase = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      keyBase.setAttribute("x", f.x - 62);
+      keyBase.setAttribute("y", f.y - 30);
+      keyBase.setAttribute("width", 26);
+      keyBase.setAttribute("height", 14);
+      keyBase.setAttribute("fill", "#3d2a1b");
+      keyBase.setAttribute("rx", "1");
+      g.appendChild(keyBase);
+
+      const keyKnob = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      keyKnob.setAttribute("cx", f.x - 52);
+      keyKnob.setAttribute("cy", f.y - 25);
+      keyKnob.setAttribute("r", "3");
+      keyKnob.setAttribute("fill", "#c59b48");
+      g.appendChild(keyKnob);
+
+      const tapeLine = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      tapeLine.setAttribute("d", `M ${f.x - 48} ${f.y - 23} Q ${f.x - 42} ${f.y - 18} ${f.x - 36} ${f.y - 24}`);
+      tapeLine.setAttribute("stroke", "#fff8e8");
+      tapeLine.setAttribute("stroke-width", "1.2");
+      tapeLine.setAttribute("fill", "none");
+      g.appendChild(tapeLine);
+    } else if (fid.includes("stove") || ftype.includes("hearth")) {
+      // Cast-Iron Potbelly Stove
+      const stoveBody = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      stoveBody.setAttribute("x", f.x - 60);
+      stoveBody.setAttribute("y", f.y - 32);
+      stoveBody.setAttribute("width", 22);
+      stoveBody.setAttribute("height", 18);
+      stoveBody.setAttribute("fill", "#26221e");
+      stoveBody.setAttribute("rx", "2");
+      g.appendChild(stoveBody);
+
+      const flue = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      flue.setAttribute("x1", f.x - 49);
+      flue.setAttribute("y1", f.y - 32);
+      flue.setAttribute("x2", f.x - 49);
+      flue.setAttribute("y2", f.y - 37);
+      flue.setAttribute("stroke", "#1c1916");
+      flue.setAttribute("stroke-width", "3");
+      g.appendChild(flue);
+
+      const grate = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      grate.setAttribute("x1", f.x - 57);
+      grate.setAttribute("y1", f.y - 22);
+      grate.setAttribute("x2", f.x - 41);
+      grate.setAttribute("y2", f.y - 22);
+      grate.setAttribute("stroke", "#e67e22");
+      grate.setAttribute("stroke-width", "1.8");
+      g.appendChild(grate);
+    } else if (fid.includes("trapdoor") || ftype.includes("floor")) {
+      // Trapdoor Planks with Iron Ring
+      const planks = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      planks.setAttribute("x", f.x - 62);
+      planks.setAttribute("y", f.y - 30);
+      planks.setAttribute("width", 26);
+      planks.setAttribute("height", 14);
+      planks.setAttribute("fill", "#2c2118");
+      g.appendChild(planks);
+
+      const seam = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      seam.setAttribute("x1", f.x - 62);
+      seam.setAttribute("y1", f.y - 23);
+      seam.setAttribute("x2", f.x - 36);
+      seam.setAttribute("y2", f.y - 23);
+      seam.setAttribute("stroke", "#18120d");
+      seam.setAttribute("stroke-width", "1.5");
+      g.appendChild(seam);
+
+      const ring = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      ring.setAttribute("cx", f.x - 49);
+      ring.setAttribute("cy", f.y - 23);
+      ring.setAttribute("r", "2.8");
+      ring.setAttribute("fill", "none");
+      ring.setAttribute("stroke", "#8c7755");
+      ring.setAttribute("stroke-width", "1.2");
+      g.appendChild(ring);
+    } else {
+      // Expedition Bureau / Map Table
+      const bureau = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      bureau.setAttribute("x", f.x - 62);
+      bureau.setAttribute("y", f.y - 32);
+      bureau.setAttribute("width", 24);
+      bureau.setAttribute("height", 16);
+      bureau.setAttribute("fill", "#423223");
+      bureau.setAttribute("rx", "1");
+      g.appendChild(bureau);
+
+      const divLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      divLine.setAttribute("x1", f.x - 62);
+      divLine.setAttribute("y1", f.y - 24);
+      divLine.setAttribute("x2", f.x - 38);
+      divLine.setAttribute("y2", f.y - 24);
+      divLine.setAttribute("stroke", "#c59b48");
+      divLine.setAttribute("stroke-width", "0.8");
+      g.appendChild(divLine);
+    }
+
     // Type Badge
     const badge = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    badge.setAttribute("x", f.x - 58);
-    badge.setAttribute("y", f.y - 18);
+    badge.setAttribute("x", f.x - 30);
+    badge.setAttribute("y", f.y - 22);
     badge.setAttribute("class", "fixture-badge");
     badge.textContent = `[${(f.type || "SET").toUpperCase()}]`;
     g.appendChild(badge);
 
     // Fixture Title
     const title = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    title.setAttribute("x", f.x - 58);
+    title.setAttribute("x", f.x - 62);
     title.setAttribute("y", f.y + 2);
     title.setAttribute("class", "fixture-title");
     title.textContent = f.name;
@@ -1146,10 +1278,10 @@ function renderRoomStageSVG() {
 
     // Fixture Short Description
     const sub = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    sub.setAttribute("x", f.x - 58);
-    sub.setAttribute("y", f.y + 20);
+    sub.setAttribute("x", f.x - 62);
+    sub.setAttribute("y", f.y + 22);
     sub.setAttribute("class", "fixture-desc");
-    const descShort = f.desc.length > 26 ? f.desc.slice(0, 24) + "..." : f.desc;
+    const descShort = f.desc.length > 27 ? f.desc.slice(0, 25) + "..." : f.desc;
     sub.textContent = descShort;
     g.appendChild(sub);
 
@@ -1171,7 +1303,7 @@ function renderRoomStageSVG() {
     // Door Spotlight
     if (isLit) {
       const beam = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-      beam.setAttribute("points", `${exit.x},24 ${exit.x - 55},${exit.y + 45} ${exit.x + 55},${exit.y + 45}`);
+      beam.setAttribute("points", `${exit.x},28 ${exit.x - 55},${exit.y + 45} ${exit.x + 55},${exit.y + 45}`);
       beam.setAttribute("fill", "url(#spotlight-beam)");
       beam.setAttribute("class", "spotlight-cone");
       beam.setAttribute("filter", "url(#glow-gold)");
@@ -1216,6 +1348,7 @@ function renderRoomStageSVG() {
       curtain.setAttribute("y", exit.y - 45);
       curtain.setAttribute("width", 100);
       curtain.setAttribute("height", 90);
+      curtain.setAttribute("fill", "url(#velvet-fold)");
       curtain.setAttribute("class", "curtain-drape");
       dg.appendChild(curtain);
 
@@ -1268,7 +1401,7 @@ function renderRoomStageSVG() {
     svg.appendChild(dg);
   });
 
-  // 3. Render Character Tokens at Room Fixtures
+  // 3. Render Character Paper Standees at Room Fixtures
   const charsByFixture = {};
   characters.forEach((char) => {
     if (!char.is_alive) return;
@@ -1283,28 +1416,56 @@ function renderRoomStageSVG() {
 
     charList.forEach((char, idx) => {
       const cfg = CHAR_CONFIG[char.id] || { code: "?", color: "#333", class: "julian" };
-      const offset = (idx - (count - 1) / 2) * 26;
+      const offset = (idx - (count - 1) / 2) * 32;
       const posX = fixture.x + offset;
-      const posY = fixture.y + 25;
+      const posY = fixture.y + 28;
 
       const tg = document.createElementNS("http://www.w3.org/2000/svg", "g");
       tg.setAttribute("class", "char-token");
-      tg.setAttribute("transform", `translate(${posX}, ${posY})`);
 
-      const tc = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      tc.setAttribute("r", "12");
-      tc.setAttribute("class", `token-circle ${cfg.class}`);
+      // Standee Base on Stage Floor
+      const base = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+      base.setAttribute("cx", posX);
+      base.setAttribute("cy", posY + 16);
+      base.setAttribute("rx", "14");
+      base.setAttribute("ry", "4");
+      base.setAttribute("class", "standee-base");
+      tg.appendChild(base);
 
-      const tt = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      tt.setAttribute("class", "token-text");
-      tt.textContent = cfg.code;
+      // Standee Paper Card
+      const card = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      card.setAttribute("x", posX - 13);
+      card.setAttribute("y", posY - 18);
+      card.setAttribute("width", "26");
+      card.setAttribute("height", "32");
+      card.setAttribute("rx", "3");
+      card.setAttribute("class", `standee-card ${cfg.class}`);
+      card.setAttribute("filter", "url(#paper-standee-shadow)");
+      tg.appendChild(card);
+
+      // Actor Initial
+      const letter = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      letter.setAttribute("x", posX);
+      letter.setAttribute("y", posY - 1);
+      letter.setAttribute("class", `standee-letter ${cfg.class}`);
+      letter.textContent = cfg.code;
+      tg.appendChild(letter);
+
+      // Floating Action Cue
+      if (char.room_action) {
+        const actionText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        actionText.setAttribute("x", posX);
+        actionText.setAttribute("y", posY - 23);
+        actionText.setAttribute("class", "standee-action-bubble");
+        const actShort = char.room_action.length > 18 ? char.room_action.slice(0, 16) + ".." : char.room_action;
+        actionText.textContent = actShort;
+        tg.appendChild(actionText);
+      }
 
       const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
-      title.textContent = `${char.name} at ${fixture.name}\nAction: ${char.room_action || "Investigating"}\nVoted Exit: Node ${char.voted_exit || "Undecided"}\nHP: ${char.hp}/${char.max_hp}, Stress: ${char.stress}%, Weight: ${char.total_weight_kg}kg`;
-
-      tg.appendChild(tc);
-      tg.appendChild(tt);
+      title.textContent = `${char.name} (${char.role})\nLocation: ${fixture.name}\nAction: ${char.room_action || "Investigating"}\nVoted Exit: Node ${char.voted_exit || "Undecided"}\nHP: ${char.hp}/${char.max_hp}, Stress: ${char.stress}%, Weight: ${char.total_weight_kg}kg`;
       tg.appendChild(title);
+
       svg.appendChild(tg);
     });
   });
@@ -1323,6 +1484,7 @@ function renderCastCards() {
     const hpPct = Math.max(0, Math.min(100, Math.round((c.hp / c.max_hp) * 100)));
     const stressPct = Math.max(0, Math.min(100, c.stress));
     const fatiguePct = Math.max(0, Math.min(100, c.fatigue));
+    const carriedItems = c.items && c.items.length > 0 ? c.items.join(", ") : "None";
 
     card.innerHTML = `
       <div class="cast-card-head">
@@ -1350,10 +1512,10 @@ function renderCastCards() {
         </div>
       </div>
       <div class="cast-burden">
-        <span>Load Weight: <strong>${c.total_weight_kg} kg</strong></span>
-        ${c.id === "Vesper" && c.total_weight_kg > 100 ? `<span style="color:#9e6a32;margin-left:6px">(Heavy Contraband Payload!)</span>` : ""}
+        <span>Load: <strong>${c.total_weight_kg} kg</strong> · Gear: ${carriedItems}</span>
+        ${c.id === "Vesper" && c.total_weight_kg > 100 ? `<span style="color:#8c5828;margin-left:6px">(Heavy Contraband Payload)</span>` : ""}
       </div>
-      <div style="font-size:9px;color:#5a5345;margin-bottom:6px;font-style:italic">
+      <div style="font-size:9.5px;color:#544d41;margin-bottom:6px;font-style:italic">
         Action: "${c.room_action || "Observing"}"
       </div>
       <p class="cast-flaw">"${c.flaw}"</p>

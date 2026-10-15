@@ -148,206 +148,875 @@
    THE WORLD'S A STAGE: REVERSE: 1999 STAGE AESTHETIC & DIRECTOR SUITE
    ========================================================================= */
 
-.experience-switcher{display:flex;gap:8px;align-items:center;background:#e7e1d2;padding:4px;border:1px solid #d2c8b4;border-radius:3px}
-.mode-tab-btn{display:flex;flex-direction:column;align-items:flex-start;background:transparent;border:0;padding:5px 12px;border-radius:2px;cursor:pointer;color:#676b63;text-align:left;transition:background .2s,color .2s}
-.mode-tab-btn strong{font-size:11px;font-family:var(--sans);font-weight:700;letter-spacing:.04em}
-.mode-tab-btn small{font-size:8px;font-family:var(--mono);color:#8d8778}
-.mode-tab-btn .tab-tag{display:inline-block;font:700 7px var(--mono);padding:1px 4px;border-radius:2px;background:#d8cfbe;color:#5a5446;margin-bottom:2px}
-.mode-tab-btn:hover{background:#ede6d8;color:#263b30}
-.mode-tab-btn.active{background:var(--green);color:#f7f4ea;box-shadow:0 1px 3px rgba(18,29,24,.25)}
-.mode-tab-btn.active small{color:#cad8cd}
-.mode-tab-btn.active .tab-tag{background:#162c24;color:#b8dfc4}
-
-.stage-hero{padding:28px 0 20px;border-bottom:1px solid var(--line)}
-.stage-kicker{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.stage-tag{font:9px var(--mono);letter-spacing:.1em;padding:5px 8px;background:#e5ded0;color:#614d2e;border:1px solid #d5c8b2;border-radius:2px}
-.stage-headline-row{display:grid;grid-template-columns:1fr 280px;gap:35px;align-items:center;margin-top:14px}
-.stage-headline-row h1{margin:0;font:600 clamp(32px,3.8vw,46px)/1.08 var(--serif);color:#1e3227;letter-spacing:-.025em}
-.stage-headline-row h1 em{font-weight:500;font-style:italic;color:#7e5b31}
-.stage-subtitle{margin:10px 0 0;font-size:12px;line-height:1.65;color:#585d54;max-width:680px}
-.stage-director-stats{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-.stat-card{background:#f6f2e8;border:1px solid #dcd4c2;padding:10px 12px;border-radius:2px;text-align:center}
-.stat-label{display:block;font:8px var(--mono);letter-spacing:.08em;color:#857962}
-.stat-num{display:block;font:700 20px var(--mono);color:#244436;margin:4px 0 2px}
-.stat-card small{display:block;font:8px var(--sans);color:#8d8778}
-
-/* Paper Stage Board Canvas */
-.stage-board-card{margin-top:22px;border:1px solid #d5cebc;background:#faf6ed;box-shadow:0 6px 24px rgba(27,38,32,.06);border-radius:3px;overflow:hidden}
-.stage-board-header{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-bottom:1px solid #ded5c2;background:#f2ece0}
-.board-title{display:flex;align-items:center;gap:10px}
-.board-seal{font-size:18px;color:#a8874a}
-.board-title h3{margin:0;font:600 15px var(--serif);color:#22362a}
-.board-title small{display:block;font:9px var(--mono);color:#7b786c}
-.stage-board-actions{display:flex;align-items:center;gap:18px}
-.stage-legend{display:flex;gap:12px;font:8px var(--mono);color:#737166}
-.stage-legend span{display:flex;align-items:center;gap:4px}
-.legend-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
-.dot-lit{background:#bd9453;box-shadow:0 0 4px #bd945388}
-.dot-dim{background:#9e6a38}
-.dot-dark{background:#414844}
-.dot-fog{background:#627974}
-
-.stage-svg-wrap{position:relative;width:100%;height:320px;background:radial-gradient(ellipse at 50% 40%,#f5eedf 0%,#ebe3d2 85%,#e0d7c3 100%)}
-.stage-svg{width:100%;height:100%;display:block}
-
-/* Stage SVG styling */
-.stage-track{stroke:#c5bcab;stroke-width:3;fill:none;stroke-linecap:round}
-.stage-track.track-blocked{stroke:#8b2424;stroke-width:3.5;stroke-dasharray:5 4}
-.stage-track.track-active{stroke:#395f4c;stroke-width:3}
-.curtain-banner{fill:#8b1e1e;rx:2}
-.curtain-text{fill:#fbe8e8;font:700 8px var(--mono);text-anchor:middle;letter-spacing:.08em}
-.node-circle{fill:#fbf7ef;stroke:#b0a592;stroke-width:2.5;transition:fill .3s,stroke .3s}
-.node-circle.node-lit{stroke:#a87e38;stroke-width:3;fill:#fffdf7;filter:drop-shadow(0 0 6px rgba(189,148,83,.45))}
-.node-circle.node-dim{stroke:#9e6231;stroke-width:2.5;fill:#f6eee2}
-.node-circle.node-dark{stroke:#46524b;stroke-width:2.5;fill:#e1ddd2}
-.node-circle.node-fog{stroke:#57746f;fill:#cfdad7;filter:blur(.5px)}
-.node-label{font:600 10px var(--sans);fill:#25382c;text-anchor:middle}
-.node-subtext{font:8px var(--mono);fill:#7a7263;text-anchor:middle}
-.node-hazard{font:700 8px var(--mono);fill:#9c5828;text-anchor:middle}
-
-.char-token{cursor:pointer;transition:transform .4s cubic-bezier(.22,1,.36,1)}
-.token-circle{stroke-width:2;stroke:#fff}
-.token-circle.julian{fill:#4a6778}
-.token-circle.vesper{fill:#9e6a2b}
-.token-circle.beatrice{fill:#7e4334}
-.token-circle.curator{fill:#544163}
-.token-text{fill:#fff;font:700 9px var(--mono);text-anchor:middle;dominant-baseline:central}
-
-/* Verifier Interception Banner */
-.stage-verifier-banner{display:flex;align-items:center;gap:14px;padding:12px 18px;background:#fbf3e6;border-top:1px solid #ebd9bf;border-left:4px solid #b87532}
-.verifier-icon{font-size:20px}
-.verifier-details{flex:1}
-.verifier-details strong{display:block;font:700 10px var(--mono);letter-spacing:.06em;color:#854917;margin-bottom:2px}
-.verifier-details p{margin:0;font-size:10px;line-height:1.45;color:#5a493a}
-.verifier-badge{padding:3px 7px;background:#eed8bb;border:1px solid #dcb588;border-radius:2px;font:700 8px var(--mono);color:#734015;letter-spacing:.06em}
-
-/* Execution Grid: Director Deck & Script Log */
-.stage-execution-grid{display:grid;grid-template-columns:360px 1fr;gap:20px;margin-top:22px}
-.director-deck{background:#f8f5ee;border:1px solid #dcd4c3;padding:22px 20px;border-radius:3px}
-.verb-selector-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:8px 0 14px}
-.verb-choice{display:flex;gap:8px;align-items:flex-start;padding:9px 10px;background:#fffdf8;border:1px solid #dcd5c4;border-radius:2px;cursor:pointer;text-align:left;transition:border-color .15s,background .15s}
-.verb-choice:hover{border-color:#7f9785;background:#f4f7f1}
-.verb-choice.selected{border-color:#38604d;background:#edf3eb;box-shadow:0 0 0 1px #38604d33}
-.verb-icon{font-size:14px;color:var(--gold)}
-.verb-info strong{display:block;font-size:11px;font-weight:600;color:#243a2c}
-.verb-info small{display:block;font-size:8px;font-family:var(--mono);color:#858276}
-
-.verb-param-box{background:#f1ece0;border:1px solid #ded5c2;padding:12px;border-radius:2px;margin-bottom:16px}
-.apply-verb-btn{margin-top:8px;width:100%;height:34px;background:#e5ded0;color:#495a4c;border:1px solid #c9bfa9}
-.apply-verb-btn:hover{background:#dad0bf}
-.verb-status-msg{margin-top:7px;padding:6px 8px;background:#e5efe4;border-left:2px solid #528a62;font:9px/1.4 var(--sans);color:#2a4f35}
-.rumor-text-wrap{margin-top:8px}
-.text-input{width:100%;height:36px;border:1px solid var(--line);background:#fff;padding:0 10px;font:11px var(--sans);border-radius:2px}
-
-.tension-control-block{margin:16px 0 18px;padding-top:14px;border-top:1px solid #ded6c4}
-.tension-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-.tension-readout{font:700 10px var(--mono);color:#925929}
-.tension-slider{width:100%;accent-color:#925929;cursor:pointer}
-.tension-markers{display:flex;justify-content:space-between;font:7px var(--mono);color:#918d80;margin-top:3px}
-.tension-note{display:block;font:8px/1.4 var(--sans);color:#827f74;margin-top:7px}
-
-.stage-advance-btn{height:46px;font-size:13px;letter-spacing:.04em}
-
-/* Script Panel & Performed Dialogue */
-.stage-script-panel{background:#faf8f2;border:1px solid #dcd4c3;padding:22px 24px;border-radius:3px;display:flex;flex-direction:column}
-.script-header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:12px;border-bottom:1px solid #ded5c2}
-.scene-act-tag{font:700 8px var(--mono);letter-spacing:.1em;color:#9b7a42}
-.script-header h2{margin:3px 0 0;font:600 22px var(--serif);color:#22362b}
-
-.stage-narration-box{margin:14px 0;padding:12px 14px;background:#f3eedf;border-left:3px solid #94723c;border-radius:0 2px 2px 0}
-.stage-direction-label,.dialogue-section-label,.hazards-section-label{display:block;font:700 8px var(--mono);letter-spacing:.09em;color:#886b3b;margin-bottom:5px}
-.stage-narration-box p{margin:0;font:italic 12px/1.65 var(--serif);color:#3c3933}
-
-.dialogue-stream{display:grid;gap:10px;margin-top:8px;max-height:260px;overflow-y:auto;padding-right:6px}
-.dialogue-card{display:flex;gap:12px;align-items:flex-start;background:#fffdf9;border:1px solid #ded7c6;padding:10px 12px;border-radius:2px}
-.dialogue-avatar{width:30px;height:30px;border-radius:50%;color:#fff;display:grid;place-items:center;font:700 11px var(--mono);flex-shrink:0}
-.dialogue-avatar.julian{background:#4a6778}
-.dialogue-avatar.vesper{background:#9e6a2b}
-.dialogue-avatar.beatrice{background:#7e4334}
-.dialogue-avatar.curator{background:#544163}
-.dialogue-content strong{display:block;font:600 11px var(--sans);color:#25392d;margin-bottom:2px}
-.dialogue-content p{margin:0;font:italic 11px/1.55 var(--serif);color:#474d44}
-
-.stage-hazards-section{margin-top:16px;border-top:1px solid #ded5c2;padding-top:12px}
-.hazards-stream{display:grid;gap:6px;max-height:140px;overflow-y:auto}
-.hazard-entry{padding:6px 9px;border-left:2px solid #8e5831;background:#f7efe5;font:9px/1.45 var(--mono);color:#6b3c1b}
-.hazard-entry.info{border-color:#5a786c;background:#edf3f0;color:#2f5446}
-
-/* Cast Ensemble Cards */
-.stage-cast-section{margin-top:28px;padding-top:22px;border-top:1px solid var(--line)}
-.cast-cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;margin-top:14px}
-.cast-card{background:#f8f5ee;border:1px solid #dad1bd;padding:14px;border-radius:3px}
-.cast-card.fallen{opacity:.55;filter:grayscale(60%)}
-.cast-card-head{display:flex;gap:10px;align-items:center}
-.cast-portrait{width:36px;height:36px;border-radius:50%;color:#fff;display:grid;place-items:center;font:700 13px var(--mono);flex-shrink:0}
-.cast-portrait.julian{background:#4a6778}
-.cast-portrait.vesper{background:#9e6a2b}
-.cast-portrait.beatrice{background:#7e4334}
-.cast-portrait.curator{background:#544163}
-.cast-meta strong{display:block;font:600 13px var(--serif);color:#22362b}
-.cast-meta small{display:block;font:8px var(--mono);color:#7f7768}
-.cast-vital-bars{margin:11px 0;display:grid;gap:6px}
-.vital-row{display:grid;grid-template-columns:55px 1fr 35px;gap:8px;align-items:center;font:8px var(--mono);color:#6f6c60}
-.vital-track{height:6px;background:#ded7c7;border-radius:3px;overflow:hidden}
-.vital-bar{height:100%;border-radius:3px}
-.vital-bar.hp{background:#4d7d59}
-.vital-bar.stress{background:#9e6a32}
-.vital-bar.fatigue{background:#7d4a3b}
-.cast-burden{padding:5px 8px;background:#f1ece0;border:1px dashed #d5ccba;border-radius:2px;font:8px var(--mono);color:#696355;margin-bottom:8px}
-.cast-flaw{margin:0;font:italic 10px/1.45 var(--serif);color:#62675e}
-
-@media(max-width:960px){
-  .stage-headline-row{grid-template-columns:1fr}
-  .stage-execution-grid{grid-template-columns:1fr}
-  .director-deck{order:2}
-  .stage-script-panel{order:1}
+:root {
+  --theater-bg: #14110e;
+  --theater-gold: #c59b48;
+  --theater-gold-bright: #e6be6d;
+  --velvet-drape: #781c24;
+  --velvet-drape-dark: #501319;
+  --brass-trim: #82632b;
+  --paper-cream: #fbf7ee;
+  --paper-parchment: #f2ece0;
+  --paper-shadow: #e0d7c3;
+  --ink-theater: #1d1915;
+  --char-julian: #2d4a5e;
+  --char-vesper: #8c5828;
+  --char-beatrice: #4e6558;
+  --char-curator: #5e3860;
 }
 
-/* Roguelike Route Ribbon (Macro Map) */
-.stage-route-ribbon{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:12px 16px;background:#f3eedf;border-top:1px solid #ded5c2;border-bottom:1px solid #ded5c2;overflow-x:auto}
-.ribbon-node{display:flex;align-items:center;gap:8px;padding:6px 10px;background:#fffdf8;border:1px solid #d8cfbc;border-radius:3px;font-size:10px;white-space:nowrap;transition:all .2s ease}
-.ribbon-node.active{border-color:#a27937;background:#fff8eb;box-shadow:0 0 0 1px #a2793740, 0 2px 6px rgba(162,121,55,.18)}
-.ribbon-node.visited{border-color:#537762;background:#eef4ee;color:#355642}
-.ribbon-node.fogged{border-color:#7f9891;background:#e5ebe9;color:#576b66;opacity:.7}
-.ribbon-badge{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font:700 9px var(--mono);background:#eee7d6;color:#615a4c}
-.ribbon-node.active .ribbon-badge{background:#a27937;color:#fff}
-.ribbon-node.visited .ribbon-badge{background:#4b735c;color:#fff}
-.ribbon-node.fogged .ribbon-badge{background:#778f88;color:#fff}
-.ribbon-title{font-weight:600;font-size:10px}
-.ribbon-arrow{color:#b6ae9d;font-size:11px}
+/* Theatrical Marquee Topbar */
+.theatrical-topbar {
+  height: 72px;
+  background: var(--theater-bg);
+  border-bottom: 2px solid var(--brass-trim);
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4px 22px rgba(0, 0, 0, 0.4);
+}
+.theatrical-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.theatrical-seal {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--theater-gold);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--theater-gold-bright);
+  background: radial-gradient(circle, #2d2318 0%, #14110e 100%);
+  font-size: 16px;
+  box-shadow: 0 0 10px rgba(197, 155, 72, 0.35);
+}
+.theatrical-titles {
+  display: flex;
+  flex-direction: column;
+}
+.theatrical-super {
+  font: 700 8.5px var(--mono);
+  letter-spacing: 0.14em;
+  color: #bfa068;
+  text-transform: uppercase;
+}
+.theatrical-logo {
+  margin: 1px 0 0;
+  font: 700 18px "Cinzel", Georgia, serif;
+  letter-spacing: 0.08em;
+  color: #faf5eb;
+}
+.theatrical-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.telemetry-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #1d1813;
+  border: 1px solid #423526;
+  border-radius: 2px;
+  font: 500 10px var(--mono);
+  color: #cad8cd;
+  letter-spacing: 0.04em;
+}
+.telemetry-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4c815e;
+  box-shadow: 0 0 6px #4c815e;
+  animation: pulseDot 2s infinite ease-in-out;
+}
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(0.85); }
+}
+.ledger-toggle-btn {
+  background: #241d16;
+  border: 1px solid #7d5e2a;
+  color: #dfbf7b;
+  font: 600 10.5px var(--sans);
+  padding: 6px 14px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.ledger-toggle-btn:hover {
+  background: #382c1f;
+  border-color: var(--theater-gold);
+  color: #faebd0;
+}
+.ledger-toggle-btn.active {
+  background: var(--velvet-drape);
+  border-color: #a8323c;
+  color: #fff;
+}
+
+/* Stage Proscenium Header */
+.stage-hero {
+  padding: 28px 0 22px;
+  border-bottom: 1px solid #d5cebc;
+}
+.stage-proscenium-header {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 32px;
+  align-items: center;
+}
+.marquee-block {
+  background: #fdfbf7;
+  border: 1px solid #dcd4c0;
+  border-left: 4px solid var(--brass-trim);
+  padding: 18px 24px;
+  border-radius: 2px;
+  box-shadow: 0 2px 10px rgba(40, 30, 20, 0.04);
+}
+.marquee-act {
+  font: 700 9px var(--mono);
+  letter-spacing: 0.14em;
+  color: #8f6a31;
+  text-transform: uppercase;
+  display: inline-block;
+  margin-bottom: 6px;
+}
+.marquee-title {
+  margin: 0;
+  font: 600 clamp(24px, 3vw, 34px)/1.15 "Cinzel", Georgia, serif;
+  letter-spacing: -0.01em;
+  color: #1e1b17;
+}
+.stage-subtitle {
+  margin: 10px 0 0;
+  font: 400 12.5px/1.65 "Libre Baskerville", Georgia, serif;
+  color: #555047;
+  max-width: 660px;
+}
+.stage-director-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.stat-card {
+  background: var(--paper-cream);
+  border: 1px solid #d7cdb8;
+  border-top: 3px solid var(--brass-trim);
+  padding: 12px 10px;
+  border-radius: 2px;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(40, 30, 20, 0.03);
+}
+.stat-label {
+  font: 700 8.5px var(--mono);
+  letter-spacing: 0.08em;
+  color: #837661;
+  display: block;
+}
+.stat-num {
+  font: 700 20px var(--mono);
+  color: #241e17;
+  margin: 5px 0 3px;
+  display: block;
+}
+.stat-card small {
+  font: 9px var(--sans);
+  color: #7d7768;
+  display: block;
+}
+
+/* Paper Stage Board Canvas Card */
+.stage-board-card {
+  margin-top: 22px;
+  border: 1px solid #d5cebc;
+  background: #faf6ed;
+  box-shadow: 0 8px 30px rgba(27, 38, 32, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.stage-board-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 13px 20px;
+  border-bottom: 1px solid #ded5c2;
+  background: var(--paper-parchment);
+}
+.board-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.board-seal {
+  font-size: 18px;
+  color: var(--theater-gold);
+}
+.board-title h3 {
+  margin: 0;
+  font: 600 16px "Cinzel", Georgia, serif;
+  color: #201c18;
+}
+.board-title small {
+  display: block;
+  font: 9px var(--mono);
+  color: #7b7567;
+  margin-top: 2px;
+}
+.stage-board-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.stage-legend {
+  display: flex;
+  gap: 14px;
+  font: 8.5px var(--mono);
+  color: #736d60;
+}
+.stage-legend span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.dot-lit {
+  background: var(--theater-gold);
+  box-shadow: 0 0 5px rgba(197, 155, 72, 0.6);
+}
+.dot-dim { background: #9e6a38; }
+.dot-dark { background: #414844; }
+.dot-fog { background: #627974; }
+
+/* Roguelike Mountain Pass Route Ribbon (Macro Map) */
+.stage-route-ribbon {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 18px;
+  background: #f4efe2;
+  border-top: 1px solid #ded6c2;
+  border-bottom: 1px solid #ded6c2;
+  overflow-x: auto;
+}
+.ribbon-node {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 12px;
+  background: #fffdf9;
+  border: 1px solid #d5cbba;
+  border-radius: 2px;
+  font-size: 11px;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+.ribbon-node.active {
+  border-color: var(--theater-gold);
+  background: #fffdf5;
+  box-shadow: 0 0 0 1px #c59b4866, 0 3px 10px rgba(197, 155, 72, 0.25);
+}
+.ribbon-node.visited {
+  border-color: #557964;
+  background: #eff5f0;
+  color: #2d4f3b;
+}
+.ribbon-node.fogged {
+  border-color: #8aa39c;
+  background: #e7eeec;
+  color: #546a64;
+  opacity: 0.72;
+}
+.ribbon-badge {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font: 700 9.5px var(--mono);
+  background: #eee6d4;
+  color: #5a5242;
+}
+.ribbon-node.active .ribbon-badge {
+  background: var(--theater-gold);
+  color: #fff;
+  box-shadow: 0 0 6px rgba(197, 155, 72, 0.5);
+}
+.ribbon-node.visited .ribbon-badge {
+  background: #426e54;
+  color: #fff;
+}
+.ribbon-node.fogged .ribbon-badge {
+  background: #738f88;
+  color: #fff;
+}
+.ribbon-title {
+  font: 600 11px "Cinzel", Georgia, serif;
+}
+.ribbon-arrow {
+  color: #b5ac99;
+  font-size: 12px;
+}
 
 /* Micro Room Stage Info Banner */
-.room-stage-info{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;background:#faf7ef;border-bottom:1px solid #ded5c2}
-.room-info-meta{flex:1;padding-right:20px}
-.room-act-tag{font:700 8px var(--mono);color:#9e7939;letter-spacing:.09em}
-.room-info-meta h4{margin:2px 0 3px;font:600 16px var(--serif);color:#243a2c}
-.room-info-meta p{margin:0;font-size:10px;color:#666052;line-height:1.4}
-.room-progress-box{width:240px;background:#f0e9dc;border:1px solid #d5cab5;padding:8px 12px;border-radius:3px}
-.room-progress-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
-.progress-label{font:700 8px var(--mono);color:#706652}
-.progress-val{font:700 10px var(--mono);color:#925929}
-.room-progress-track{height:6px;background:#ded3c0;border-radius:3px;overflow:hidden}
-.room-progress-fill{height:100%;background:linear-gradient(90deg,#9e7939,#528a62);border-radius:3px;transition:width .4s ease}
-.consensus-hint{display:block;margin-top:4px;font:italic 8px var(--serif);color:#736c5c}
+.room-stage-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 13px 20px;
+  background: #fbf8f0;
+  border-bottom: 1px solid #ded5c2;
+}
+.room-info-meta {
+  flex: 1;
+  padding-right: 24px;
+}
+.room-act-tag {
+  font: 700 8.5px var(--mono);
+  color: #926a27;
+  letter-spacing: 0.1em;
+}
+.room-info-meta h4 {
+  margin: 3px 0 4px;
+  font: 600 18px "Cormorant Garamond", Georgia, serif;
+  color: #203528;
+}
+.room-info-meta p {
+  margin: 0;
+  font: 400 11px/1.45 "Libre Baskerville", Georgia, serif;
+  color: #635d4f;
+}
+.room-progress-box {
+  width: 250px;
+  background: #f2ece0;
+  border: 1px solid #d5cab6;
+  padding: 9px 12px;
+  border-radius: 2px;
+}
+.room-progress-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.progress-label {
+  font: 700 8px var(--mono);
+  color: #786e58;
+  letter-spacing: 0.06em;
+}
+.progress-val {
+  font: 700 10.5px var(--mono);
+  color: #8c5a27;
+}
+.room-progress-track {
+  height: 6px;
+  background: #ded4c1;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.room-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #b88f42, #477c59);
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+.consensus-hint {
+  display: block;
+  margin-top: 5px;
+  font: italic 9px "Libre Baskerville", Georgia, serif;
+  color: #726b5b;
+}
 
-/* Room Stage SVG Diorama Styles */
-.room-wall-bg{fill:#f7f3e8;stroke:#d0c6b1;stroke-width:2}
-.room-floor-line{stroke:#cfc4ad;stroke-width:1.5;stroke-dasharray:4 4}
-.room-pillar{fill:#ede4d0;stroke:#c3b69d;stroke-width:1.5}
-.fixture-box{fill:#fffdf7;stroke:#c9beaa;stroke-width:1.5;rx:4;transition:all .2s ease;filter:drop-shadow(0 2px 4px rgba(60,50,30,.06))}
-.fixture-group:hover .fixture-box{stroke:#9e7939;filter:drop-shadow(0 3px 8px rgba(158,121,57,.25))}
-.fixture-badge{font:700 8px var(--mono);fill:#91682d;letter-spacing:.05em}
-.fixture-title{font:600 11px var(--serif);fill:#25382c}
-.fixture-desc{font:8px var(--sans);fill:#756f61}
-.door-frame{fill:#f0e8d7;stroke:#987e50;stroke-width:2;rx:3}
-.door-arch{fill:none;stroke:#987e50;stroke-width:1.5}
-.door-title{font:600 10px var(--serif);fill:#22362b;text-anchor:middle}
-.door-sub{font:8px var(--mono);fill:#787263;text-anchor:middle}
-.curtain-drape{fill:#7a2424;stroke:#5c1818;stroke-width:1.5}
-.curtain-gold-trim{stroke:#c99e46;stroke-width:2}
-.curtain-seal-rect{fill:#fff8eb;stroke:#a03232;stroke-width:1.2;rx:2}
-.curtain-seal-text{font:700 8px var(--mono);fill:#8a2020;text-anchor:middle}
-.spotlight-cone{opacity:.22;mix-blend-mode:multiply}
-.char-action-tag{font:italic 8px var(--serif);fill:#474d44;text-anchor:middle}
-.door-vote-pill{fill:#fff9ed;stroke:#a27937;stroke-width:1;rx:2}
-.door-vote-text{font:700 7.5px var(--mono);fill:#8a5e20;text-anchor:middle}
+/* Stage SVG Shadowbox Canvas */
+.stage-svg-wrap {
+  position: relative;
+  width: 100%;
+  height: 340px;
+  background: radial-gradient(ellipse at 50% 35%, #faf4e8 0%, #ebe2ce 85%, #dfd4be 100%);
+  box-shadow: inset 0 0 24px rgba(45, 35, 25, 0.12);
+}
+.stage-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Stage SVG Elements */
+.room-wall-bg { fill: #f6f0e2; stroke: #cfc4ad; stroke-width: 2; }
+.room-floor-line { stroke: #cfc4ad; stroke-width: 1.5; stroke-dasharray: 4 4; }
+.room-pillar { fill: #ede3cc; stroke: #c2b49b; stroke-width: 1.5; }
+.proscenium-drape { fill: var(--velvet-drape); stroke: var(--velvet-drape-dark); stroke-width: 1.5; }
+.proscenium-trim { stroke: var(--theater-gold); stroke-width: 2; }
+.proscenium-column { fill: #3a2a1d; stroke: #543e2b; stroke-width: 1.5; }
+.footlight-lamp { fill: #e8bf6a; filter: drop-shadow(0 0 4px #e8bf6a); }
+
+.fixture-box {
+  fill: #fffdf8;
+  stroke: #c8beaa;
+  stroke-width: 1.5;
+  rx: 3;
+  transition: all 0.2s ease;
+  filter: drop-shadow(0 2px 5px rgba(60, 50, 30, 0.08));
+}
+.fixture-group:hover .fixture-box {
+  stroke: var(--theater-gold);
+  filter: drop-shadow(0 3px 10px rgba(197, 155, 72, 0.3));
+}
+.fixture-badge { font: 700 8px var(--mono); fill: #8e6526; letter-spacing: 0.05em; }
+.fixture-title { font: 600 11.5px "Cinzel", Georgia, serif; fill: #1e1b17; }
+.fixture-desc { font: 8.5px "Libre Baskerville", Georgia, serif; fill: #6e6758; }
+
+.door-frame { fill: #f2ebd9; stroke: #8f7243; stroke-width: 2; rx: 3; }
+.door-arch { fill: none; stroke: #8f7243; stroke-width: 1.5; }
+.door-title { font: 600 10.5px "Cinzel", Georgia, serif; fill: #1e1b17; text-anchor: middle; }
+.door-sub { font: 8px var(--mono); fill: #756e5f; text-anchor: middle; }
+
+.curtain-drape { fill: var(--velvet-drape); stroke: var(--velvet-drape-dark); stroke-width: 1.5; }
+.curtain-gold-trim { stroke: var(--theater-gold); stroke-width: 2; }
+.curtain-seal-rect { fill: #fffdf8; stroke: #992323; stroke-width: 1.5; rx: 2; }
+.curtain-seal-text { font: 700 8px var(--mono); fill: #881c1c; text-anchor: middle; letter-spacing: 0.06em; }
+
+.spotlight-cone { opacity: 0.25; mix-blend-mode: multiply; }
+.door-vote-pill { fill: #fffaf0; stroke: #a27937; stroke-width: 1; rx: 2; }
+.door-vote-text { font: 700 7.5px var(--mono); fill: #8a5e20; text-anchor: middle; }
+
+/* Character Paper Cutout Standee */
+.char-token { cursor: pointer; transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1); }
+.standee-base { fill: #9e7f4c; stroke: #6e552e; stroke-width: 1; }
+.standee-card { stroke-width: 1.5; fill: #fffefb; }
+.standee-card.julian { stroke: var(--char-julian); }
+.standee-card.vesper { stroke: var(--char-vesper); }
+.standee-card.beatrice { stroke: var(--char-beatrice); }
+.standee-card.curator { stroke: var(--char-curator); }
+.standee-letter { font: 700 11px "Cinzel", Georgia, serif; text-anchor: middle; dominant-baseline: central; }
+.standee-letter.julian { fill: var(--char-julian); }
+.standee-letter.vesper { fill: var(--char-vesper); }
+.standee-letter.beatrice { fill: var(--char-beatrice); }
+.standee-letter.curator { fill: var(--char-curator); }
+.standee-action-bubble { font: italic 8px "Libre Baskerville", Georgia, serif; fill: #4a453b; text-anchor: middle; }
+
+/* Verifier Interception Banner */
+.stage-verifier-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 20px;
+  background: #fbf3e4;
+  border-top: 1px solid #ebd4b5;
+  border-left: 4px solid #b86e24;
+}
+.verifier-icon { font-size: 22px; }
+.verifier-details { flex: 1; }
+.verifier-details strong {
+  display: block;
+  font: 700 10.5px var(--mono);
+  letter-spacing: 0.08em;
+  color: #8c4714;
+  margin-bottom: 3px;
+}
+.verifier-details p {
+  margin: 0;
+  font: 11px/1.45 var(--sans);
+  color: #5c4735;
+}
+.verifier-badge {
+  padding: 4px 8px;
+  background: #ecd4b2;
+  border: 1px solid #d4a974;
+  border-radius: 2px;
+  font: 700 8.5px var(--mono);
+  color: #78380e;
+  letter-spacing: 0.06em;
+}
+
+/* Director Execution Grid */
+.stage-execution-grid {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 24px;
+  margin-top: 24px;
+}
+
+/* Prompter's Station */
+.prompter-box {
+  background: #f8f4eb;
+  border: 1px solid #d6cbba;
+  border-top: 3px solid var(--brass-trim);
+  padding: 22px 20px;
+  border-radius: 2px;
+  box-shadow: 0 4px 14px rgba(35, 25, 15, 0.04);
+}
+.prompter-seal {
+  color: var(--theater-gold);
+  font-size: 18px;
+}
+.verb-selector-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 10px 0 16px;
+}
+.verb-choice {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 11px;
+  background: #fffdf8;
+  border: 1px solid #d8cfbc;
+  border-radius: 2px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+.verb-choice:hover {
+  border-color: var(--brass-trim);
+  background: #fbf7ee;
+}
+.verb-choice.selected {
+  border-color: var(--brass-trim);
+  background: #f6efe0;
+  box-shadow: 0 0 0 1px #82632b66, 0 2px 6px rgba(130, 99, 43, 0.15);
+}
+.verb-icon-svg {
+  color: var(--brass-trim);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.verb-info strong {
+  display: block;
+  font: 600 11.5px var(--sans);
+  color: #241e17;
+  line-height: 1.25;
+}
+.verb-info small {
+  display: block;
+  font: 8.5px var(--mono);
+  color: #7d7667;
+  margin-top: 3px;
+  line-height: 1.3;
+}
+.verb-param-box {
+  background: #f2ece0;
+  border: 1px solid #d7cdba;
+  padding: 13px;
+  border-radius: 2px;
+  margin-bottom: 16px;
+}
+.apply-verb-btn {
+  margin-top: 10px;
+  width: 100%;
+  height: 36px;
+  background: #e8dfcd;
+  color: #3d3527;
+  border: 1px solid #c2b69e;
+  font: 600 11px var(--sans);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.apply-verb-btn:hover {
+  background: #dcceb8;
+}
+.verb-status-msg {
+  margin-top: 8px;
+  padding: 7px 10px;
+  background: #e7f0e6;
+  border-left: 3px solid #4d815c;
+  font: 10px/1.4 var(--sans);
+  color: #264b32;
+}
+
+/* Brass Metronome Pacing Dial */
+.brass-metronome {
+  margin: 18px 0 20px;
+  padding: 14px 14px 12px;
+  background: #f2ece0;
+  border: 1px solid #d5cab5;
+  border-left: 3px solid var(--brass-trim);
+  border-radius: 2px;
+}
+.tension-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.tension-readout {
+  font: 700 10.5px var(--mono);
+  color: #8c5a27;
+}
+.tension-slider {
+  width: 100%;
+  accent-color: var(--brass-trim);
+  height: 6px;
+  cursor: pointer;
+}
+.tension-markers {
+  display: flex;
+  justify-content: space-between;
+  font: 7.5px var(--mono);
+  color: #837d6e;
+  margin-top: 5px;
+}
+.tension-note {
+  display: block;
+  font: italic 9.5px/1.45 "Libre Baskerville", Georgia, serif;
+  color: #6a6353;
+  margin-top: 8px;
+}
+
+.stage-advance-btn {
+  height: 48px;
+  background: var(--velvet-drape);
+  color: #faf5eb;
+  border: 1px solid #9a2b34;
+  border-radius: 2px;
+  font: 600 12.5px var(--sans);
+  letter-spacing: 0.05em;
+  box-shadow: 0 3px 10px rgba(120, 28, 36, 0.25);
+  transition: all 0.2s ease;
+}
+.stage-advance-btn:hover:not(:disabled) {
+  background: #8e232d;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(120, 28, 36, 0.35);
+}
+
+/* Playwright's Prompt Book */
+.play-prompt-book {
+  background: #fdfbf7;
+  border: 1px solid #d8cfbc;
+  border-top: 3px solid var(--brass-trim);
+  padding: 22px 24px;
+  border-radius: 2px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 14px rgba(35, 25, 15, 0.04);
+}
+.script-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #ded5c2;
+}
+.scene-act-tag {
+  font: 700 8.5px var(--mono);
+  letter-spacing: 0.12em;
+  color: #926a27;
+}
+.script-header h2 {
+  margin: 3px 0 0;
+  font: 600 22px "Cinzel", Georgia, serif;
+  color: #1e1b17;
+}
+.stage-narration-box {
+  margin: 14px 0;
+  padding: 12px 16px;
+  background: #f7f2e5;
+  border-left: 3px solid var(--brass-trim);
+  border-radius: 0 2px 2px 0;
+}
+.stage-direction-label, .dialogue-section-label, .hazards-section-label {
+  display: block;
+  font: 700 8.5px var(--mono);
+  letter-spacing: 0.1em;
+  color: #856126;
+  margin-bottom: 6px;
+}
+.stage-narration-box p {
+  margin: 0;
+  font: italic 12.5px/1.65 "Libre Baskerville", Georgia, serif;
+  color: #3b352b;
+}
+.dialogue-stream {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+  max-height: 270px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+.dialogue-card {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: #fffdf9;
+  border: 1px solid #ded6c4;
+  padding: 11px 13px;
+  border-radius: 2px;
+}
+.dialogue-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font: 700 11px var(--mono);
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+.dialogue-avatar.julian { background: var(--char-julian); }
+.dialogue-avatar.vesper { background: var(--char-vesper); }
+.dialogue-avatar.beatrice { background: var(--char-beatrice); }
+.dialogue-avatar.curator { background: var(--char-curator); }
+
+.dialogue-content strong {
+  display: block;
+  font: 600 12px "Cormorant Garamond", Georgia, serif;
+  color: #1e1b17;
+  margin-bottom: 2px;
+  letter-spacing: 0.02em;
+}
+.dialogue-content p {
+  margin: 0;
+  font: italic 11.5px/1.6 "Libre Baskerville", Georgia, serif;
+  color: #423d34;
+}
+.stage-hazards-section {
+  margin-top: 16px;
+  border-top: 1px solid #ded5c2;
+  padding-top: 12px;
+}
+.hazards-stream {
+  display: grid;
+  gap: 6px;
+  max-height: 130px;
+  overflow-y: auto;
+}
+.hazard-entry {
+  padding: 6px 10px;
+  border-left: 2px solid #9e4b27;
+  background: #fbf2ea;
+  font: 9.5px/1.45 var(--mono);
+  color: #73371a;
+  border-radius: 0 2px 2px 0;
+}
+.hazard-entry.info {
+  border-color: #467657;
+  background: #edf5ef;
+  color: #244e36;
+}
+
+/* Dramatis Personae Actor Playbill Cards */
+.stage-cast-section {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #d5cebc;
+}
+.cast-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.cast-card {
+  background: #fdfbf7;
+  border: 1px solid #d8cfbc;
+  border-top: 3px solid var(--brass-trim);
+  padding: 16px;
+  border-radius: 2px;
+  box-shadow: 0 2px 8px rgba(35, 25, 15, 0.03);
+  transition: transform 0.2s ease;
+}
+.cast-card.fallen {
+  opacity: 0.5;
+  filter: grayscale(80%);
+  border-top-color: #413a33;
+}
+.cast-card-head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.cast-portrait {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font: 700 13px var(--mono);
+  flex-shrink: 0;
+  border: 2px solid #e7ddca;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+.cast-portrait.julian { background: var(--char-julian); }
+.cast-portrait.vesper { background: var(--char-vesper); }
+.cast-portrait.beatrice { background: var(--char-beatrice); }
+.cast-portrait.curator { background: var(--char-curator); }
+
+.cast-meta strong {
+  display: block;
+  font: 600 15px "Cormorant Garamond", Georgia, serif;
+  color: #1e1b17;
+}
+.cast-meta small {
+  display: block;
+  font: 8.5px var(--mono);
+  color: #7d7667;
+  margin-top: 2px;
+}
+.cast-vital-bars {
+  margin: 12px 0;
+  display: grid;
+  gap: 7px;
+}
+.vital-row {
+  display: grid;
+  grid-template-columns: 55px 1fr 38px;
+  gap: 8px;
+  align-items: center;
+  font: 8.5px var(--mono);
+  color: #6a6456;
+}
+.vital-track {
+  height: 6px;
+  background: #ded5c2;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.vital-bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+.vital-bar.hp { background: #457855; }
+.vital-bar.stress { background: #9e6424; }
+.vital-bar.fatigue { background: #824131; }
+
+.cast-burden {
+  padding: 6px 9px;
+  background: #f4efe2;
+  border: 1px dashed #d5c8b2;
+  border-radius: 2px;
+  font: 8.5px var(--mono);
+  color: #5c5545;
+  margin-bottom: 8px;
+}
+.cast-flaw {
+  margin: 0;
+  font: italic 10.5px/1.5 "Libre Baskerville", Georgia, serif;
+  color: #615a4d;
+}
+
+@media (max-width: 960px) {
+  .stage-proscenium-header { grid-template-columns: 1fr; }
+  .stage-execution-grid { grid-template-columns: 1fr; }
+  .prompter-box { order: 2; }
+  .stage-script-panel { order: 1; }
+  .theatrical-topbar { padding: 0 16px; }
+  .theatrical-super { display: none; }
+}
+

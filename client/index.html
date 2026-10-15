@@ -3,34 +3,34 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#131b18">
-  <title>The World's a Stage: Reverse: 1999 Director Engine</title>
+  <meta name="theme-color" content="#12100e">
+  <title>The World's a Stage: Reverse: 1999 Autonomous Playwright Engine</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
   <script src="/app.js" defer></script>
 </head>
 <body>
   <div class="app-shell">
-    <header class="topbar">
-      <a class="brand" href="/" aria-label="Bayang home"><span class="brand-mark">B</span><span>BAYANG<span class="brand-dot">.</span></span></a>
-      
-      <div class="experience-switcher" role="tablist" aria-label="Experience Mode">
-        <button id="mode-tab-stage" class="mode-tab-btn active" role="tab" aria-selected="true" type="button">
-          <span class="tab-tag">TRACK 4</span>
-          <strong>THE WORLD'S A STAGE</strong>
-          <small>Reverse: 1999 Autonomous Visual Novel</small>
-        </button>
-        <button id="mode-tab-ledger" class="mode-tab-btn" role="tab" aria-selected="false" type="button">
-          <span class="tab-tag">SUITE</span>
-          <strong>THE LIVING LEDGER</strong>
-          <small>Decision Intelligence &amp; Data Literacy</small>
-        </button>
+    <header class="theatrical-topbar">
+      <div class="theatrical-brand">
+        <span class="theatrical-seal">✦</span>
+        <div class="theatrical-titles">
+          <span class="theatrical-super">THE ROYAL PASSENGER THEATER · ACT III TRACK 4</span>
+          <h1 class="theatrical-logo">THE WORLD'S A STAGE</h1>
+        </div>
       </div>
 
-      <div class="top-meta">
-        <span id="model-status" class="model-badge"><b></b> Connecting to AMD GPU...</span>
+      <div class="theatrical-meta">
+        <div class="telemetry-badge" title="Gemma 2 9B running on dedicated AMD MI300X ROCm endpoint">
+          <span class="telemetry-dot"></span>
+          <span id="model-status">Gemma 2 (AMD MI300X ROCm)</span>
+        </div>
+        <span id="stage-cost-pill" class="telemetry-pill cost-receipt">0 tokens · $0.000000 AMD</span>
+        <button id="toggle-ledger-btn" class="text-button ledger-toggle-btn" type="button" title="View underlying data profiles and analytical records">
+          <span>⚜ Archival Folio</span>
+        </button>
       </div>
     </header>
 
@@ -40,26 +40,22 @@
       <!-- ================================================================= -->
       <div id="stage-experience" class="experience-view">
         <section class="stage-hero">
-          <div class="stage-kicker">
-            <span class="stage-tag">REVERSE: 1999 THEATRICAL ENGINE</span>
-            <span class="telemetry-pill">AMD MI300X · GEMMA 2 9B BATCHED</span>
-            <span id="stage-cost-pill" class="telemetry-pill cost-receipt">0 tokens · $0.000000 AMD</span>
-          </div>
-          <div class="stage-headline-row">
-            <div>
-              <h1>The World's a Stage: <em>The Midnight Express</em></h1>
-              <p class="stage-subtitle">The four actors move and deliberate autonomously according to internal psychology. You are the invisible Director in the wings. Drop velvet curtains to sever deadly routes, swing spotlights to reveal rotted timbers, whisper psychological cues, and adjust the tension dial before the Wailing Fog swallows the stage.</p>
+          <div class="stage-proscenium-header">
+            <div class="marquee-block">
+              <span class="marquee-act" id="act-name-val">ACT I: GATHERING</span>
+              <h2 class="marquee-title" id="marquee-scene-title">The Midnight Express: A Winter Crossing</h2>
+              <p class="stage-subtitle">The four actors move and deliberate autonomously according to internal psychology. You are the invisible Director in the wings. Drop velvet curtains to sever deadly routes, train spotlights to reveal rotted timbers, whisper psychological cues, and adjust the tempo metronome before the Wailing Fog swallows the stage.</p>
             </div>
             <div class="stage-director-stats">
               <div class="stat-card">
-                <span class="stat-label">DIRECTOR AUTHORITY</span>
+                <span class="stat-label">DIRECTOR SEALS</span>
                 <span id="director-da-val" class="stat-num">4</span>
                 <small>Interventions Left</small>
               </div>
               <div class="stat-card">
-                <span class="stat-label">SCENE PACE</span>
+                <span class="stat-label">STAGE TEMPO</span>
                 <span id="scene-counter-val" class="stat-num">Scene 1 / 6</span>
-                <small id="act-name-val">Act I: Gathering</small>
+                <small id="scene-tempo-hint">Moderato · ♩=90</small>
               </div>
             </div>
           </div>
@@ -129,113 +125,131 @@
 
         <!-- Director Execution Grid: Interventions (Left) vs Theatrical Script (Right) -->
         <div class="stage-execution-grid">
-          <!-- Left: Director Interventions Deck -->
-          <aside class="director-deck">
+          <!-- Left: Director Interventions Deck (Prompter's Box) -->
+          <aside class="director-deck prompter-box">
             <div class="panel-heading">
               <div>
-                <p class="eyebrow">DIRECTOR'S PROMPT BOX</p>
-                <h2>Stage Intervention</h2>
+                <span class="panel-kicker">PROMPTER'S STATION</span>
+                <h2>Theatrical Levers</h2>
               </div>
-              <span class="file-icon">🎭</span>
+              <span class="prompter-seal">✦</span>
             </div>
-            <p class="panel-copy">Select an indirect intervention to modify stage physics or character psychology before calling 'Action'.</p>
+            <p class="panel-copy">Manipulate physical stage conditions, lighting, and cues from the wings before calling action.</p>
 
-            <label class="field-label">CHOOSE INTERVENTION</label>
+            <label class="field-label">INDIRECT INTERVENTION</label>
             <div class="verb-selector-grid">
               <button class="verb-choice selected" data-verb="block_route" type="button">
-                <span class="verb-icon">▰</span>
+                <span class="verb-icon-svg">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M4 3h16v3H4zM4 6c0 5 3 9 8 13 5-4 8-8 8-13"/>
+                    <path d="M7 6v10M17 6v10"/>
+                  </svg>
+                </span>
                 <span class="verb-info">
                   <strong>Drop Curtain</strong>
-                  <small>Sever a route edge</small>
+                  <small>Barricade exit door</small>
                 </span>
               </button>
               <button class="verb-choice" data-verb="shift_spotlight" type="button">
-                <span class="verb-icon">☼</span>
+                <span class="verb-icon-svg">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <circle cx="12" cy="7" r="4"/>
+                    <path d="M5 21l4-10M19 21l-4-10M12 11v10"/>
+                  </svg>
+                </span>
                 <span class="verb-info">
-                  <strong>Shift Spotlight</strong>
-                  <small>Illuminate a node</small>
+                  <strong>Train Limelight</strong>
+                  <small>Spotlight fixture or trap</small>
                 </span>
               </button>
               <button class="verb-choice" data-verb="plant_rumor" type="button">
-                <span class="verb-icon">💬</span>
+                <span class="verb-icon-svg">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                  </svg>
+                </span>
                 <span class="verb-info">
-                  <strong>Plant Rumor</strong>
-                  <small>Whisper prompt cue</small>
+                  <strong>Whisper Cue</strong>
+                  <small>Prompt an actor's ear</small>
                 </span>
               </button>
               <button class="verb-choice" data-verb="cue_prop" type="button">
-                <span class="verb-icon">🗝</span>
+                <span class="verb-icon-svg">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                  </svg>
+                </span>
                 <span class="verb-info">
-                  <strong>Cue Prop</strong>
-                  <small>Stage an asset</small>
+                  <strong>Stage Prop</strong>
+                  <small>Place tool at fixture</small>
                 </span>
               </button>
             </div>
 
             <!-- Dynamic Action Parameter Sub-panel -->
             <div id="verb-param-box" class="verb-param-box">
-              <label id="verb-param-label" class="field-label" for="verb-param-select">ROUTE TO BLOCK</label>
+              <label id="verb-param-label" class="field-label" for="verb-param-select">EXIT DOOR TO BLOCK</label>
               <select id="verb-param-select" class="select-input">
-                <option value="1,2">Node 1 &rarr; Node 2 (The Trestle Bridge · Rotted 150kg)</option>
-                <option value="1,3">Node 1 &rarr; Node 3 (The Valley Bypass · Rugged Scree)</option>
-                <option value="4,5">Node 4 &rarr; Node 5 (Smuggler's Cut · Ambush Trap)</option>
-                <option value="4,6">Node 4 &rarr; Node 6 (Pilgrim's Stair · Moral Trial)</option>
+                <option value="2">Upper Door &rarr; Node 2 (The Trestle Bridge · Rotted 150kg)</option>
+                <option value="3">Lower Hatch &rarr; Node 3 (The Valley Bypass · Rugged Scree)</option>
               </select>
               <div id="rumor-text-wrap" class="rumor-text-wrap" hidden>
                 <input id="rumor-text-input" class="text-input" type="text" placeholder="Whisper: 'The bridge is rigged; Julian knows...'" maxlength="120">
               </div>
-              <button id="apply-verb-btn" class="secondary-button apply-verb-btn" type="button">Apply Intervention <span>✦</span></button>
+              <button id="apply-verb-btn" class="secondary-button apply-verb-btn" type="button">Apply Stage Cue <span>✦</span></button>
               <div id="verb-status-msg" class="verb-status-msg" hidden></div>
             </div>
 
-            <!-- Pacing Tension Dial -->
-            <div class="tension-control-block">
+            <!-- Pacing Tension Dial (Metronome) -->
+            <div class="tension-control-block brass-metronome">
               <div class="tension-head">
-                <label class="field-label" for="tension-dial-range">PACING TENSION DIAL</label>
-                <span id="tension-readout" class="tension-readout">2.0 · Moderato</span>
+                <label class="field-label" for="tension-dial-range">STAGE METRONOME &amp; TEMPO</label>
+                <span id="tension-readout" class="tension-readout">2.0 · Moderato (♩=90)</span>
               </div>
               <input id="tension-dial-range" class="tension-slider" type="range" min="1.0" max="5.0" step="0.5" value="2.0">
               <div class="tension-markers">
-                <span>1.0 Adagio (Calm)</span>
-                <span>3.0 Andante</span>
-                <span>5.0 Presto (Frantic)</span>
+                <span>Largo (1.0)</span>
+                <span>Adagio (2.0)</span>
+                <span>Andante (3.0)</span>
+                <span>Allegro (4.0)</span>
+                <span>Presto (5.0)</span>
               </div>
-              <small class="tension-note">High tension increases movement speed to escape the fog, but accelerates fatigue and panic collapses.</small>
+              <small class="tension-note">Higher tempo drives urgent decisions before the fog closes in, but accelerates panic and exhaustion collapses.</small>
             </div>
 
             <!-- Stage Scene Advance Button -->
             <button id="stage-turn-btn" class="primary-button stage-advance-btn" type="button">
-              <span>Raise Curtain on Scene</span>
-              <span>&rarr;</span>
+              <span>Prompt The Troupe &amp; Raise Curtain</span>
+              <span class="btn-glyph">✦</span>
             </button>
           </aside>
 
-          <!-- Right: Theatrical Script & Dialogue Transcript -->
-          <section class="stage-script-panel">
+          <!-- Right: Theatrical Script & Dialogue Transcript (Prompt Book) -->
+          <section class="stage-script-panel play-prompt-book">
             <div class="script-header">
               <div>
-                <span id="script-scene-tag" class="scene-act-tag">SCENE I</span>
-                <h2 id="script-scene-title">The Whistle on the Marble</h2>
+                <span id="script-scene-tag" class="scene-act-tag">ACT I · SCENE I</span>
+                <h2 id="script-scene-title">The Whistle in the Ticket Hall</h2>
               </div>
               <span id="script-status-pill" class="telemetry-pill">Curtain Up</span>
             </div>
 
             <div class="stage-narration-box">
-              <span class="stage-direction-label">STAGE DIRECTIONS</span>
+              <span class="stage-direction-label">PROMPTER'S MARGIN DIRECTIONS</span>
               <p id="script-narration-text">The brass lantern flickers against the damp Victorian ironwork. A low fog horn wails across the valley as the troupe prepares to cross the pass.</p>
             </div>
 
             <div class="script-dialogue-section">
-              <span class="dialogue-section-label">PERFORMED SCRIPT (GEMMA 2 9B)</span>
+              <span class="dialogue-section-label">PERFORMED SCRIPT (GEMMA 2 9B · AMD MI300X)</span>
               <div id="stage-dialogue-stream" class="dialogue-stream">
                 <!-- Dynamically populated dialogue lines -->
               </div>
             </div>
 
             <div class="stage-hazards-section">
-              <span class="hazards-section-label">ENVIRONMENTAL &amp; PHYSICS LOG</span>
+              <span class="hazards-section-label">STAGE MANAGER'S PHYSICAL LEDGER</span>
               <div id="stage-hazards-stream" class="hazards-stream">
-                <div class="hazard-entry info">The cast has assembled at Node 1 (Station Platform). The Wailing Fog gathers in the lower valley.</div>
+                <div class="hazard-entry info">The cast has assembled in Room 1 (The Station Office). The Wailing Fog gathers in the lower valley.</div>
               </div>
             </div>
           </section>
@@ -245,10 +259,10 @@
         <section class="stage-cast-section">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">THE ACTING TROUPE</p>
-              <h3>Autonomous Character Roster</h3>
+              <p class="eyebrow">DRAMATIS PERSONAE</p>
+              <h3>The Acting Troupe</h3>
             </div>
-            <span class="progress-pill">4 Actors Active · Internal Levers Bound</span>
+            <span class="progress-pill">4 Autonomous Actors · Governed by Engine Invariants</span>
           </div>
           <p class="section-copy">Each character operates on distinct motivations, physical limits, and psychological flaws. They make their own choices; you direct their environment.</p>
 
