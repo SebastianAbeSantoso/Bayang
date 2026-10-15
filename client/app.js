@@ -35,7 +35,8 @@ function resetQuestView() {
   state.quest = null; state.chosenGroup = null; state.rationale = "risk_density"; state.investigated.clear(); state.guideRemaining = 0;
   $("#quest-content").hidden = true; $("#transfer-card").hidden = true;
   $("#empty-state").hidden = false; $("#loading-state").hidden = true;
-  $("#answer-result").hidden = true; $("#ending").hidden = true;
+  const answerRes = $("#answer-result"); if (answerRes) answerRes.hidden = true;
+  const endingEl = $("#ending"); if (endingEl) endingEl.hidden = true;
   const consequenceBox = $("#consequence-box"); if (consequenceBox) consequenceBox.hidden = true;
   const computeReceipt = $("#compute-receipt"); if (computeReceipt) computeReceipt.hidden = true;
   const repairBadge = $("#quest-repair-badge"); if (repairBadge) repairBadge.hidden = true;
@@ -616,7 +617,8 @@ function renderQuest(quest, guideRemaining) {
     button.addEventListener("click", () => {
       state.chosenGroup = group;
       options.querySelectorAll("button").forEach((choice) => choice.classList.toggle("selected", choice === button));
-      $("#submit-answer").disabled = !state.chosenGroup || state.investigated.size < 2;
+      const submitBtn = $("#answer-button") || $("#submit-answer");
+      if (submitBtn) submitBtn.disabled = !state.chosenGroup || state.investigated.size < 2;
       highlightRoute(group, true);
     });
     options.append(button);
@@ -630,12 +632,13 @@ function renderQuest(quest, guideRemaining) {
     };
   });
 
-  $("#submit-answer").disabled = true;
-  $("#answer-result").hidden = true;
+  const submitBtn = $("#answer-button") || $("#submit-answer");
+  if (submitBtn) submitBtn.disabled = true;
+  const ansRes = $("#answer-result"); if (ansRes) ansRes.hidden = true;
   const consequenceBox = $("#consequence-box"); if (consequenceBox) consequenceBox.hidden = true;
   const computeReceipt = $("#compute-receipt"); if (computeReceipt) computeReceipt.hidden = true;
-  $("#ending").hidden = true;
-  $("#transfer-card").hidden = true;
+  const endBox = $("#ending"); if (endBox) endBox.hidden = true;
+  const transferCard = $("#transfer-card"); if (transferCard) transferCard.hidden = true;
   $("#evidence-board").replaceChildren();
   $("#guide-messages").replaceChildren();
   addGuideMessage("guide", "I can help with the method, not the answer. What have the records shown you so far?");
@@ -647,11 +650,16 @@ function renderQuest(quest, guideRemaining) {
 
 function updateDecisionLock() {
   const unlocked = state.investigated.size >= 2;
-  $("#decision").classList.toggle("locked", !unlocked);
-  $("#decision-hint").textContent = unlocked
-    ? "You have enough records to make a case. Choose the route and rationale that best support your answer."
-    : `Investigate ${2 - state.investigated.size} more ${2 - state.investigated.size === 1 ? "record" : "records"} to unlock your verdict.`;
-  $("#submit-answer").disabled = !unlocked || !state.chosenGroup;
+  const dec = $("#decision");
+  if (dec) dec.classList.toggle("locked", !unlocked);
+  const decHint = $("#decision-hint");
+  if (decHint) {
+    decHint.textContent = unlocked
+      ? "You have enough records to make a case. Choose the route and rationale that best support your answer."
+      : `Investigate ${2 - state.investigated.size} more ${2 - state.investigated.size === 1 ? "record" : "records"} to unlock your verdict.`;
+  }
+  const submitBtn = $("#answer-button") || $("#submit-answer");
+  if (submitBtn) submitBtn.disabled = !unlocked || !state.chosenGroup;
 }
 
 async function startQuest() {
@@ -695,8 +703,8 @@ async function askGuide(question) {
 
 async function submitAnswer() {
   if (!state.chosenGroup || state.investigated.size < 2) return;
-  const button = $("#submit-answer");
-  button.disabled = true;
+  const button = $("#answer-button") || $("#submit-answer");
+  if (button) button.disabled = true;
   clearError();
   try {
     const result = await api("/api/answer", {
@@ -705,21 +713,26 @@ async function submitAnswer() {
       rationale: state.rationale,
     });
     const box = $("#answer-result");
-    box.textContent = result.feedback;
-    box.hidden = false;
-    box.classList.toggle("incorrect", !result.correct);
+    if (box) {
+      box.textContent = result.feedback;
+      box.hidden = false;
+      box.classList.toggle("incorrect", !result.correct);
+    }
 
     const consequenceBox = $("#consequence-box");
     if (result.consequence) {
-      $("#consequence-text").textContent = result.consequence;
-      consequenceBox.hidden = false;
+      const consequenceText = $("#consequence-text");
+      if (consequenceText) consequenceText.textContent = result.consequence;
+      if (consequenceBox) consequenceBox.hidden = false;
     } else if (consequenceBox) {
       consequenceBox.hidden = true;
     }
 
     const ending = $("#ending");
-    ending.textContent = result.ending;
-    ending.hidden = false;
+    if (ending) {
+      ending.textContent = result.ending || "";
+      ending.hidden = false;
+    }
 
     const receiptBox = $("#compute-receipt");
     if (receiptBox && state.quest?.cost) {
@@ -728,26 +741,42 @@ async function submitAnswer() {
     }
 
     changeStep(3);
-    if (result.correct) $("#transfer-card").hidden = false;
-    else button.disabled = false;
+    if (result.correct) {
+      const tc = $("#transfer-card");
+      if (tc) tc.hidden = false;
+    } else if (button) {
+      button.disabled = false;
+    }
   } catch (error) {
     showError(error.message);
-    button.disabled = false;
+    if (button) button.disabled = false;
   }
 }
 
-$("#begin-button").addEventListener("click", startQuest);
-$("#submit-answer").addEventListener("click", submitAnswer);
-$("#guide-form").addEventListener("submit", (event) => {
-  event.preventDefault();
-  askGuide($("#guide-question").value);
-});
-$("#guide-question").addEventListener("keydown", (event) => {
-  if (event.key === "Enter" && !event.shiftKey) {
+const beginBtn = $("#begin-button");
+if (beginBtn) beginBtn.addEventListener("click", startQuest);
+
+const ansBtn = $("#answer-button") || $("#submit-answer");
+if (ansBtn) ansBtn.addEventListener("click", submitAnswer);
+
+const guideForm = $("#guide-form");
+if (guideForm) {
+  guideForm.addEventListener("submit", (event) => {
     event.preventDefault();
-    $("#guide-form").requestSubmit();
-  }
-});
+    const gq = $("#guide-question");
+    if (gq) askGuide(gq.value);
+  });
+}
+const gqInput = $("#guide-question");
+if (gqInput) {
+  gqInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      const form = $("#guide-form");
+      if (form) form.requestSubmit();
+    }
+  });
+}
 document.querySelectorAll(".guide-prompts button").forEach((button) => {
   button.addEventListener("click", () => askGuide(button.dataset.question));
 });
@@ -792,24 +821,35 @@ $("#modal-apply-btn")?.addEventListener("click", () => {
   });
 });
 
-$("#change-data").addEventListener("click", () => {
-  $("#dataset-select").focus();
-  $("#dataset-select").scrollIntoView({ behavior: "smooth", block: "center" });
-});
-$("#next-case").addEventListener("click", () => {
-  const current = $("#dataset-select").value;
-  const currentIndex = state.samples.findIndex((sample) => sample.id === current);
-  const nextIndex = (currentIndex + 1) % state.samples.length;
-  const next = state.samples[nextIndex];
-  if (next) {
-    $("#dataset-select").value = next.id;
-    loadCsv(next.csv);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  } else {
-    $("#dataset-select").value = "";
-    $("#dataset-select").focus();
-  }
-});
+const changeDataBtn = $("#change-data");
+if (changeDataBtn) {
+  changeDataBtn.addEventListener("click", () => {
+    const ds = $("#dataset-select");
+    if (ds) {
+      ds.focus();
+      ds.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  });
+}
+
+const nextCaseBtn = $("#next-case-button") || $("#next-case");
+if (nextCaseBtn) {
+  nextCaseBtn.addEventListener("click", () => {
+    const ds = $("#dataset-select");
+    const current = ds ? ds.value : "";
+    const currentIndex = state.samples.findIndex((sample) => sample.id === current);
+    const nextIndex = (currentIndex + 1) % state.samples.length;
+    const next = state.samples[nextIndex];
+    if (next && ds) {
+      ds.value = next.id;
+      loadCsv(next.csv);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else if (ds) {
+      ds.value = "";
+      ds.focus();
+    }
+  });
+}
 document.querySelectorAll(".mode-option").forEach((button) => button.addEventListener("click", () => {
   if (state.mode === button.dataset.mode) return;
   state.mode = button.dataset.mode;
@@ -817,14 +857,44 @@ document.querySelectorAll(".mode-option").forEach((button) => button.addEventLis
   if (state.quest) startQuest();
 }));
 
-loadSamples();
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", loadSamples);
+} else {
+  loadSamples();
+}
 
 /* =========================================================================
    THE WORLD'S A STAGE: REVERSE: 1999 STAGE DIRECTOR CONTROLLER
    ========================================================================= */
 
+const DEFAULT_STAGE_DATA = {
+  scene_number: 1,
+  max_scenes: 6,
+  director_authority: 4,
+  tension_dial: 2.0,
+  fog_node: 0,
+  blocked_edges: [],
+  spotlighted_nodes: [1],
+  edges: [[1, 2], [1, 3], [2, 4], [3, 4], [4, 5], [4, 6], [5, 7], [6, 7]],
+  nodes: {
+    1: { id: 1, name: "Station Platform", light_level: "Lit" },
+    2: { id: 2, name: "The Trestle Bridge", light_level: "Dim" },
+    3: { id: 3, name: "The Valley Bypass", light_level: "Dark" },
+    4: { id: 4, name: "The Signal Tower", light_level: "Lit" },
+    5: { id: 5, name: "Smuggler's Cut", light_level: "Dark" },
+    6: { id: 6, name: "Pilgrim's Stair", light_level: "Lit" },
+    7: { id: 7, name: "The Iron Terminal", light_level: "Lit" },
+  },
+  characters: {
+    "Julian": { id: "Julian", name: "Julian Vance", role: "The Archivist", node: 1, node_name: "Station Platform", hp: 100, max_hp: 100, stress: 10, fatigue: 5, total_weight_kg: 70, is_alive: true, flaw: "Paralyzed by dark uncertainty." },
+    "Vesper": { id: "Vesper", name: "Vesper Cross", role: "The Smuggler", node: 1, node_name: "Station Platform", hp: 100, max_hp: 100, stress: 20, fatigue: 10, total_weight_kg: 175, is_alive: true, flaw: "Takes reckless shortcuts." },
+    "Beatrice": { id: "Beatrice", name: "Beatrice Thorne", role: "The Machinist", node: 1, node_name: "Station Platform", hp: 80, max_hp: 80, stress: 15, fatigue: 20, total_weight_kg: 55, is_alive: true, flaw: "Physically frail on rough ground." },
+    "The Curator": { id: "The Curator", name: "The Curator", role: "The Cast Infiltrator", node: 1, node_name: "Station Platform", hp: 100, max_hp: 100, stress: 0, fatigue: 0, total_weight_kg: 60, is_alive: true, flaw: "Unpredictable stage direction." },
+  },
+};
+
 const stageState = {
-  data: null,
+  data: JSON.parse(JSON.stringify(DEFAULT_STAGE_DATA)),
   selectedVerb: "block_route",
   tension: 2.0,
   isProcessing: false,
@@ -875,6 +945,9 @@ if (tabStage && tabLedger) {
 }
 
 async function initStageEngine() {
+  renderStageBoard();
+  renderCastCards();
+  updateDirectorDeckUI();
   try {
     const data = await api("/api/stage/init");
     stageState.data = data;
@@ -951,7 +1024,7 @@ function renderStageBoard() {
   // 2. Draw Nodes
   Object.entries(STAGE_NODE_COORDS).forEach(([nodeIdStr, coord]) => {
     const nid = Number(nodeIdStr);
-    const nodeData = stageState.data.nodes[nid];
+    const nodeData = (stageState.data.nodes && (stageState.data.nodes[nid] || stageState.data.nodes[nodeIdStr])) || { light_level: "Lit" };
     const isSpotlight = spotlights.includes(nid);
     const isFogged = nid <= fogNode;
 
@@ -1321,4 +1394,8 @@ if (stageResetBtn) {
 }
 
 // Initialize on load
-initStageEngine();
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initStageEngine);
+} else {
+  initStageEngine();
+}
