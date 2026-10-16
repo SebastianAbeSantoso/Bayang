@@ -1,0 +1,518 @@
+{
+  "cafe": {
+    "id": "cafe_kemang_01",
+    "name": "Kopi Kita Specialty Cafe - Kemang",
+    "timezone": "Asia/Jakarta (WIB)",
+    "currency": "IDR",
+    "policy": {
+      "machine_cycle_tolerance": 1,
+      "require_comp_reason": true,
+      "require_comp_approver": true,
+      "block_signoff_on_critical": true,
+      "block_signoff_on_required_checklist": true
+    }
+  },
+  "sku_aliases": {
+    "oat milk": {
+      "sku": "OAT-MILK-1L",
+      "item_name": "Oat Milk Barista 1L",
+      "canonical_unit": "cartons",
+      "unit_aliases": ["carton", "cartons", "karton", "box", "boxes"]
+    },
+    "susu oat": {
+      "sku": "OAT-MILK-1L",
+      "item_name": "Oat Milk Barista 1L",
+      "canonical_unit": "cartons",
+      "unit_aliases": ["carton", "cartons", "karton", "box", "boxes"]
+    },
+    "vanilla syrup": {
+      "sku": "SYR-VAN-750",
+      "item_name": "Madagascar Vanilla Syrup 750ml",
+      "canonical_unit": "bottles",
+      "unit_aliases": ["bottle", "bottles", "botol"]
+    },
+    "sirup vanila": {
+      "sku": "SYR-VAN-750",
+      "item_name": "Madagascar Vanilla Syrup 750ml",
+      "canonical_unit": "bottles",
+      "unit_aliases": ["bottle", "bottles", "botol"]
+    },
+    "arabica beans": {
+      "sku": "BEAN-ESP-1KG",
+      "item_name": "House Espresso Blend 1kg",
+      "canonical_unit": "g",
+      "unit_aliases": ["bag", "bags", "kg", "pack", "g", "gram", "grams"]
+    },
+    "biji kopi": {
+      "sku": "BEAN-ESP-1KG",
+      "item_name": "House Espresso Blend 1kg",
+      "canonical_unit": "g",
+      "unit_aliases": ["bag", "bags", "kg", "pack", "g", "gram", "grams"]
+    },
+    "beans": {
+      "sku": "BEAN-ESP-1KG",
+      "item_name": "House Espresso Blend 1kg",
+      "canonical_unit": "g",
+      "unit_aliases": ["bag", "bags", "kg", "pack", "g", "gram", "grams"]
+    },
+    "es batu": {
+      "sku": "ICE-CUBE-10KG",
+      "item_name": "Ice Cubes 10kg Bag",
+      "canonical_unit": "bags",
+      "unit_aliases": ["bag", "bags", "kantong", "karung", "kg"]
+    },
+    "ice": {
+      "sku": "ICE-CUBE-10KG",
+      "item_name": "Ice Cubes 10kg Bag",
+      "canonical_unit": "bags",
+      "unit_aliases": ["bag", "bags", "kantong", "karung", "kg"]
+    }
+  },
+  "shifts": {
+    "shift_pm_01": {
+      "id": "shift_pm_01",
+      "cafe_id": "cafe_kemang_01",
+      "shift_label": "Afternoon Shift (16:00 - 22:00)",
+      "starts_at": "2026-10-16T16:00:00+07:00",
+      "ends_at": "2026-10-16T22:00:00+07:00",
+      "outgoing_lead": "Raka Pratama (Barista / Shift Lead)",
+      "incoming_lead": "Sari Wijaya (Opening Shift Lead)",
+      "status": "review",
+      "next_shift_id": "shift_am_02",
+      "pos_summary": {
+        "source_id": "POS-BATCH-20261016-PM",
+        "source_label": "Demo POS Export (16:00-22:00)",
+        "recorded_at": "2026-10-16T21:58:00+07:00",
+        "window": "16:00 - 22:00",
+        "total_orders": 114,
+        "espresso_drinks_sold": 83,
+        "gross_sales_idr": 4850000,
+        "voids_comps_refunds_count": 2,
+        "voids_comps_refunds": [
+          {
+            "order_id": "ORD-8841",
+            "occurred_at": "20:15",
+            "type": "comp",
+            "item": "Iced Latte",
+            "quantity": 1,
+            "amount_idr": 45000,
+            "reason": "Steam wand pressure drop during milk texturing",
+            "approved_by": "Raka Pratama"
+          },
+          {
+            "order_id": "ORD-8859",
+            "occurred_at": "20:42",
+            "type": "comp",
+            "item": "Iced Latte",
+            "quantity": 1,
+            "amount_idr": 45000,
+            "reason": null,
+            "approved_by": null
+          }
+        ]
+      },
+      "machine_events": {
+        "source_id": "MAC-LOG-20261016-PM",
+        "source_label": "Espresso Machine Counter Log (LINEA-PB-01)",
+        "machine_id": "LINEA-PB-01",
+        "machine_name": "La Marzocco Linea PB 2-Group",
+        "window": "16:00 - 22:00",
+        "recorded_at": "2026-10-16T21:59:00+07:00",
+        "total_espresso_cycles": 84,
+        "logged_non_sale_cycles": [
+          {
+            "event_id": "MC-401",
+            "occurred_at": "16:12",
+            "event_type": "calibration_purge",
+            "type": "calibration_purge",
+            "cycles": 1,
+            "actor": "Raka Pratama",
+            "note": "Shift-start dial-in shot"
+          }
+        ],
+        "steam_wand_alerts": []
+      },
+      "manual_incident_book": {
+        "source_id": "INCIDENT-BOOK-20261016-PM",
+        "source_label": "Manual Incident Book (Counter Log)",
+        "recorded_at": "2026-10-16T21:55:00+07:00",
+        "records": []
+      },
+      "inventory_movements": [
+        {
+          "movement_id": "INV-901",
+          "occurred_at": "17:20",
+          "sku": "OAT-MILK-1L",
+          "item_name": "Oat Milk Barista 1L",
+          "movement_type": "restocked",
+          "quantity": 1,
+          "unit": "cartons",
+          "recorded_by": "Raka Pratama",
+          "source_label": "Inventory Ledger (Bar Fridge Sheet)"
+        }
+      ],
+      "manual_stock_sheet": {
+        "source_id": "STK-SHEET-20261016-PM",
+        "source_label": "Manual Stock Sheet (Bar Perishables)",
+        "recorded_at": "2026-10-16T21:50:00+07:00",
+        "items": [
+          {
+            "sku": "ICE-CUBE-10KG",
+            "item_name": "Ice Cubes 10kg Bag",
+            "stock_on_hand": 0,
+            "unit": "bags",
+            "min_threshold": 2,
+            "status": "depleted"
+          }
+        ]
+      },
+      "supplier_orders": {
+        "source_id": "SUP-ORD-20261016-PM",
+        "source_label": "Supplier Order Record",
+        "orders": [
+          {
+            "order_id": "PO-ICE-402",
+            "supplier_name": "PT Es Kristal Mandiri",
+            "item": "Ice Cubes 10kg Bag",
+            "quantity": 5,
+            "unit": "bags",
+            "ordered_at": "2026-10-16T19:30:00+07:00",
+            "due_at": "10:00 AM (Next Day)",
+            "status": "confirmed_in_transit"
+          }
+        ]
+      },
+      "checklist_tasks": [
+        {
+          "task_id": "CHK-01",
+          "title": "Backflush espresso groupheads #1 and #2 with detergent",
+          "category": "Machine Cleaning",
+          "required": true,
+          "status": "done",
+          "actor": "Raka Pratama",
+          "occurred_at": "21:35",
+          "exception_reason": null
+        },
+        {
+          "task_id": "CHK-02",
+          "title": "Soak and sanitize steam wands and dispersion screens",
+          "category": "Machine Cleaning",
+          "required": true,
+          "status": "done",
+          "actor": "Raka Pratama",
+          "occurred_at": "21:40",
+          "exception_reason": null
+        },
+        {
+          "task_id": "CHK-03",
+          "title": "Empty knockbox and log espresso grounds waste",
+          "category": "Station Close",
+          "required": true,
+          "status": "done",
+          "actor": "Nadia Putri",
+          "occurred_at": "21:42",
+          "exception_reason": null
+        },
+        {
+          "task_id": "CHK-04",
+          "title": "Verify dairy chiller temperature (<= 4 C) and lock night latch",
+          "category": "Cold Storage & Food Safety",
+          "required": true,
+          "status": "done",
+          "actor": "Raka Pratama",
+          "occurred_at": "21:45",
+          "exception_reason": null
+        },
+        {
+          "task_id": "CHK-05",
+          "title": "Brush grinder chute and wipe hopper exterior",
+          "category": "Station Close",
+          "required": true,
+          "status": "done",
+          "actor": "Nadia Putri",
+          "occurred_at": "21:48",
+          "exception_reason": null
+        },
+        {
+          "task_id": "CHK-06",
+          "title": "Record and assign follow-up for reported equipment issues",
+          "category": "Equipment & Safety",
+          "required": true,
+          "status": "not_done",
+          "actor": null,
+          "occurred_at": null,
+          "exception_reason": null
+        }
+      ],
+      "maintenance_issues": [],
+      "preset_notes": {
+        "id": "tadi grinder macet 20 menit, buang beans 200g, es batu abis",
+        "en": "Restocked two cartons of oat milk. Cleaned the espresso machine. Had to remake three drinks because the shots were inconsistent. The steam wand started leaking near closing. Two iced lattes were comped because of the machine issue."
+      },
+      "default_worker_note": "tadi grinder macet 20 menit, buang beans 200g, es batu abis",
+      "note_input_type": "Voice-note transcript (demo)",
+      "seeded_extractions": {
+        "id": [
+          {
+            "claim_id": "CLM-01",
+            "claim_type": "equipment_issue",
+            "entity": "grinder",
+            "action": "macet 20 menit",
+            "quantity": 20,
+            "unit": "menit",
+            "occurred_at": "afternoon shift",
+            "verbatim_quote": "grinder macet 20 menit",
+            "needs_review": false
+          },
+          {
+            "claim_id": "CLM-02",
+            "claim_type": "stock_action",
+            "entity": "beans",
+            "action": "buang",
+            "quantity": 200,
+            "unit": "g",
+            "occurred_at": "during shift",
+            "verbatim_quote": "buang beans 200g",
+            "needs_review": false
+          },
+          {
+            "claim_id": "CLM-03",
+            "claim_type": "stock_action",
+            "entity": "es batu",
+            "action": "abis",
+            "quantity": 0,
+            "unit": "bags",
+            "occurred_at": "end of shift",
+            "verbatim_quote": "es batu abis",
+            "needs_review": false
+          }
+        ],
+        "en": [
+          {
+            "claim_id": "CLM-01",
+            "claim_type": "inventory_movement",
+            "entity": "oat milk",
+            "action": "restocked",
+            "quantity": 2,
+            "unit": "cartons",
+            "occurred_at": null,
+            "verbatim_quote": "Restocked two cartons of oat milk.",
+            "needs_review": false
+          },
+          {
+            "claim_id": "CLM-02",
+            "claim_type": "task_completion",
+            "entity": "espresso machine",
+            "action": "cleaned",
+            "quantity": null,
+            "unit": null,
+            "occurred_at": null,
+            "verbatim_quote": "Cleaned the espresso machine.",
+            "needs_review": false
+          },
+          {
+            "claim_id": "CLM-03",
+            "claim_type": "remake_waste",
+            "entity": "drinks",
+            "action": "remade",
+            "quantity": 3,
+            "unit": "drinks",
+            "occurred_at": null,
+            "verbatim_quote": "Had to remake three drinks because the shots were inconsistent.",
+            "needs_review": false
+          },
+          {
+            "claim_id": "CLM-04",
+            "claim_type": "equipment_issue",
+            "entity": "steam wand",
+            "action": "leaking",
+            "quantity": null,
+            "unit": null,
+            "occurred_at": "near closing",
+            "verbatim_quote": "The steam wand started leaking near closing.",
+            "needs_review": false
+          },
+          {
+            "claim_id": "CLM-05",
+            "claim_type": "void_comp_refund",
+            "entity": "iced lattes",
+            "action": "comped",
+            "quantity": 2,
+            "unit": "drinks",
+            "occurred_at": null,
+            "verbatim_quote": "Two iced lattes were comped because of the machine issue.",
+            "needs_review": false
+          }
+        ]
+      }
+    },
+    "shift_am_02": {
+      "id": "shift_am_02",
+      "cafe_id": "cafe_kemang_01",
+      "shift_label": "Next Morning Shift (06:30 - 14:30)",
+      "starts_at": "2026-10-17T06:30:00+07:00",
+      "ends_at": "2026-10-17T14:30:00+07:00",
+      "outgoing_lead": "Sari Wijaya (Opening Shift Lead)",
+      "incoming_lead": "Dina Kusuma (Afternoon Shift Lead)",
+      "status": "open",
+      "next_shift_id": null,
+      "pos_summary": {
+        "source_id": "POS-BATCH-20261017-AM",
+        "source_label": "Demo POS Export (06:30-14:30)",
+        "recorded_at": "2026-10-17T14:25:00+07:00",
+        "window": "06:30 - 14:30",
+        "total_orders": 92,
+        "espresso_drinks_sold": 64,
+        "gross_sales_idr": 3720000,
+        "voids_comps_refunds_count": 0,
+        "voids_comps_refunds": []
+      },
+      "machine_events": {
+        "source_id": "MAC-LOG-20261017-AM",
+        "source_label": "Espresso Machine Counter Log (LINEA-PB-01)",
+        "machine_id": "LINEA-PB-01",
+        "machine_name": "La Marzocco Linea PB 2-Group",
+        "window": "06:30 - 14:30",
+        "recorded_at": "2026-10-17T14:26:00+07:00",
+        "total_espresso_cycles": 65,
+        "logged_non_sale_cycles": [
+          {
+            "event_id": "MC-501",
+            "occurred_at": "06:35",
+            "event_type": "calibration_purge",
+            "type": "calibration_purge",
+            "cycles": 1,
+            "actor": "Sari Wijaya",
+            "note": "Morning dial-in purge"
+          }
+        ],
+        "steam_wand_alerts": []
+      },
+      "manual_incident_book": {
+        "source_id": "INCIDENT-BOOK-20261017-AM",
+        "source_label": "Manual Incident Book",
+        "recorded_at": "2026-10-17T07:00:00+07:00",
+        "records": []
+      },
+      "inventory_movements": [
+        {
+          "movement_id": "INV-908",
+          "occurred_at": "08:15",
+          "sku": "OAT-MILK-1L",
+          "item_name": "Oat Milk Barista 1L",
+          "movement_type": "restocked",
+          "quantity": 3,
+          "unit": "cartons",
+          "recorded_by": "Sari Wijaya",
+          "source_label": "Inventory Ledger (Bar Fridge Sheet)"
+        }
+      ],
+      "manual_stock_sheet": {
+        "source_id": "STK-SHEET-20261017-AM",
+        "source_label": "Manual Stock Sheet (Morning Count)",
+        "recorded_at": "2026-10-17T06:45:00+07:00",
+        "items": [
+          {
+            "sku": "ICE-CUBE-10KG",
+            "item_name": "Ice Cubes 10kg Bag",
+            "stock_on_hand": 0,
+            "unit": "bags",
+            "min_threshold": 2,
+            "status": "awaiting_delivery"
+          }
+        ]
+      },
+      "supplier_orders": {
+        "source_id": "SUP-ORD-20261017-AM",
+        "source_label": "Supplier Order Record",
+        "orders": [
+          {
+            "order_id": "PO-ICE-402",
+            "supplier_name": "PT Es Kristal Mandiri",
+            "item": "Ice Cubes 10kg Bag",
+            "quantity": 5,
+            "unit": "bags",
+            "ordered_at": "2026-10-16T19:30:00+07:00",
+            "due_at": "10:00 AM (Today)",
+            "status": "scheduled"
+          }
+        ]
+      },
+      "checklist_tasks": [
+        {
+          "task_id": "CHK-101",
+          "title": "Dial in morning espresso recipe and log extraction time",
+          "category": "Opening Calibration",
+          "required": true,
+          "status": "done",
+          "actor": "Sari Wijaya",
+          "occurred_at": "06:40",
+          "exception_reason": null
+        },
+        {
+          "task_id": "CHK-102",
+          "title": "Confirm grinder incident log and assign maintenance follow-up",
+          "category": "Equipment & Safety",
+          "required": true,
+          "status": "open",
+          "actor": null,
+          "occurred_at": null,
+          "exception_reason": null
+        },
+        {
+          "task_id": "CHK-103",
+          "title": "Receive and log scheduled ice delivery at 10:00 AM (PT Es Kristal Mandiri)",
+          "category": "Receiving & Inventory",
+          "required": true,
+          "status": "open",
+          "actor": null,
+          "occurred_at": null,
+          "exception_reason": null
+        },
+        {
+          "task_id": "CHK-104",
+          "title": "Verify dairy chiller temperature and restock bar fridge",
+          "category": "Cold Storage & Food Safety",
+          "required": true,
+          "status": "done",
+          "actor": "Sari Wijaya",
+          "occurred_at": "06:50",
+          "exception_reason": null
+        }
+      ],
+      "maintenance_issues": [],
+      "preset_notes": {
+        "id": "Restock 3 karton susu oat jam 08:15. Mesin espresso sudah dibersihkan sebelum oper shift.",
+        "en": "Restocked 3 cartons of oat milk at 08:15. Cleaned the espresso machine before handover."
+      },
+      "default_worker_note": "Restocked 3 cartons of oat milk at 08:15. Cleaned the espresso machine before handover.",
+      "note_input_type": "Worker handover note",
+      "seeded_extractions": {
+        "en": [
+          {
+            "claim_id": "CLM-101",
+            "claim_type": "inventory_movement",
+            "entity": "oat milk",
+            "action": "restocked",
+            "quantity": 3,
+            "unit": "cartons",
+            "occurred_at": "08:15",
+            "verbatim_quote": "Restocked 3 cartons of oat milk at 08:15.",
+            "needs_review": false
+          },
+          {
+            "claim_id": "CLM-102",
+            "claim_type": "task_completion",
+            "entity": "espresso machine",
+            "action": "cleaned",
+            "quantity": null,
+            "unit": null,
+            "occurred_at": null,
+            "verbatim_quote": "Cleaned the espresso machine before handover.",
+            "needs_review": false
+          }
+        ]
+      }
+    }
+  }
+}

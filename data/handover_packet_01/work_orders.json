@@ -1,0 +1,50 @@
+[
+  {
+    "work_order_id": "WO-402",
+    "equipment_id": "HYD_PRESS_02",
+    "subsystem": "Main Hydraulic Accumulator Bank",
+    "priority": "ROUTINE",
+    "status": "SIGNED_OFF",
+    "assigned_tech": "M. Rossi (Mechanical)",
+    "updated_at": "02:35",
+    "qa_signoff_by": "L. Ferri (Lead QA)",
+    "summary": "Accumulator nitrogen pre-charge pressure verification and bleed valve check.",
+    "notes": "Pre-charge verified at 92 bar. Bleed valve seated and torqued. Signed off for normal operation."
+  },
+  {
+    "work_order_id": "WO-405",
+    "equipment_id": "BOILER_01",
+    "subsystem": "Primary Burner Igniter Assembly",
+    "priority": "ROUTINE",
+    "status": "SIGNED_OFF",
+    "assigned_tech": "A. Conti (Process)",
+    "updated_at": "01:50",
+    "qa_signoff_by": "L. Ferri (Lead QA)",
+    "summary": "Burner igniter electrode carbon cleaning and spark gap inspection.",
+    "notes": "Electrode tips cleaned, gap set to 3.2 mm. Flame rod ionization current verified normal."
+  },
+  {
+    "work_order_id": "WO-409",
+    "equipment_id": "PUMP_03",
+    "subsystem": "Mechanical Cartridge Seal & Gland Follower",
+    "priority": "HIGH",
+    "status": "PENDING_QA_TORQUE_CHECK",
+    "assigned_tech": "M. Rossi (Mechanical)",
+    "updated_at": "04:15",
+    "qa_signoff_by": null,
+    "summary": "Mechanical seal replacement on Primary Feed Pump 03.",
+    "notes": "Cartridge seal seated by M. Rossi at 04:10. HOLD: DO NOT CLEAR FOR STARTUP until QA Lead verifies gland stud torque and shaft runout."
+  },
+  {
+    "work_order_id": "WO-411",
+    "equipment_id": "COOLANT_LOOP_01",
+    "subsystem": "Duplex Strainer L1 Basket Element",
+    "priority": "MEDIUM",
+    "status": "OPEN",
+    "assigned_tech": "Unassigned (Scheduled Shift C)",
+    "updated_at": "05:10",
+    "qa_signoff_by": null,
+    "summary": "Replace L1 primary coolant strainer element if differential pressure dP exceeds 0.8 bar.",
+    "notes": "Spare 50-micron mesh element staged at Bay 4."
+  }
+]

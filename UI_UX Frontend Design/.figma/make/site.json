@@ -1,0 +1,10 @@
+{
+  "description": "Streamlines project management by offering intuitive UI/UX design tools that enhance user experience and boost productivity for teams.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

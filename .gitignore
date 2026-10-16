@@ -5,3 +5,10 @@ __pycache__/
 *.py[cod]
 .agent/
 .agents/
+node_modules/
+**/node_modules/
+*.zip
+dist/
+scratch/*.png
+.DS_Store
+Thumbs.db

@@ -1,0 +1,125 @@
+{
+  "model": "google/gemma-3-27b-it",
+  "infrastructure": "AMD Instinct MI300X via AMD Token Factory",
+  "test_cases_count": 10,
+  "total_expected_claims": 25,
+  "total_extracted_claims": 23,
+  "recall_pct": 92.0,
+  "quote_gate_pass_rate_pct": 100.0,
+  "latency_p50_ms": 892,
+  "latency_p95_ms": 934,
+  "latency_mean_ms": 875.8,
+  "markdown_table": "| ID | Scenario & Input Pattern | Expected | Extracted | Quote-Gate Pass | Latency (AMD) |\n| :--- | :--- | :---: | :---: | :---: | :---: |\n| `SN-01` | **Indonesian Shorthand Rush**<br>_Tadi grinder macet 20 menit pas jam 17, buang beans 200g hou..._ | 4 | 4 | **100%** | 934 ms |\n| `SN-02` | **Closing Spoilage & Cash Shortage**<br>_Oat milk 3 cartons expired dumped unlogged, cash drawer shor..._ | 3 | 3 | **100%** | 915 ms |\n| `SN-03` | **Clean Shift (Zero Variance)**<br>_Smooth afternoon shift. All inventory counted and matched PO..._ | 3 | 3 | **100%** | 780 ms |\n| `SN-04` | **Indonesian Spoilage & Cash Deficit**<br>_Susu oat 3 karton basi dibuang, kasir kurang Rp 50.000..._ | 2 | 2 | **100%** | 834 ms |\n| `SN-05` | **Bilingual Restock & Skipped Task**<br>_Restocked 2 cartons oat milk after 18:00 rush, grinder burrs..._ | 3 | 3 | **100%** | 896 ms |\n| `SN-06` | **Equipment Pressure Drop & Comps**<br>_Steam wand group 2 pressure drop around 19:30, comped 2 iced..._ | 2 | 2 | **100%** | 884 ms |\n| `SN-07` | **Dry Stock Spillage & Ice Transit**<br>_Wasted 500g of house blend beans due to hopper spillage, es ..._ | 2 | 2 | **100%** | 861 ms |\n| `SN-08` | **Cash Deficit & Chiller Task Omission**<br>_Laci kasir selisih kurang Rp 25.000 pada close count, belum ..._ | 2 | 2 | **100%** | 869 ms |\n| `SN-09` | **Indonesian Clean Closing Shift**<br>_Semua checklist closing selesai, grinder dibersihkan dan kal..._ | 2 | 1 | **100%** | 893 ms |\n| `SN-10` | **Broken Syrups & Leaking Machine**<br>_Vanilla syrup 2 bottles dropped and wasted behind counter, e..._ | 2 | 1 | **100%** | 892 ms |\n\n**Aggregate Benchmark Summary**: 10/10 test cases passed \u00b7 **92.0% Recall** (23/25 operational claims) \u00b7 **100.0% Quote-Gate Pass Rate** (23/23 verbatim substrings) \u00b7 **p50 Latency**: 892 ms \u00b7 **p95 Latency**: 934 ms on AMD Instinct.",
+  "results": [
+    {
+      "id": "SN-01",
+      "category": "Indonesian Shorthand Rush",
+      "expected": 4,
+      "extracted": 4,
+      "quotes_tested": 4,
+      "quotes_passed": 4,
+      "quote_pass_rate": 100.0,
+      "latency_ms": 934,
+      "sample_note": "Tadi grinder macet 20 menit pas jam 17, buang beans 200g hou..."
+    },
+    {
+      "id": "SN-02",
+      "category": "Closing Spoilage & Cash Shortage",
+      "expected": 3,
+      "extracted": 3,
+      "quotes_tested": 3,
+      "quotes_passed": 3,
+      "quote_pass_rate": 100.0,
+      "latency_ms": 915,
+      "sample_note": "Oat milk 3 cartons expired dumped unlogged, cash drawer shor..."
+    },
+    {
+      "id": "SN-03",
+      "category": "Clean Shift (Zero Variance)",
+      "expected": 3,
+      "extracted": 3,
+      "quotes_tested": 3,
+      "quotes_passed": 3,
+      "quote_pass_rate": 100.0,
+      "latency_ms": 780,
+      "sample_note": "Smooth afternoon shift. All inventory counted and matched PO..."
+    },
+    {
+      "id": "SN-04",
+      "category": "Indonesian Spoilage & Cash Deficit",
+      "expected": 2,
+      "extracted": 2,
+      "quotes_tested": 2,
+      "quotes_passed": 2,
+      "quote_pass_rate": 100.0,
+      "latency_ms": 834,
+      "sample_note": "Susu oat 3 karton basi dibuang, kasir kurang Rp 50.000..."
+    },
+    {
+      "id": "SN-05",
+      "category": "Bilingual Restock & Skipped Task",
+      "expected": 3,
+      "extracted": 3,
+      "quotes_tested": 3,
+      "quotes_passed": 3,
+      "quote_pass_rate": 100.0,
+      "latency_ms": 896,
+      "sample_note": "Restocked 2 cartons oat milk after 18:00 rush, grinder burrs..."
+    },
+    {
+      "id": "SN-06",
+      "category": "Equipment Pressure Drop & Comps",
+      "expected": 2,
+      "extracted": 2,
+      "quotes_tested": 2,
+      "quotes_passed": 2,
+      "quote_pass_rate": 100.0,
+      "latency_ms": 884,
+      "sample_note": "Steam wand group 2 pressure drop around 19:30, comped 2 iced..."
+    },
+    {
+      "id": "SN-07",
+      "category": "Dry Stock Spillage & Ice Transit",
+      "expected": 2,
+      "extracted": 2,
+      "quotes_tested": 2,
+      "quotes_passed": 2,
+      "quote_pass_rate": 100.0,
+      "latency_ms": 861,
+      "sample_note": "Wasted 500g of house blend beans due to hopper spillage, es ..."
+    },
+    {
+      "id": "SN-08",
+      "category": "Cash Deficit & Chiller Task Omission",
+      "expected": 2,
+      "extracted": 2,
+      "quotes_tested": 2,
+      "quotes_passed": 2,
+      "quote_pass_rate": 100.0,
+      "latency_ms": 869,
+      "sample_note": "Laci kasir selisih kurang Rp 25.000 pada close count, belum ..."
+    },
+    {
+      "id": "SN-09",
+      "category": "Indonesian Clean Closing Shift",
+      "expected": 2,
+      "extracted": 1,
+      "quotes_tested": 1,
+      "quotes_passed": 1,
+      "quote_pass_rate": 100.0,
+      "latency_ms": 893,
+      "sample_note": "Semua checklist closing selesai, grinder dibersihkan dan kal..."
+    },
+    {
+      "id": "SN-10",
+      "category": "Broken Syrups & Leaking Machine",
+      "expected": 2,
+      "extracted": 1,
+      "quotes_tested": 1,
+      "quotes_passed": 1,
+      "quote_pass_rate": 100.0,
+      "latency_ms": 892,
+      "sample_note": "Vanilla syrup 2 bottles dropped and wasted behind counter, e..."
+    }
+  ]
+}

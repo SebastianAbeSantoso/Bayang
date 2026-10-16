@@ -1,0 +1,120 @@
+{
+  "facility": "Turin Precision Stamping & Powertrain Plant - Sector 04",
+  "shift_window": "00:00 to 06:00 (Shift B -> Shift C Handover)",
+  "subsystems": {
+    "HYD_PRESS_02": {
+      "name": "2000T Hydraulic Stamping Press 02",
+      "description": "Primary deep-draw hydraulic press with nitrogen piston accumulators.",
+      "metrics": {
+        "HYD_PRESS_02_BAR": {
+          "label": "Main Ram Hydraulic Pressure",
+          "unit": "bar",
+          "nominal": 115.0,
+          "oem_min": 90.0,
+          "oem_warn": 125.0,
+          "oem_max": 135.0,
+          "oem_max_std": 3.5,
+          "tolerance_pct": 5.0
+        },
+        "HYD_TEMP_02_C": {
+          "label": "Hydraulic Oil Reservoir Temperature",
+          "unit": "C",
+          "nominal": 55.0,
+          "oem_min": 35.0,
+          "oem_warn": 68.0,
+          "oem_max": 78.0,
+          "oem_max_std": 2.0,
+          "tolerance_pct": 5.0
+        }
+      }
+    },
+    "COOLANT_LOOP_01": {
+      "name": "Closed-Loop Die Coolant System 01",
+      "description": "High-flow glycol cooling circuit with duplex strainer L1 and regulator V-12.",
+      "metrics": {
+        "VALVE_V12_PRESS_BAR": {
+          "label": "Regulator Valve V-12 Downstream Pressure",
+          "unit": "bar",
+          "nominal": 7.0,
+          "oem_min": 5.0,
+          "oem_warn": 7.8,
+          "oem_max": 8.5,
+          "oem_max_std": 0.4,
+          "tolerance_pct": 5.0
+        },
+        "L1_FILTER_DP_BAR": {
+          "label": "Strainer L1 Differential Pressure (dP)",
+          "unit": "bar",
+          "nominal": 0.45,
+          "oem_min": 0.1,
+          "oem_warn": 0.8,
+          "oem_max": 1.0,
+          "oem_max_std": 0.15,
+          "tolerance_pct": 5.0
+        },
+        "COOLANT_FLOW_LPM": {
+          "label": "Main Supply Coolant Flow Rate",
+          "unit": "L/min",
+          "nominal": 52.0,
+          "oem_min": 40.0,
+          "oem_warn": 60.0,
+          "oem_max": 65.0,
+          "oem_max_std": 2.5,
+          "tolerance_pct": 5.0
+        }
+      }
+    },
+    "BOILER_01": {
+      "name": "Auxiliary Process Steam Boiler 01",
+      "description": "Natural-gas fired steam generator supplying platen heat exchangers.",
+      "metrics": {
+        "BOILER_EXHAUST_O2_PCT": {
+          "label": "Flue Gas Exhaust Oxygen (O2)",
+          "unit": "%",
+          "nominal": 3.2,
+          "oem_min": 2.0,
+          "oem_warn": 4.5,
+          "oem_max": 5.5,
+          "oem_max_std": 0.35,
+          "tolerance_pct": 5.0
+        },
+        "BOILER_STEAM_TEMP_C": {
+          "label": "Main Steam Header Temperature",
+          "unit": "C",
+          "nominal": 198.0,
+          "oem_min": 180.0,
+          "oem_warn": 210.0,
+          "oem_max": 222.0,
+          "oem_max_std": 3.0,
+          "tolerance_pct": 5.0
+        }
+      }
+    },
+    "PUMP_03": {
+      "name": "High-Pressure Feedwater & Circulating Pump 03",
+      "description": "Multistage centrifugal pump with mechanical cartridge seal.",
+      "metrics": {
+        "PUMP_03_BEARING_TEMP_C": {
+          "label": "Drive-End Bearing Housing Temperature",
+          "unit": "C",
+          "nominal": 62.0,
+          "oem_min": 40.0,
+          "oem_warn": 75.0,
+          "oem_max": 85.0,
+          "oem_max_std": 2.5,
+          "tolerance_pct": 5.0
+        },
+        "PUMP_03_VIB_MMS": {
+          "label": "Pump Frame RMS Vibration Velocity",
+          "unit": "mm/s",
+          "nominal": 2.4,
+          "oem_min": 0.5,
+          "oem_warn": 4.5,
+          "oem_max": 6.0,
+          "oem_max_std": 0.6,
+          "tolerance_pct": 5.0
+        }
+      }
+    }
+  }
+}

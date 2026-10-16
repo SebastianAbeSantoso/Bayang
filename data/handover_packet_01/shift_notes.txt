@@ -1,0 +1,31 @@
+================================================================================
+TURIN PRECISION STAMPING & POWERTRAIN - SECTOR 04
+OUTGOING SHIFT HANDOVER LOG: SHIFT B (00:00 - 06:00) -> INCOMING SHIFT C
+DATE: 2026-10-16 | HANDOVER WINDOW: 06:00
+================================================================================
+
+[LOG SECTION 1: MECHANICAL MAINTENANCE - Tech: Marco Rossi]
+--------------------------------------------------------------------------------
+01:15 | HYD_PRESS_02 oil reservoir temp held steady around 54 C at 01:15 during initial die warm-up cycle.
+01:40 | Regolazione valvola V-12 completata alle 01:40: pressione linea impostata a 145 PSI, tutto regolare.
+02:10 | Picco transitorio pressione HYD_PRESS_02 a 128 bar alle 02:10, rientrato a 114 bar entro 2 minuti senza intervento.
+02:35 | Completed accumulator pre-charge verification on HYD_PRESS_02 per WO-402, signed off and returned to service.
+03:15 | PUMP_03 frame vibration settled down mid-shift after baseplate check, running smooth.
+04:15 | PUMP_03 seal replacement complete per WO-409, LOTO removed and cleared for startup.
+04:30 | HYD_PRESS_02 main ram pressure stabilized around 04:30 at 115 bar after accumulator check.
+05:00 | Coolant bypass valve left CLOSED after line check at 05:00, normal routing restored.
+
+[LOG SECTION 2: ELECTRICAL & CONTROLS - Tech: Julian Vance]
+--------------------------------------------------------------------------------
+02:45 | COOLANT_LOOP_01 main supply flow steady at 52 L/min around 02:45, VFD current draw nominal.
+03:00 | Checked PUMP_03 drive bearing temp at 03:00 (62 C normal), unit running cool for rest of shift.
+05:15 | Opened coolant bypass at 05:15 for sensor flush, day shift must close before press cycle.
+05:45 | L1 filt dP < 0.8b @ EOD, no element change needed yet.
+05:50 | HYD_PRESS_02 oil temp at 56 C @ EOD, cooling fan auto-cycling normally.
+
+[LOG SECTION 3: PROCESS & BOILER OPERATIONS - Tech: Elena Conti]
+--------------------------------------------------------------------------------
+01:50 | BOILER_01 burner igniter cleaned and verified per WO-405, ticket closed and signed off.
+02:00 | BOILER_01 exhaust O2 reading 3.1% at 02:00 check, damper actuator tracking setpoint.
+03:30 | Temperatura vapore BOILER_01 stabile a 198 C intorno alle 03:30, nessuna anomalia.
+05:30 | Boiler exhaust O2 steady at 3.2% through end of shift, combustion trim nominal.
