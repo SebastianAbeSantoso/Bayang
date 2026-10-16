@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: shiftguard-workbench
+    env: docker
+    plan: free
+    region: oregon
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: AMD_API_BASE
+        value: https://developer.amd.com.cn/tokenfactory/v1
+      - key: AMD_MODEL_ID
+        value: google/gemma-3-27b-it
+      - key: AMD_API_KEY
+        sync: false

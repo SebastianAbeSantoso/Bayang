@@ -539,8 +539,8 @@ class BayangHandler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    host = os.getenv("BAYANG_HOST", "127.0.0.1")
-    port = int(os.getenv("BAYANG_PORT", "8000"))
+    port = int(os.getenv("PORT", os.getenv("BAYANG_PORT", "8000")))
+    host = os.getenv("HOST", os.getenv("BAYANG_HOST", "0.0.0.0" if os.getenv("PORT") else "127.0.0.1"))
     try:
         server = ThreadingHTTPServer((host, port), BayangHandler)
     except OSError as exc:
