@@ -207,6 +207,8 @@ class BayangHandler(BaseHTTPRequestHandler):
         if path == "/api/stage/init":
             STAGE_INSTANCE.reset()
             return self.send_json(200, STAGE_INSTANCE.get_stage_state())
+        if path == "/api/stage/evidence":
+            return self.send_json(200, STAGE_INSTANCE.get_evidence_board_state())
         relative = "index.html" if path in ("/", "") else path.lstrip("/")
         target = (ROOT / "client" / relative).resolve()
         if ROOT.joinpath("client").resolve() not in target.parents or not target.is_file():
@@ -236,6 +238,16 @@ class BayangHandler(BaseHTTPRequestHandler):
                     "success": success,
                     "message": msg,
                     "stage_state": STAGE_INSTANCE.get_stage_state(),
+                })
+
+            if route == "/api/stage/accuse":
+                suspect_id = payload.get("suspect_id", "")
+                success, msg = STAGE_INSTANCE.accuse_suspect(suspect_id)
+                return self.send_json(200 if success else 400, {
+                    "success": success,
+                    "message": msg,
+                    "stage_state": STAGE_INSTANCE.get_stage_state(),
+                    "evidence_board": STAGE_INSTANCE.get_evidence_board_state(),
                 })
 
             if route == "/api/stage/turn":

@@ -84,6 +84,54 @@ def test_blocked_curtain_interception():
     print("[PASS] Blocked curtain interception verified.")
 
 
+def test_spotlight_rule_verifier():
+    stage = StageEngine()
+    stage.spotlight_chamber = 1
+
+    # Script where Julian attempts to burn manifests under Chamber 1 spotlight
+    covert_script = {
+        "scene_title": "Scene I: Defiance in the Light",
+        "narration": "The stage light shines bright.",
+        "dialogue": [{"speaker": "Julian", "line": "Nobody will ever find these papers."}],
+        "character_actions": {
+            "Julian": {
+                "target_room": 1,
+                "target_fixture": "stove",
+                "action": "Burn the incriminating records in the stove.",
+                "action_type": "BURN",
+            }
+        },
+        "character_intents": {"Julian": 1},
+    }
+
+    repairs = _validate_turn_script(stage, covert_script)
+    assert any(r["rule"] == "The Spotlight Rule (Gaze of Accountability)" for r in repairs)
+    julian_act = covert_script["character_actions"]["Julian"]
+    assert julian_act["action_type"] == "INNOCENT_FACADE"
+    assert "innocently" in julian_act["action"]
+    print("[PASS] Spotlight Rule (Gaze of Accountability) verifier gate verified.")
+
+
+def test_epistemic_omniscience_verifier():
+    stage = StageEngine()
+    stage.characters["Julian"]["node"] = 1
+    stage.characters["Vesper"]["node"] = 4
+    # Julian speaks with unobserved knowledge of contraband in Room 4
+    omni_script = {
+        "scene_title": "Scene I: Hallucinated Knowledge",
+        "narration": "Julian speaks without witnessing.",
+        "dialogue": [
+            {"speaker": "Julian", "line": "Vesper has stashed contraband into the crate!"}
+        ],
+        "character_intents": {"Julian": 1},
+    }
+    repairs = _validate_turn_script(stage, omni_script)
+    assert any(r["rule"] == "Theory of Mind Epistemic Gate" for r in repairs)
+    repaired_line = omni_script["dialogue"][0]["line"]
+    assert "rumor" in repaired_line.lower() or "suspicion" in repaired_line.lower()
+    print("[PASS] Theory of Mind Epistemic Gate verifier verified.")
+
+
 def test_generate_stage_turn_end_to_end():
     stage = StageEngine()
     summary = "Director dropped the curtain on Node 1 -> Node 2; Tension set to 3.0"
@@ -103,5 +151,7 @@ if __name__ == "__main__":
     test_ghost_dialogue_interception()
     test_spatial_breach_interception()
     test_blocked_curtain_interception()
+    test_spotlight_rule_verifier()
+    test_epistemic_omniscience_verifier()
     test_generate_stage_turn_end_to_end()
     print("\nALL STAGE MODEL TESTS PASSED CLEANLY!")

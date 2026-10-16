@@ -81,6 +81,33 @@ def test_stage_api():
             assert data2["stage_state"]["current_room_id"] == 3  # Route 1->2 blocked, so bypassed to 3
             print(f"[PASS] POST /api/stage/turn executed Turn 2 consensus departure to Scene 2 (Room 3).")
 
+        # 5. GET /api/stage/evidence (Evidence Board State)
+        req3 = urllib.request.Request(f"{base}/api/stage/evidence")
+        with urllib.request.urlopen(req3) as resp3:
+            data3 = json.loads(resp3.read().decode("utf-8"))
+            assert "alibis" in data3
+            assert "contradictions" in data3
+            assert "physical_truth" in data3
+            print("[PASS] GET /api/stage/evidence returned complete Evidence Board dossier.")
+
+        # 6. POST /api/stage/accuse (Climax Accusation)
+        # Attempt accusation before gate unbolted
+        accuse_payload = {"suspect_id": "Julian"}
+        req4 = urllib.request.Request(
+            f"{base}/api/stage/accuse",
+            data=json.dumps(accuse_payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req4) as resp4:
+                data4 = json.loads(resp4.read().decode("utf-8"))
+        except urllib.error.HTTPError as err:
+            data4 = json.loads(err.read().decode("utf-8"))
+            assert data4["success"] is False
+            assert "portcullis" in data4["message"]
+            print("[PASS] POST /api/stage/accuse rejected premature accusation before gate unbolted.")
+
     finally:
         server.shutdown()
         server.server_close()

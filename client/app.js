@@ -867,29 +867,30 @@ if (document.readyState === "loading") {
    THE WORLD'S A STAGE: REVERSE: 1999 STAGE DIRECTOR CONTROLLER
    ========================================================================= */
 
+const STAGE_CHAMBERS_CONFIG = {
+  1: { id: 1, name: "Telegraph Office", grid_pos: "top-left", floor: "Upper Level", desc: "Cluttered communications office with brass telegraph key, filing cabinets, and pneumatic tubes." },
+  2: { id: 2, name: "Locked Platform Gate", grid_pos: "top-right", floor: "Upper Level", desc: "Heavy iron portcullis bolted shut against the snow, overlooking Midnight Express tracks." },
+  3: { id: 3, name: "Grand Waiting Hall", grid_pos: "bottom-left", floor: "Ground Floor", desc: "Marble hall with vaulted timber arches, a glowing coal stove, and a ticking grandfather clock." },
+  4: { id: 4, name: "Baggage & Boiler Room", grid_pos: "bottom-right", floor: "Ground Floor", desc: "Dark service basement smelling of grease and steam pipes with roaring furnace and coal chute." },
+};
+
 const DEFAULT_STAGE_DATA = {
   scene_number: 1,
   max_scenes: 6,
   director_authority: 4,
   tension_dial: 2.0,
-  fog_node: 0,
+  spotlight_chamber: 3,
+  spotlighted_nodes: [3],
+  gate_unbolted: false,
   blocked_edges: [],
-  spotlighted_nodes: [1],
-  edges: [[1, 2], [1, 3], [2, 4], [3, 4], [4, 5], [4, 6], [5, 7], [6, 7]],
-  nodes: {
-    1: { id: 1, name: "Station Platform", light_level: "Lit" },
-    2: { id: 2, name: "The Trestle Bridge", light_level: "Dim" },
-    3: { id: 3, name: "The Valley Bypass", light_level: "Dark" },
-    4: { id: 4, name: "The Signal Tower", light_level: "Lit" },
-    5: { id: 5, name: "Smuggler's Cut", light_level: "Dark" },
-    6: { id: 6, name: "Pilgrim's Stair", light_level: "Lit" },
-    7: { id: 7, name: "The Iron Terminal", light_level: "Lit" },
-  },
+  curtained_doorways: [],
+  edges: [[1, 2], [1, 3], [2, 4], [3, 4]],
+  chambers: STAGE_CHAMBERS_CONFIG,
   characters: {
-    "Julian": { id: "Julian", name: "Julian Vance", role: "The Archivist", node: 1, node_name: "Station Platform", hp: 100, max_hp: 100, stress: 10, fatigue: 5, total_weight_kg: 70, is_alive: true, flaw: "Paralyzed by dark uncertainty." },
-    "Vesper": { id: "Vesper", name: "Vesper Cross", role: "The Smuggler", node: 1, node_name: "Station Platform", hp: 100, max_hp: 100, stress: 20, fatigue: 10, total_weight_kg: 175, is_alive: true, flaw: "Takes reckless shortcuts." },
-    "Beatrice": { id: "Beatrice", name: "Beatrice Thorne", role: "The Machinist", node: 1, node_name: "Station Platform", hp: 80, max_hp: 80, stress: 15, fatigue: 20, total_weight_kg: 55, is_alive: true, flaw: "Physically frail on rough ground." },
-    "The Curator": { id: "The Curator", name: "The Curator", role: "The Cast Infiltrator", node: 1, node_name: "Station Platform", hp: 100, max_hp: 100, stress: 0, fatigue: 0, total_weight_kg: 60, is_alive: true, flaw: "Unpredictable stage direction." },
+    "Julian": { id: "Julian", name: "Julian Vance", role: "The Archivist", node: 1, hp: 100, max_hp: 100, stress: 10, fatigue: 5, total_weight_kg: 70, is_alive: true, flaw: "Paralyzed by dark uncertainty." },
+    "Vesper": { id: "Vesper", name: "Vesper Cross", role: "The Smuggler", node: 4, hp: 100, max_hp: 100, stress: 20, fatigue: 10, total_weight_kg: 175, is_alive: true, flaw: "Takes reckless shortcuts." },
+    "Beatrice": { id: "Beatrice", name: "Beatrice Thorne", role: "The Machinist", node: 2, hp: 80, max_hp: 80, stress: 15, fatigue: 20, total_weight_kg: 55, is_alive: true, flaw: "Physically frail on rough ground." },
+    "The Curator": { id: "The Curator", name: "The Curator", role: "The Cast Infiltrator", node: 3, hp: 100, max_hp: 100, stress: 0, fatigue: 0, total_weight_kg: 60, is_alive: true, flaw: "Unpredictable stage direction." },
   },
 };
 
@@ -901,17 +902,6 @@ const stageState = {
   autoPlay: false,
   metronomeTimer: null,
   metronomeRemainingMs: 3500,
-  metronomeTotalMs: 3500,
-};
-
-const STAGE_NODE_COORDS = {
-  1: { x: 80, y: 170, label: "1. Station Platform", sub: "Lit · Safe Gathering" },
-  2: { x: 260, y: 80, label: "2. The Trestle Bridge", sub: "Fast · 150kg Rotted Timber" },
-  3: { x: 260, y: 260, label: "3. The Valley Bypass", sub: "Rugged Scree · Fatigue" },
-  4: { x: 440, y: 170, label: "4. The Signal Tower", sub: "Padlocked Gate Barrier" },
-  5: { x: 620, y: 80, label: "5. Smuggler's Cut", sub: "Dark · Ambush Hazard" },
-  6: { x: 620, y: 260, label: "6. Pilgrim's Stair", sub: "Lit · Moral Trial" },
-  7: { x: 770, y: 170, label: "7. The Iron Terminal", sub: "Goal · Departure" },
 };
 
 const CHAR_CONFIG = {
@@ -939,27 +929,191 @@ function selectVerb(verb) {
   updateDirectorDeckUI();
 }
 
-// Mode Switcher between Stage Director and Archival Folio Ledger
+// Archival Folio Evidence Board Drawer Controls
 const toggleLedgerBtn = $("#toggle-ledger-btn");
-const viewStage = $("#stage-experience");
-const viewLedger = $("#ledger-experience");
+const closeEvidenceDrawerBtn = $("#close-evidence-drawer");
+const evidenceBackdrop = $("#evidence-drawer-backdrop");
 
-if (toggleLedgerBtn && viewStage && viewLedger) {
+if (toggleLedgerBtn) {
   toggleLedgerBtn.addEventListener("click", () => {
-    const isShowingLedger = !viewLedger.hidden;
-    if (isShowingLedger) {
-      viewStage.hidden = false;
-      viewLedger.hidden = true;
-      toggleLedgerBtn.innerHTML = `<span>⚜ Archival Folio</span>`;
-      toggleLedgerBtn.classList.remove("active");
-      renderStageBoard();
+    const drawer = $("#evidence-drawer");
+    const isOpen = drawer && !drawer.hidden && drawer.classList.contains("open");
+    if (isOpen) {
+      closeEvidenceBoard();
     } else {
-      viewStage.hidden = true;
-      viewLedger.hidden = false;
-      toggleLedgerBtn.innerHTML = `<span>✦ Return to Stage</span>`;
-      toggleLedgerBtn.classList.add("active");
+      renderEvidenceBoard();
     }
   });
+}
+
+if (closeEvidenceDrawerBtn) {
+  closeEvidenceDrawerBtn.addEventListener("click", closeEvidenceBoard);
+}
+
+if (evidenceBackdrop) {
+  evidenceBackdrop.addEventListener("click", closeEvidenceBoard);
+}
+
+async function renderEvidenceBoard() {
+  const drawer = $("#evidence-drawer");
+  const backdrop = $("#evidence-drawer-backdrop");
+  if (!drawer || !backdrop) return;
+
+  drawer.hidden = false;
+  backdrop.hidden = false;
+  requestAnimationFrame(() => {
+    drawer.classList.add("open");
+    backdrop.classList.add("open");
+  });
+
+  try {
+    const data = await api("/api/stage/evidence");
+    if (!data) return;
+
+    // Update Countdown & Portcullis status
+    const bellsEl = $("#climax-bells-val");
+    if (bellsEl) bellsEl.textContent = `${data.countdown_ticks || 8} Bells`;
+
+    const gateEl = $("#climax-gate-status");
+    if (gateEl) {
+      if (data.platform_unlocked) {
+        gateEl.textContent = "UNBOLTED";
+        gateEl.className = "stat-value unbolted";
+      } else {
+        gateEl.textContent = "PADLOCKED";
+        gateEl.className = "stat-value locked";
+      }
+    }
+
+    // Render Contradictions
+    const contraFeed = $("#contradictions-feed");
+    const countTag = $("#contradiction-count-tag");
+    const contradictions = data.contradictions || [];
+    if (countTag) countTag.textContent = `${contradictions.length} Detected`;
+
+    if (contraFeed) {
+      if (contradictions.length === 0) {
+        contraFeed.innerHTML = `<div class="empty-evidence-msg">No sworn contradictions detected yet. As characters speak and roam, false alibis will be flagged here in crimson.</div>`;
+      } else {
+        contraFeed.innerHTML = contradictions.map((c) => `
+          <div class="contradiction-card">
+            <div class="contradiction-header">
+              <strong>⚠ CONTRADICTION: ${c.actor.toUpperCase()}</strong>
+              <small class="truth-tick">Tick ${c.tick || "?"}</small>
+            </div>
+            <div class="contradiction-claim">" ${c.claim} "</div>
+            <div class="contradiction-reality">Physical Fact: ${c.reality}</div>
+          </div>
+        `).join("");
+      }
+    }
+
+    // Render Cast Dossier & Sworn Alibis
+    const dossierGrid = $("#cast-dossier-grid");
+    if (dossierGrid && data.characters) {
+      dossierGrid.innerHTML = Object.entries(data.characters).map(([cid, char]) => {
+        const cfg = getCharConfig(cid);
+        const alibi = data.alibis[cid] || char.alibi || "No sworn statement entered yet.";
+        const chamberName = STAGE_CHAMBERS_CONFIG[char.node]?.name || `Chamber ${char.node}`;
+        const items = (char.inventory || []).join(", ");
+        return `
+          <div class="dossier-card">
+            <img class="dossier-avatar" src="${cfg.avatar}" alt="${char.name}">
+            <div class="dossier-details">
+              <div class="dossier-name-row">
+                <strong>${char.name}</strong>
+                <span class="dossier-location">${chamberName}</span>
+              </div>
+              <span class="dossier-role">${char.role} · Stress: ${char.stress}%</span>
+              <div class="dossier-alibi">"${alibi}"</div>
+              ${items ? `<small style="color: #9c8358; font-size: 10px;">Possessions: ${items}</small>` : ""}
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // Render Physical Truth Log
+    const truthLog = $("#physical-truth-log");
+    const physicalFacts = data.physical_truth || data.physical_facts || [];
+    if (truthLog) {
+      if (physicalFacts.length === 0) {
+        truthLog.innerHTML = `<div class="empty-evidence-msg">Station ledger is silent. Physical traces will be logged here.</div>`;
+      } else {
+        truthLog.innerHTML = physicalFacts.slice().reverse().map((fact) => {
+          const chamberName = STAGE_CHAMBERS_CONFIG[fact.room]?.name || `Chamber ${fact.room}`;
+          return `
+            <div class="truth-entry ${fact.is_crime ? "crime" : ""}">
+              <span class="truth-tick">Tick ${fact.tick}</span>
+              <span><strong>${fact.actor}</strong> at ${chamberName} (${fact.fixture || "area"}): ${fact.action}</span>
+            </div>
+          `;
+        }).join("");
+      }
+    }
+  } catch (err) {
+    console.error("Failed to fetch evidence board:", err);
+  }
+}
+
+function closeEvidenceBoard() {
+  const drawer = $("#evidence-drawer");
+  const backdrop = $("#evidence-drawer-backdrop");
+  if (drawer) drawer.classList.remove("open");
+  if (backdrop) backdrop.classList.remove("open");
+  setTimeout(() => {
+    if (drawer) drawer.hidden = true;
+    if (backdrop) backdrop.hidden = true;
+  }, 350);
+}
+
+// Accusation Button Handler
+const submitAccuseBtn = $("#submit-accusation-btn");
+if (submitAccuseBtn) {
+  submitAccuseBtn.addEventListener("click", async () => {
+    const suspectSelect = $("#accuse-suspect-select");
+    const suspectId = suspectSelect ? suspectSelect.value : "Julian";
+    const banner = $("#accusation-result-banner");
+    try {
+      submitAccuseBtn.disabled = true;
+      submitAccuseBtn.textContent = "Confronting...";
+      const res = await api("/api/stage/accuse", { suspect_id: suspectId });
+      if (banner) {
+        banner.hidden = false;
+        banner.className = "accusation-banner success";
+        banner.textContent = res.message;
+      }
+      if (res.stage_state && res.stage_state.status === "won") {
+        closeEvidenceBoard();
+        showStageEnd(true, res.message);
+      }
+    } catch (err) {
+      if (banner) {
+        banner.hidden = false;
+        banner.className = "accusation-banner failure";
+        banner.textContent = err.message || "The accusation failed!";
+      }
+    } finally {
+      submitAccuseBtn.disabled = false;
+      submitAccuseBtn.textContent = "Drop Spotlight & Accuse";
+      renderEvidenceBoard();
+    }
+  });
+}
+
+async function applyDirectorVerb(verb, target) {
+  try {
+    if (verb === "block_route" && typeof target === "string" && target.includes(",")) {
+      target = target.split(",").map(Number);
+    }
+    const res = await api("/api/stage/director_action", { verb, target });
+    stageState.data = res.stage_state;
+    renderStageBoard();
+    renderCastCards();
+    showStageToast(res.message);
+  } catch (err) {
+    showStageToast(err.message);
+  }
 }
 
 async function initStageEngine(forceReset = false) {
@@ -1011,49 +1165,47 @@ function renderMacroRibbon() {
   if (!ribbon || !stageState.data) return;
 
   const currentId = stageState.data.current_room_id || 1;
-  const fogNode = stageState.data.fog_node || 0;
-  const nodes = stageState.data.nodes || {};
-
+  const spotlightId = stageState.data.spotlight_chamber || 1;
   ribbon.innerHTML = "";
 
-  const routeOrder = [1, 2, 3, 4, 5, 6, 7];
-  // Simple linear/branch representation for the ribbon
-  const ribbonSequence = [1, 2, 4, 5, 7];
-
-  Object.entries(STAGE_NODE_COORDS).forEach(([nidStr, coord], idx) => {
-    const nid = Number(nidStr);
-    const nodeData = nodes[nid] || { name: coord.label };
-    const isActive = nid === currentId;
-    const isVisited = nid < currentId;
-    const isFogged = nid <= fogNode;
+  [1, 2, 3, 4].forEach((cid, idx) => {
+    const chamber = STAGE_CHAMBERS_CONFIG[cid] || { name: `Chamber ${cid}` };
+    const isActive = cid === currentId;
+    const isLit = cid === spotlightId;
 
     const nodeEl = document.createElement("div");
     let stateClass = "";
     if (isActive) stateClass = "active";
-    else if (isFogged) stateClass = "fogged";
-    else if (isVisited) stateClass = "visited";
+    if (isLit) stateClass += " spotlighted";
 
-    nodeEl.className = `ribbon-node ${stateClass}`;
-    nodeEl.title = `${nodeData.name} (${nodeData.act || "Act"})`;
+    nodeEl.className = `ribbon-node ${stateClass}`.trim();
+    nodeEl.title = `${chamber.name} [Click to train Spotlight]`;
+    nodeEl.style.cursor = "pointer";
 
     nodeEl.innerHTML = `
-      <span class="ribbon-badge">${nid}</span>
-      <span class="ribbon-title">${nodeData.name.split(" ")[0]}</span>
+      <span class="ribbon-badge">${cid}</span>
+      <span class="ribbon-title">${chamber.name.split(" ")[0]}</span>
+      ${isLit ? `<span style="color:#fcd34d;font-size:10px;">✦</span>` : ""}
     `;
+
+    nodeEl.onclick = async () => {
+      await applyDirectorVerb("shift_spotlight", cid);
+    };
 
     ribbon.appendChild(nodeEl);
 
-    if (idx < Object.keys(STAGE_NODE_COORDS).length - 1) {
+    if (idx < 3) {
       const arrow = document.createElement("span");
       arrow.className = "ribbon-arrow";
-      arrow.innerHTML = "&rarr;";
+      arrow.innerHTML = "&harr;";
       ribbon.appendChild(arrow);
     }
   });
 }
 
 function renderRoomInfo() {
-  const curRoom = stageState.data.current_room || {};
+  const spotlightId = stageState.data.spotlight_chamber || (stageState.data.spotlighted_nodes && stageState.data.spotlighted_nodes[0]) || 1;
+  const spotChamber = STAGE_CHAMBERS_CONFIG[spotlightId] || { name: `Chamber ${spotlightId}` };
   const actTag = $("#room-act-tag");
   const titleName = $("#room-title-name");
   const descText = $("#room-desc-text");
@@ -1061,26 +1213,20 @@ function renderRoomInfo() {
   const progressFill = $("#room-progress-fill");
   const consensusHint = $("#room-consensus-status");
 
-  if (actTag) actTag.textContent = (curRoom.act || "ACT I").toUpperCase();
-  if (titleName) titleName.textContent = `Room ${stageState.data.current_room_id}: ${curRoom.name || "Station Office"}`;
-  if (descText) descText.textContent = curRoom.description || "The cast gathers in this mountain sanctuary.";
+  if (actTag) actTag.textContent = `SCENE ${stageState.data.scene_number || 1}`;
+  if (titleName) titleName.textContent = `Spotlight: Chamber ${spotlightId} · ${spotChamber.name}`;
+  if (descText) descText.textContent = spotChamber.desc || "The cast roams the 2x2 Victorian dollhouse stage.";
 
-  const pct = Math.max(5, Math.min(100, stageState.data.room_progress || 15));
+  const pct = Math.max(5, Math.min(100, Math.round(((stageState.data.scene_number || 1) / (stageState.data.max_scenes || 6)) * 100)));
   if (progressPct) progressPct.textContent = `${pct}%`;
   if (progressFill) progressFill.style.width = `${pct}%`;
 
   if (consensusHint) {
-    const consensus = stageState.data.room_consensus;
-    if (consensus && consensus.reached) {
-      consensusHint.textContent = `Consensus Reached! Party preparing to advance toward Node ${consensus.target_node}.`;
-    } else if (consensus && consensus.votes) {
-      const votePairs = Object.entries(consensus.votes).filter(([_, v]) => v != null);
-      if (votePairs.length > 0) {
-        const summary = votePairs.map(([cid, v]) => `${cid}: Node ${v}`).join(", ");
-        consensusHint.textContent = `Exit Votes: ${summary}. Awaiting consensus to depart.`;
-      } else {
-        consensusHint.textContent = `Cast exploring room fixtures (Turn ${stageState.data.room_turn || 1}).`;
-      }
+    if (stageState.data.gate_unbolted) {
+      consensusHint.textContent = "Platform Gate UNBOLTED! Board the Midnight Express before fog descends.";
+    } else {
+      const livingCount = Object.values(stageState.data.characters || {}).filter((c) => c.is_alive).length;
+      consensusHint.textContent = `${livingCount} actors roaming 4 chambers. Spotlight trained on Chamber ${spotlightId}.`;
     }
   }
 }
@@ -1089,66 +1235,57 @@ function renderRoomStageSVG() {
   const svg = $("#stage-svg");
   if (!svg || !stageState.data) return;
 
-  const curRoom = stageState.data.current_room || {};
-  const fixtures = curRoom.fixtures || [];
-  const exits = curRoom.exits || [];
-  const blocked = stageState.data.blocked_edges || [];
-  const currentRoomId = stageState.data.current_room_id || 1;
-  const spotlightedFixture = stageState.data.spotlighted_fixture;
-  const spotlightedNodes = stageState.data.spotlighted_nodes || [];
-  const characters = Object.values(stageState.data.characters || {});
+  const data = stageState.data;
+  const spotlightChamber = data.spotlight_chamber || (data.spotlighted_nodes && data.spotlighted_nodes[0]) || 1;
+  const blocked = data.blocked_edges || [];
+  const curtained = data.curtained_doorways || [];
+  const characters = Object.values(data.characters || {});
+  const gateUnbolted = Boolean(data.gate_unbolted);
+  const fixtureProps = data.fixture_props || {};
 
-  // Generate Stage Footlights along stage apron (y = 394)
-  const footlights = [80, 160, 240, 320, 400, 480, 560, 640, 720, 780].map((fx) => `
-    <circle cx="${fx}" cy="392" r="4.5" fill="#fcd34d" filter="url(#glow-amber)" />
-    <circle cx="${fx}" cy="392" r="2.5" fill="#fffef0" />
-    <polygon points="${fx - 24},396 ${fx},340 ${fx + 24},396" fill="#fef3c7" opacity="0.06" />
+  function isDoorCurtained(u, v) {
+    return blocked.some((e) => (e[0] === u && e[1] === v) || (e[0] === v && e[1] === u)) ||
+           curtained.some((e) => (e[0] === u && e[1] === v) || (e[0] === v && e[1] === u));
+  }
+
+  // Generate Stage Footlights along stage apron (y = 428)
+  const footlights = [60, 130, 200, 270, 340, 410, 480, 550, 620, 690, 760].map((fx) => `
+    <circle cx="${fx}" cy="426" r="4" fill="#fcd34d" filter="url(#glow-amber)" />
+    <circle cx="${fx}" cy="426" r="2.2" fill="#fffef0" />
+    <polygon points="${fx - 20},430 ${fx},380 ${fx + 20},430" fill="#fef3c7" opacity="0.05" />
   `).join("");
 
   svg.innerHTML = `
     <defs>
       <!-- Atmospheric Gradients & Glows -->
       <filter id="glow-gold" x="-30%" y="-30%" width="160%" height="160%">
-        <feGaussianBlur stdDeviation="5" result="blur" />
+        <feGaussianBlur stdDeviation="4.5" result="blur" />
         <feComposite in="SourceGraphic" in2="blur" operator="over" />
       </filter>
       <filter id="glow-amber" x="-50%" y="-50%" width="200%" height="200%">
-        <feGaussianBlur stdDeviation="5" result="blur" />
+        <feGaussianBlur stdDeviation="3.5" result="blur" />
         <feComposite in="SourceGraphic" in2="blur" operator="over" />
       </filter>
       <filter id="standee-shadow" x="-50%" y="-50%" width="200%" height="200%">
-        <feGaussianBlur stdDeviation="3.5" result="blur" />
-        <feColorMatrix type="matrix" values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.45 0"/>
+        <feGaussianBlur stdDeviation="3" result="blur" />
+        <feColorMatrix type="matrix" values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.5 0"/>
       </filter>
-      
-      <!-- Limelight Conical Beam -->
-      <linearGradient id="limelight-cone" x1="50%" y1="0%" x2="50%" y2="100%">
-        <stop offset="0%" stop-color="#fffbeb" stop-opacity="0.9" />
-        <stop offset="35%" stop-color="#fde68a" stop-opacity="0.45" />
-        <stop offset="70%" stop-color="#d97706" stop-opacity="0.15" />
-        <stop offset="100%" stop-color="#b45309" stop-opacity="0.0" />
-      </linearGradient>
+
+      <!-- Limelight Radial Wash for Lit Chamber -->
+      <radialGradient id="limelight-chamber-wash" cx="50%" cy="50%" r="55%">
+        <stop offset="0%" stop-color="#fffdf0" stop-opacity="0.24" />
+        <stop offset="45%" stop-color="#fde68a" stop-opacity="0.14" />
+        <stop offset="80%" stop-color="#b45309" stop-opacity="0.04" />
+        <stop offset="100%" stop-color="#000000" stop-opacity="0.0" />
+      </radialGradient>
 
       <!-- Velvet Drapery Gradient -->
       <linearGradient id="velvet-fold" x1="0%" y1="0%" x2="100%" y2="0%">
         <stop offset="0%" stop-color="#3b0d11" />
-        <stop offset="20%" stop-color="#6e151c" />
-        <stop offset="45%" stop-color="#4a0f14" />
-        <stop offset="70%" stop-color="#7a1820" />
+        <stop offset="25%" stop-color="#6e151c" />
+        <stop offset="50%" stop-color="#4a0f14" />
+        <stop offset="75%" stop-color="#7a1820" />
         <stop offset="100%" stop-color="#2d080b" />
-      </linearGradient>
-
-      <!-- Aged Stage Wood Planks -->
-      <linearGradient id="wall-damask" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stop-color="#1c1713" />
-        <stop offset="60%" stop-color="#251e18" />
-        <stop offset="100%" stop-color="#18130f" />
-      </linearGradient>
-      
-      <linearGradient id="stage-floor" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stop-color="#2e2216" />
-        <stop offset="40%" stop-color="#241a10" />
-        <stop offset="100%" stop-color="#161009" />
       </linearGradient>
 
       <!-- Antique Brass Plaque Texture -->
@@ -1158,675 +1295,519 @@ function renderRoomStageSVG() {
         <stop offset="100%" stop-color="#8a6421" />
       </linearGradient>
 
+      <!-- Wall Gradients per Chamber -->
+      <linearGradient id="wall-telegraph" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#1c1611" />
+        <stop offset="60%" stop-color="#241c16" />
+        <stop offset="100%" stop-color="#16110d" />
+      </linearGradient>
+
+      <linearGradient id="wall-gate" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#0f1620" />
+        <stop offset="60%" stop-color="#141c26" />
+        <stop offset="100%" stop-color="#0b1017" />
+      </linearGradient>
+
+      <linearGradient id="wall-hall" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#201712" />
+        <stop offset="60%" stop-color="#281e17" />
+        <stop offset="100%" stop-color="#17110c" />
+      </linearGradient>
+
+      <linearGradient id="wall-boiler" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#17120e" />
+        <stop offset="60%" stop-color="#1e1712" />
+        <stop offset="100%" stop-color="#110d0a" />
+      </linearGradient>
+
       <!-- 2D Character Token Circular Clip -->
       <clipPath id="token-clip-circle">
-        <circle cx="0" cy="0" r="23" />
+        <circle cx="0" cy="0" r="19" />
       </clipPath>
     </defs>
 
-    <!-- 1. STAGE ENVIRONMENT (Atmospheric Victorian Theater Room) -->
-    <!-- Rear Wall (Dark Victorian Salon Damask) -->
-    <rect x="0" y="0" width="840" height="260" fill="url(#wall-damask)" />
-    
-    <!-- Ornate Damask Wall Panels & Gilded Picture Rail -->
-    <line x1="28" y1="48" x2="812" y2="48" stroke="#8a6421" stroke-width="1.8" />
-    <line x1="28" y1="52" x2="812" y2="52" stroke="#3b2b18" stroke-width="1" />
-    
-    <!-- Vertical Wall Column Paneling -->
-    <line x1="140" y1="52" x2="140" y2="260" stroke="#2d241c" stroke-width="1.5" />
-    <line x1="310" y1="52" x2="310" y2="260" stroke="#2d241c" stroke-width="1.5" />
-    <line x1="480" y1="52" x2="480" y2="260" stroke="#2d241c" stroke-width="1.5" />
-    <line x1="660" y1="52" x2="660" y2="260" stroke="#2d241c" stroke-width="1.5" />
+    <!-- STAGE BASE: Outer Dark Backdrop -->
+    <rect x="0" y="0" width="840" height="440" fill="#0c0906" />
 
-    <!-- Dado / Wainscoting Rail -->
-    <rect x="28" y="248" width="784" height="12" fill="#2d2116" stroke="#4a3723" stroke-width="1" />
+    <!-- ================================================================= -->
+    <!-- 2X2 DOLLHOUSE CHAMBERS                                            -->
+    <!-- ================================================================= -->
 
-    <!-- 2. STAGE FLOOR (Hardwood Floorboards with Depth & Perspective) -->
-    <rect x="0" y="260" width="840" height="140" fill="url(#stage-floor)" />
-    
-    <!-- Floorboard Perspective Planks -->
-    <line x1="0" y1="290" x2="840" y2="290" stroke="#1f160e" stroke-width="1.2" />
-    <line x1="0" y1="324" x2="840" y2="324" stroke="#1a120b" stroke-width="1.5" />
-    <line x1="0" y1="362" x2="840" y2="362" stroke="#150e08" stroke-width="1.8" />
-    
-    <!-- Vertical Plank Joints -->
-    <line x1="120" y1="260" x2="105" y2="290" stroke="#1a120b" stroke-width="1" />
-    <line x1="280" y1="260" x2="265" y2="290" stroke="#1a120b" stroke-width="1" />
-    <line x1="450" y1="260" x2="435" y2="290" stroke="#1a120b" stroke-width="1" />
-    <line x1="620" y1="260" x2="605" y2="290" stroke="#1a120b" stroke-width="1" />
+    <!-- Chamber 1: Telegraph Office (Top-Left) -->
+    <g id="chamber-1-group" class="room-chamber ${spotlightChamber === 1 ? 'room-lit' : 'room-unlit'}" data-chamber="1">
+      <rect x="24" y="36" width="388" height="180" fill="url(#wall-telegraph)" stroke="${spotlightChamber === 1 ? '#fcd34d' : '#3a2b1c'}" stroke-width="${spotlightChamber === 1 ? '2' : '1'}" rx="3" />
+      <!-- Wainscoting and Floorboards -->
+      <line x1="24" y1="165" x2="412" y2="165" stroke="#4a3622" stroke-width="1.5" />
+      <rect x="24" y="165" width="388" height="51" fill="#241a12" opacity="0.8" />
+      <line x1="24" y1="190" x2="412" y2="190" stroke="#1c140d" stroke-width="1" />
+      <!-- Chamber Header Banner -->
+      <rect x="34" y="44" width="220" height="17" fill="#150f0a" rx="2" stroke="#5a4228" stroke-width="0.8" />
+      <text x="42" y="56" fill="${spotlightChamber === 1 ? '#fde68a' : '#9c8358'}" font-family="'Cinzel', Georgia, serif" font-size="8" font-weight="700" letter-spacing="0.05em">
+        CHAMBER 1 · TELEGRAPH OFFICE ${spotlightChamber === 1 ? '✦ GAZE' : ''}
+      </text>
 
-    <line x1="200" y1="290" x2="180" y2="324" stroke="#160f09" stroke-width="1" />
-    <line x1="370" y1="290" x2="350" y2="324" stroke="#160f09" stroke-width="1" />
-    <line x1="540" y1="290" x2="520" y2="324" stroke="#160f09" stroke-width="1" />
-    <line x1="710" y1="290" x2="690" y2="324" stroke="#160f09" stroke-width="1" />
+      <!-- Set Pieces: Telegraph Desk & Key -->
+      <rect x="75" y="142" width="56" height="24" rx="2" fill="#382415" stroke="#8a5a2a" stroke-width="1" />
+      <rect x="85" y="136" width="16" height="6" fill="#fcd34d" rx="1" />
+      <circle cx="93" cy="133" r="3.5" fill="#fcd34d" />
+      <!-- Green Banker Lamp -->
+      <path d="M 115 138 C 115 132, 126 132, 126 138 Z" fill="#10b981" stroke="#047857" stroke-width="0.8" />
+      <line x1="120" y1="138" x2="120" y2="142" stroke="#c59b48" stroke-width="1.5" />
 
-    <line x1="90" y1="324" x2="65" y2="362" stroke="#120c07" stroke-width="1.2" />
-    <line x1="270" y1="324" x2="245" y2="362" stroke="#120c07" stroke-width="1.2" />
-    <line x1="470" y1="324" x2="445" y2="362" stroke="#120c07" stroke-width="1.2" />
-    <line x1="650" y1="324" x2="625" y2="362" stroke="#120c07" stroke-width="1.2" />
+      <!-- Set Pieces: Filing Cabinets -->
+      <rect x="325" y="105" width="50" height="60" rx="2" fill="#2c1c11" stroke="#6a4522" stroke-width="1.2" />
+      <line x1="325" y1="125" x2="375" y2="125" stroke="#170f09" stroke-width="1" />
+      <line x1="325" y1="145" x2="375" y2="145" stroke="#170f09" stroke-width="1" />
+      <rect x="344" y="113" width="12" height="4" fill="#fcd34d" rx="1" />
+      <rect x="344" y="133" width="12" height="4" fill="#fcd34d" rx="1" />
+      <rect x="344" y="153" width="12" height="4" fill="#fcd34d" rx="1" />
 
-    <!-- Stage Apron Brass Rim -->
-    <rect x="0" y="394" width="840" height="6" fill="url(#brass-plaque)" stroke="#3a2510" stroke-width="0.8" />
+      <!-- Pneumatic Tube on Wall -->
+      <line x1="220" y1="36" x2="220" y2="110" stroke="#c59b48" stroke-width="2.5" />
+      <rect x="214" y="105" width="12" height="18" rx="2" fill="#ecd599" stroke="#5a3d1c" stroke-width="1" />
 
-    <!-- 3. PROSCENIUM ARCH & DRAPERY VALANCE -->
-    <path d="M 0,0 L 840,0 L 840,36 C 760,42 700,32 630,36 C 560,42 490,32 420,36 C 350,42 280,32 210,36 C 140,42 70,32 0,36 Z" fill="url(#velvet-fold)" />
-    <path d="M 0,36 C 70,32 140,42 210,36 C 280,32 350,42 420,36 C 490,32 560,42 630,36 C 700,32 760,42 840,36" stroke="#c59b48" stroke-width="2.5" fill="none" />
-    
-    <!-- Gold Bullion Fringe Drops -->
-    <circle cx="105" cy="46" r="3.5" fill="#fcd34d" />
-    <circle cx="315" cy="46" r="3.5" fill="#fcd34d" />
-    <circle cx="525" cy="46" r="3.5" fill="#fcd34d" />
-    <circle cx="735" cy="46" r="3.5" fill="#fcd34d" />
+      <!-- Limelight Wash if Lit -->
+      ${spotlightChamber === 1 ? `<circle cx="218" cy="126" r="140" fill="url(#limelight-chamber-wash)" pointer-events="none" />` : `<rect x="24" y="36" width="388" height="180" fill="#040302" opacity="0.65" pointer-events="none" />`}
+    </g>
 
-    <!-- Left Fluted Mahogany Pilaster Column -->
-    <rect x="0" y="0" width="28" height="400" fill="#2b1c12" stroke="#442c1c" stroke-width="1.5" />
-    <line x1="14" y1="34" x2="14" y2="400" stroke="#c59b48" stroke-width="2" stroke-dasharray="10 8" />
-    <rect x="0" y="32" width="28" height="8" fill="url(#brass-plaque)" />
-    <rect x="0" y="380" width="28" height="12" fill="url(#brass-plaque)" />
+    <!-- Chamber 2: Locked Platform Gate (Top-Right) -->
+    <g id="chamber-2-group" class="room-chamber ${spotlightChamber === 2 ? 'room-lit' : 'room-unlit'}" data-chamber="2">
+      <rect x="428" y="36" width="388" height="180" fill="url(#wall-gate)" stroke="${spotlightChamber === 2 ? '#fcd34d' : '#3a2b1c'}" stroke-width="${spotlightChamber === 2 ? '2' : '1'}" rx="3" />
+      <!-- Mountain Fog Window Arch -->
+      <path d="M 590 120 L 590 65 A 35 35 0 0 1 660 65 L 660 120 Z" fill="#09131d" stroke="#253545" stroke-width="1.5" />
+      <circle cx="615" cy="80" r="1.5" fill="#e2e8f0" opacity="0.6" />
+      <circle cx="640" cy="95" r="1.5" fill="#e2e8f0" opacity="0.6" />
+      <!-- Wainscoting and Floorboards -->
+      <line x1="428" y1="165" x2="816" y2="165" stroke="#2a3845" stroke-width="1.5" />
+      <rect x="428" y="165" width="388" height="51" fill="#141a22" opacity="0.8" />
+      <line x1="428" y1="190" x2="816" y2="190" stroke="#0e1319" stroke-width="1" />
+      <!-- Chamber Header Banner -->
+      <rect x="438" y="44" width="240" height="17" fill="#0d141b" rx="2" stroke="#35495b" stroke-width="0.8" />
+      <text x="446" y="56" fill="${spotlightChamber === 2 ? '#fde68a' : '#829bb0'}" font-family="'Cinzel', Georgia, serif" font-size="8" font-weight="700" letter-spacing="0.05em">
+        CHAMBER 2 · LOCKED PLATFORM GATE ${spotlightChamber === 2 ? '✦ GAZE' : ''}
+      </text>
 
-    <!-- Right Fluted Mahogany Pilaster Column -->
-    <rect x="812" y="0" width="28" height="400" fill="#2b1c12" stroke="#442c1c" stroke-width="1.5" />
-    <line x1="826" y1="34" x2="826" y2="400" stroke="#c59b48" stroke-width="2" stroke-dasharray="10 8" />
-    <rect x="812" y="32" width="28" height="8" fill="url(#brass-plaque)" />
-    <rect x="812" y="380" width="28" height="12" fill="url(#brass-plaque)" />
+      <!-- Set Pieces: Track Portcullis & Padlock -->
+      <g class="fixture-portcullis" style="cursor: pointer;" title="Platform Portcullis: ${gateUnbolted ? 'Unbolted' : 'Padlocked'}">
+        <rect x="495" y="80" width="65" height="85" fill="none" stroke="#374151" stroke-width="2.5" />
+        <line x1="510" y1="80" x2="510" y2="165" stroke="#4b5563" stroke-width="2" />
+        <line x1="525" y1="80" x2="525" y2="165" stroke="#4b5563" stroke-width="2" />
+        <line x1="540" y1="80" x2="540" y2="165" stroke="#4b5563" stroke-width="2" />
+        <!-- Padlock Badge -->
+        <rect x="515" y="125" width="28" height="20" rx="3" fill="${gateUnbolted ? '#064e3b' : '#7f1d1d'}" stroke="${gateUnbolted ? '#10b981' : '#ef4444'}" stroke-width="1.2" />
+        <text x="529" y="138" text-anchor="middle" fill="#fff" font-family="'DM Mono', monospace" font-size="6.5" font-weight="700">
+          ${gateUnbolted ? 'OPEN' : 'LOCK'}
+        </text>
+      </g>
 
-    <!-- Stage Apron Footlights -->
+      <!-- Signal Switch Levers -->
+      <rect x="735" y="130" width="45" height="35" rx="2" fill="#1e293b" stroke="#475569" stroke-width="1" />
+      <line x1="748" y1="130" x2="744" y2="114" stroke="#ef4444" stroke-width="2.5" />
+      <circle cx="744" cy="114" r="3" fill="#ef4444" />
+      <line x1="765" y1="130" x2="768" y2="114" stroke="#10b981" stroke-width="2.5" />
+      <circle cx="768" cy="114" r="3" fill="#10b981" />
+
+      <!-- Observation Lantern Post -->
+      <line x1="640" y1="165" x2="640" y2="120" stroke="#c59b48" stroke-width="2" />
+      <circle cx="640" cy="118" r="5" fill="#fef08a" filter="url(#glow-amber)" />
+
+      <!-- Limelight Wash if Lit -->
+      ${spotlightChamber === 2 ? `<circle cx="622" cy="126" r="140" fill="url(#limelight-chamber-wash)" pointer-events="none" />` : `<rect x="428" y="36" width="388" height="180" fill="#040302" opacity="0.65" pointer-events="none" />`}
+    </g>
+
+    <!-- Chamber 3: Grand Waiting Hall (Bottom-Left) -->
+    <g id="chamber-3-group" class="room-chamber ${spotlightChamber === 3 ? 'room-lit' : 'room-unlit'}" data-chamber="3">
+      <rect x="24" y="226" width="388" height="180" fill="url(#wall-hall)" stroke="${spotlightChamber === 3 ? '#fcd34d' : '#3a2b1c'}" stroke-width="${spotlightChamber === 3 ? '2' : '1'}" rx="3" />
+      <!-- Wainscoting and Marble Floor -->
+      <line x1="24" y1="355" x2="412" y2="355" stroke="#5a3d24" stroke-width="1.5" />
+      <rect x="24" y="355" width="388" height="51" fill="#2b1f15" opacity="0.8" />
+      <line x1="24" y1="380" x2="412" y2="380" stroke="#1c140d" stroke-width="1" />
+      <!-- Chamber Header Banner -->
+      <rect x="34" y="234" width="240" height="17" fill="#160f0a" rx="2" stroke="#634526" stroke-width="0.8" />
+      <text x="42" y="246" fill="${spotlightChamber === 3 ? '#fde68a' : '#baa378'}" font-family="'Cinzel', Georgia, serif" font-size="8" font-weight="700" letter-spacing="0.05em">
+        CHAMBER 3 · GRAND WAITING HALL ${spotlightChamber === 3 ? '✦ GAZE' : ''}
+      </text>
+
+      <!-- Set Pieces: Cast-Iron Coal Stove -->
+      <g class="fixture-stove">
+        <!-- Chimney Flue -->
+        <line x1="105" y1="345" x2="105" y2="226" stroke="#1a120c" stroke-width="4.5" />
+        <!-- Stove Belly -->
+        <ellipse cx="105" cy="350" rx="18" ry="14" fill="#221811" stroke="#6e4624" stroke-width="1.5" />
+        <!-- Glowing Ember Grate -->
+        <rect x="98" y="346" width="14" height="8" rx="1.5" fill="#f59e0b" filter="url(#glow-amber)" />
+        <line x1="102" y1="346" x2="102" y2="354" stroke="#78350f" stroke-width="1" />
+        <line x1="108" y1="346" x2="108" y2="354" stroke="#78350f" stroke-width="1" />
+        <!-- Stove Legs -->
+        <line x1="93" y1="362" x2="90" y2="370" stroke="#1c130b" stroke-width="2.5" />
+        <line x1="117" y1="362" x2="120" y2="370" stroke="#1c130b" stroke-width="2.5" />
+      </g>
+
+      <!-- Grandfather Clock -->
+      <g class="fixture-clock">
+        <rect x="204" y="270" width="22" height="85" fill="#2d1b10" stroke="#8a5b28" stroke-width="1.2" rx="1" />
+        <circle cx="215" cy="285" r="7.5" fill="#fffdf0" stroke="#8a5b28" stroke-width="1" />
+        <line x1="215" y1="285" x2="215" y2="280" stroke="#170f0a" stroke-width="1" />
+        <line x1="215" y1="285" x2="219" y2="285" stroke="#170f0a" stroke-width="1" />
+        <!-- Pendulum -->
+        <line x1="215" y1="295" x2="215" y2="330" stroke="#c59b48" stroke-width="1.2" />
+        <circle cx="215" cy="332" r="3.5" fill="#fcd34d" />
+      </g>
+
+      <!-- Velvet Settee Bench -->
+      <rect x="320" y="342" width="60" height="18" rx="3" fill="#6b1720" stroke="#991b1b" stroke-width="1" />
+      <line x1="326" y1="360" x2="326" y2="368" stroke="#331014" stroke-width="2" />
+      <line x1="374" y1="360" x2="374" y2="368" stroke="#331014" stroke-width="2" />
+
+      <!-- Luggage Heap -->
+      <rect x="275" y="358" width="24" height="14" rx="2" fill="#58381e" stroke="#8a5a2a" stroke-width="1" />
+      <rect x="285" y="350" width="18" height="10" rx="1.5" fill="#422915" stroke="#6e4624" stroke-width="0.8" />
+
+      <!-- Limelight Wash if Lit -->
+      ${spotlightChamber === 3 ? `<circle cx="218" cy="316" r="140" fill="url(#limelight-chamber-wash)" pointer-events="none" />` : `<rect x="24" y="226" width="388" height="180" fill="#040302" opacity="0.65" pointer-events="none" />`}
+    </g>
+
+    <!-- Chamber 4: Baggage & Boiler Room (Bottom-Right) -->
+    <g id="chamber-4-group" class="room-chamber ${spotlightChamber === 4 ? 'room-lit' : 'room-unlit'}" data-chamber="4">
+      <rect x="428" y="226" width="388" height="180" fill="url(#wall-boiler)" stroke="${spotlightChamber === 4 ? '#fcd34d' : '#3a2b1c'}" stroke-width="${spotlightChamber === 4 ? '2' : '1'}" rx="3" />
+      <!-- Wainscoting and Stone Floor -->
+      <line x1="428" y1="355" x2="816" y2="355" stroke="#3a2e22" stroke-width="1.5" />
+      <rect x="428" y="355" width="388" height="51" fill="#191410" opacity="0.8" />
+      <line x1="428" y1="380" x2="816" y2="380" stroke="#120e0b" stroke-width="1" />
+      <!-- Chamber Header Banner -->
+      <rect x="438" y="234" width="260" height="17" fill="#130e0a" rx="2" stroke="#50371f" stroke-width="0.8" />
+      <text x="446" y="246" fill="${spotlightChamber === 4 ? '#fde68a' : '#8f7a63'}" font-family="'Cinzel', Georgia, serif" font-size="8" font-weight="700" letter-spacing="0.05em">
+        CHAMBER 4 · BAGGAGE & BOILER ROOM ${spotlightChamber === 4 ? '✦ GAZE' : ''}
+      </text>
+
+      <!-- Overhead Steam Pipe -->
+      <line x1="428" y1="255" x2="816" y2="255" stroke="#523c28" stroke-width="3" />
+      <circle cx="580" cy="255" r="4" fill="#a16207" />
+
+      <!-- High-Pressure Steam Furnace Boiler -->
+      <g class="fixture-boiler">
+        <rect x="500" y="295" width="65" height="60" rx="4" fill="#251a13" stroke="#684729" stroke-width="1.5" />
+        <!-- Rivets -->
+        <circle cx="506" cy="302" r="1.2" fill="#c59b48" />
+        <circle cx="559" cy="302" r="1.2" fill="#c59b48" />
+        <circle cx="506" cy="348" r="1.2" fill="#c59b48" />
+        <circle cx="559" cy="348" r="1.2" fill="#c59b48" />
+        <!-- Fire Door Hatch -->
+        <rect x="518" y="320" width="30" height="24" rx="2" fill="#dc2626" stroke="#991b1b" stroke-width="1" filter="url(#glow-amber)" />
+        <line x1="524" y1="324" x2="542" y2="324" stroke="#450a0a" stroke-width="1.5" />
+        <line x1="524" y1="332" x2="542" y2="332" stroke="#450a0a" stroke-width="1.5" />
+        <!-- Steam Pressure Dial -->
+        <circle cx="533" cy="308" r="6" fill="#fff" stroke="#1f150e" stroke-width="1" />
+        <line x1="533" y1="308" x2="536" y2="304" stroke="#ef4444" stroke-width="1.2" />
+      </g>
+
+      <!-- Deep Coal Chute -->
+      <polygon points="730,310 765,310 755,355 720,355" fill="#120c08" stroke="#47321e" stroke-width="1.2" />
+      <!-- Coal Heap -->
+      <ellipse cx="738" cy="364" rx="20" ry="7" fill="#080604" stroke="#1f1812" stroke-width="1" />
+      <!-- Shovel -->
+      <line x1="755" y1="345" x2="762" y2="368" stroke="#71717a" stroke-width="2" />
+      <polygon points="760,366 767,364 765,372 758,373" fill="#3f3f46" />
+
+      <!-- Machinist Toolbench -->
+      <rect x="630" y="340" width="55" height="20" rx="1.5" fill="#3b2718" stroke="#784e27" stroke-width="1" />
+      <line x1="638" y1="360" x2="638" y2="370" stroke="#1f140c" stroke-width="2.5" />
+      <line x1="677" y1="360" x2="677" y2="370" stroke="#1f140c" stroke-width="2.5" />
+      <!-- Spanner on Bench -->
+      <line x1="645" y1="337" x2="660" y2="337" stroke="#cbd5e1" stroke-width="1.8" />
+
+      <!-- Smuggler Freight Crate with Broken Seal -->
+      <rect x="698" y="354" width="22" height="18" fill="#4d321c" stroke="#8a5a2a" stroke-width="1" />
+      <line x1="698" y1="354" x2="720" y2="372" stroke="#2b1c10" stroke-width="1" />
+      <circle cx="709" cy="363" r="3" fill="#b91c1c" stroke="#fca5a5" stroke-width="0.5" />
+
+      <!-- Limelight Wash if Lit -->
+      ${spotlightChamber === 4 ? `<circle cx="622" cy="316" r="140" fill="url(#limelight-chamber-wash)" pointer-events="none" />` : `<rect x="428" y="226" width="388" height="180" fill="#040302" opacity="0.65" pointer-events="none" />`}
+    </g>
+
+    <!-- ================================================================= -->
+    <!-- STRUCTURAL DIVIDERS & PROSCENIUM FRAME                           -->
+    <!-- ================================================================= -->
+
+    <!-- Center Vertical Load-Bearing Divider -->
+    <rect x="412" y="36" width="16" height="370" fill="#201711" stroke="#3d2b1c" stroke-width="1" />
+    <line x1="420" y1="36" x2="420" y2="406" stroke="#c59b48" stroke-width="1" stroke-dasharray="8 6" />
+
+    <!-- Horizontal Floor Divider (Upper / Lower Separator) -->
+    <rect x="24" y="216" width="792" height="10" fill="#2b1d12" stroke="#4d3721" stroke-width="1" />
+    <line x1="24" y1="221" x2="816" y2="221" stroke="#c59b48" stroke-width="1" />
+
+    <!-- Left Fluted Pilaster Column -->
+    <rect x="0" y="0" width="24" height="440" fill="#2b1c12" stroke="#442c1c" stroke-width="1.2" />
+    <line x1="12" y1="30" x2="12" y2="420" stroke="#c59b48" stroke-width="1.8" stroke-dasharray="10 8" />
+    <rect x="0" y="28" width="24" height="8" fill="url(#brass-plaque)" />
+    <rect x="0" y="404" width="24" height="12" fill="url(#brass-plaque)" />
+
+    <!-- Right Fluted Pilaster Column -->
+    <rect x="816" y="0" width="24" height="440" fill="#2b1c12" stroke="#442c1c" stroke-width="1.2" />
+    <line x1="828" y1="30" x2="828" y2="420" stroke="#c59b48" stroke-width="1.8" stroke-dasharray="10 8" />
+    <rect x="816" y="28" width="24" height="8" fill="url(#brass-plaque)" />
+    <rect x="816" y="404" width="24" height="12" fill="url(#brass-plaque)" />
+
+    <!-- Proscenium Arch Drapery Valance (Top) -->
+    <path d="M 0,0 L 840,0 L 840,32 C 760,38 700,28 630,32 C 560,38 490,28 420,32 C 350,38 280,28 210,32 C 140,38 70,28 0,32 Z" fill="url(#velvet-fold)" />
+    <path d="M 0,32 C 70,28 140,38 210,32 C 280,28 350,38 420,32 C 490,28 560,38 630,32 C 700,28 760,38 840,32" stroke="#c59b48" stroke-width="2" fill="none" />
+    <circle cx="105" cy="40" r="3" fill="#fcd34d" />
+    <circle cx="315" cy="40" r="3" fill="#fcd34d" />
+    <circle cx="525" cy="40" r="3" fill="#fcd34d" />
+    <circle cx="735" cy="40" r="3" fill="#fcd34d" />
+
+    <!-- Bottom Stage Apron & Brass Footlights Rim -->
+    <rect x="0" y="416" width="840" height="24" fill="#140e08" stroke="#3a2510" stroke-width="1" />
+    <rect x="0" y="416" width="840" height="4" fill="url(#brass-plaque)" />
     ${footlights}
   `;
 
-  // 4. RENDER ILLUSTRATED FIXTURE SET PIECES (Antique Theater Props)
-  fixtures.forEach((f) => {
-    const isLit = spotlightedFixture === f.id || spotlightedNodes.includes(currentRoomId);
-    const fg = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    fg.setAttribute("class", "fixture-group");
-    fg.setAttribute("style", "cursor: pointer;");
+  // =========================================================================
+  // 4 CONNECTING DOORWAYS & VELVET DROP CURTAINS
+  // =========================================================================
 
-    // Limelight Spotlight Cone
-    if (isLit) {
-      const beam = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-      beam.setAttribute("points", `${f.x},32 ${f.x - 70},${f.y + 70} ${f.x + 70},${f.y + 70}`);
-      beam.setAttribute("fill", "url(#limelight-cone)");
-      beam.setAttribute("class", "spotlight-cone");
-      beam.setAttribute("filter", "url(#glow-gold)");
-      svg.appendChild(beam);
-    }
+  const doorways = [
+    {
+      id: "door-1-2",
+      edge: [1, 2],
+      name: "East Corridor (Chamber 1 <-> Chamber 2)",
+      x: 405, y: 95, width: 30, height: 62,
+      isVertical: false,
+    },
+    {
+      id: "stairs-1-3",
+      edge: [1, 3],
+      name: "Spiral Staircase (Chamber 1 <-> Chamber 3)",
+      x: 180, y: 204, width: 62, height: 26,
+      isVertical: true,
+    },
+    {
+      id: "door-3-4",
+      edge: [3, 4],
+      name: "Double Service Doors (Chamber 3 <-> Chamber 4)",
+      x: 405, y: 285, width: 30, height: 62,
+      isVertical: false,
+    },
+    {
+      id: "ladder-2-4",
+      edge: [2, 4],
+      name: "Service Ladder (Chamber 2 <-> Chamber 4)",
+      x: 620, y: 204, width: 62, height: 26,
+      isVertical: true,
+    },
+  ];
 
-    const fid = (f.id || "").toLowerCase();
-    const ftype = (f.type || "").toLowerCase();
-
-    // Prop Floor Shadow
-    const shadow = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
-    shadow.setAttribute("cx", f.x);
-    shadow.setAttribute("cy", f.y + 45);
-    shadow.setAttribute("rx", "48");
-    shadow.setAttribute("ry", "10");
-    shadow.setAttribute("fill", "#000");
-    shadow.setAttribute("opacity", "0.35");
-    shadow.setAttribute("filter", "url(#standee-shadow)");
-    fg.appendChild(shadow);
-
-    // DRAW BESPOKE ILLUSTRATED PROPS
-    if (fid.includes("telegraph") || ftype.includes("terminal")) {
-      // 1. TELEGRAPH DESK PROP
-      const deskTop = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      deskTop.setAttribute("x", f.x - 48);
-      deskTop.setAttribute("y", f.y - 10);
-      deskTop.setAttribute("width", "96");
-      deskTop.setAttribute("height", "14");
-      deskTop.setAttribute("rx", "2");
-      deskTop.setAttribute("fill", "#422817");
-      deskTop.setAttribute("stroke", "#c59b48");
-      deskTop.setAttribute("stroke-width", "1.2");
-      fg.appendChild(deskTop);
-
-      // Desk Legs
-      const legL = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      legL.setAttribute("x", f.x - 42);
-      legL.setAttribute("y", f.y + 4);
-      legL.setAttribute("width", "8");
-      legL.setAttribute("height", "40");
-      legL.setAttribute("fill", "#2b1a0e");
-      fg.appendChild(legL);
-
-      const legR = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      legR.setAttribute("x", f.x + 34);
-      legR.setAttribute("y", f.y + 4);
-      legR.setAttribute("width", "8");
-      legR.setAttribute("height", "40");
-      legR.setAttribute("fill", "#2b1a0e");
-      fg.appendChild(legR);
-
-      // Brass Morse Key & Sounder Box
-      const sounderBox = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      sounderBox.setAttribute("x", f.x - 28);
-      sounderBox.setAttribute("y", f.y - 24);
-      sounderBox.setAttribute("width", "26");
-      sounderBox.setAttribute("height", "15");
-      sounderBox.setAttribute("rx", "2");
-      sounderBox.setAttribute("fill", "#22170f");
-      sounderBox.setAttribute("stroke", "#d4af37");
-      sounderBox.setAttribute("stroke-width", "1");
-      fg.appendChild(sounderBox);
-
-      // Brass Key Arm
-      const keyArm = document.createElementNS("http://www.w3.org/2000/svg", "line");
-      keyArm.setAttribute("x1", f.x - 22);
-      keyArm.setAttribute("y1", f.y - 17);
-      keyArm.setAttribute("x2", f.x - 8);
-      keyArm.setAttribute("y2", f.y - 20);
-      keyArm.setAttribute("stroke", "#fcd34d");
-      keyArm.setAttribute("stroke-width", "2");
-      fg.appendChild(keyArm);
-
-      const keyKnob = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      keyKnob.setAttribute("cx", f.x - 8);
-      keyKnob.setAttribute("cy", f.y - 20);
-      keyKnob.setAttribute("r", "3");
-      keyKnob.setAttribute("fill", "#1c120a");
-      keyKnob.setAttribute("stroke", "#fcd34d");
-      keyKnob.setAttribute("stroke-width", "1");
-      fg.appendChild(keyKnob);
-
-      // Green Banker's Desk Lamp with Amber Glow
-      const lampBase = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      lampBase.setAttribute("x", f.x + 12);
-      lampBase.setAttribute("y", f.y - 26);
-      lampBase.setAttribute("width", "20");
-      lampBase.setAttribute("height", "7");
-      lampBase.setAttribute("rx", "3");
-      lampBase.setAttribute("fill", "#1d5c38");
-      lampBase.setAttribute("stroke", "#fcd34d");
-      lampBase.setAttribute("stroke-width", "1");
-      fg.appendChild(lampBase);
-
-      const lampGlow = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      lampGlow.setAttribute("cx", f.x + 22);
-      lampGlow.setAttribute("cy", f.y - 20);
-      lampGlow.setAttribute("r", "14");
-      lampGlow.setAttribute("fill", "#fef3c7");
-      lampGlow.setAttribute("opacity", "0.2");
-      lampGlow.setAttribute("filter", "url(#glow-amber)");
-      fg.appendChild(lampGlow);
-
-      // Cascading Ticker Tape Paper
-      const tape = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      tape.setAttribute("d", `M ${f.x - 2} ${f.y - 10} Q ${f.x + 8} ${f.y + 6} ${f.x - 4} ${f.y + 24} T ${f.x + 6} ${f.y + 40}`);
-      tape.setAttribute("stroke", "#fef9c3");
-      tape.setAttribute("stroke-width", "2.5");
-      tape.setAttribute("fill", "none");
-      fg.appendChild(tape);
-
-    } else if (fid.includes("stove") || ftype.includes("rest") || fid.includes("hearth")) {
-      // 2. CAST-IRON POTBELLY STOVE PROP
-      const chimney = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      chimney.setAttribute("x", f.x - 6);
-      chimney.setAttribute("y", f.y - 48);
-      chimney.setAttribute("width", "12");
-      chimney.setAttribute("height", "30");
-      chimney.setAttribute("fill", "#17120e");
-      chimney.setAttribute("stroke", "#3a2c1f");
-      chimney.setAttribute("stroke-width", "1");
-      fg.appendChild(chimney);
-
-      const stoveBody = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      stoveBody.setAttribute("x", f.x - 24);
-      stoveBody.setAttribute("y", f.y - 20);
-      stoveBody.setAttribute("width", "48");
-      stoveBody.setAttribute("height", "54");
-      stoveBody.setAttribute("rx", "12");
-      stoveBody.setAttribute("fill", "#1c1611");
-      stoveBody.setAttribute("stroke", "#c59b48");
-      stoveBody.setAttribute("stroke-width", "1.5");
-      fg.appendChild(stoveBody);
-
-      const grateGlow = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
-      grateGlow.setAttribute("cx", f.x);
-      grateGlow.setAttribute("cy", f.y + 12);
-      grateGlow.setAttribute("rx", "22");
-      grateGlow.setAttribute("ry", "14");
-      grateGlow.setAttribute("fill", "#ea580c");
-      grateGlow.setAttribute("opacity", "0.4");
-      grateGlow.setAttribute("filter", "url(#glow-amber)");
-      fg.appendChild(grateGlow);
-
-      for (let sl = -12; sl <= 12; sl += 6) {
-        const slit = document.createElementNS("http://www.w3.org/2000/svg", "line");
-        slit.setAttribute("x1", f.x - 12);
-        slit.setAttribute("y1", f.y + sl + 10);
-        slit.setAttribute("x2", f.x + 12);
-        slit.setAttribute("y2", f.y + sl + 10);
-        slit.setAttribute("stroke", "#fbbf24");
-        slit.setAttribute("stroke-width", "2.2");
-        fg.appendChild(slit);
-      }
-
-      // Bench beside stove
-      const bench = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      bench.setAttribute("x", f.x + 28);
-      bench.setAttribute("y", f.y + 14);
-      bench.setAttribute("width", "28");
-      bench.setAttribute("height", "8");
-      bench.setAttribute("rx", "1");
-      bench.setAttribute("fill", "#422b1a");
-      bench.setAttribute("stroke", "#8c642d");
-      bench.setAttribute("stroke-width", "1");
-      fg.appendChild(bench);
-
-      const benchLeg = document.createElementNS("http://www.w3.org/2000/svg", "line");
-      benchLeg.setAttribute("x1", f.x + 48);
-      benchLeg.setAttribute("y1", f.y + 22);
-      benchLeg.setAttribute("x2", f.x + 48);
-      benchLeg.setAttribute("y2", f.y + 44);
-      benchLeg.setAttribute("stroke", "#2b1c10");
-      benchLeg.setAttribute("stroke-width", "3");
-      fg.appendChild(benchLeg);
-
-    } else if (fid.includes("floor") || ftype.includes("hazard") || fid.includes("scree")) {
-      // 3. ROTTED FLOORBOARDS / TRAPDOOR HAZARD
-      const abyss = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
-      abyss.setAttribute("cx", f.x);
-      abyss.setAttribute("cy", f.y + 10);
-      abyss.setAttribute("rx", "44");
-      abyss.setAttribute("ry", "18");
-      abyss.setAttribute("fill", "#090604");
-      abyss.setAttribute("stroke", "#3b1e10");
-      abyss.setAttribute("stroke-width", "1.5");
-      fg.appendChild(abyss);
-
-      // Splintered Broken Planks
-      const plank1 = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-      plank1.setAttribute("points", `${f.x - 42},${f.y + 4} ${f.x - 8},${f.y - 2} ${f.x - 12},${f.y + 12} ${f.x - 40},${f.y + 14}`);
-      plank1.setAttribute("fill", "#382213");
-      plank1.setAttribute("stroke", "#8a5829");
-      plank1.setAttribute("stroke-width", "1");
-      fg.appendChild(plank1);
-
-      const plank2 = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-      plank2.setAttribute("points", `${f.x + 10},${f.y + 8} ${f.x + 42},${f.y + 2} ${f.x + 38},${f.y + 16} ${f.x + 6},${f.y + 18}`);
-      plank2.setAttribute("fill", "#2e1c0f");
-      plank2.setAttribute("stroke", "#784a20");
-      plank2.setAttribute("stroke-width", "1");
-      fg.appendChild(plank2);
-
-      const ring = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      ring.setAttribute("cx", f.x - 2);
-      ring.setAttribute("cy", f.y + 12);
-      ring.setAttribute("r", "5.5");
-      ring.setAttribute("fill", "none");
-      ring.setAttribute("stroke", "#fcd34d");
-      ring.setAttribute("stroke-width", "2");
-      fg.appendChild(ring);
-
-    } else {
-      // 4. ARCHIVAL CABINETS / BLUEPRINT BUREAU
-      const cab = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      cab.setAttribute("x", f.x - 38);
-      cab.setAttribute("y", f.y - 26);
-      cab.setAttribute("width", "76");
-      cab.setAttribute("height", "66");
-      cab.setAttribute("rx", "2");
-      cab.setAttribute("fill", "#382315");
-      cab.setAttribute("stroke", "#c59b48");
-      cab.setAttribute("stroke-width", "1.5");
-      fg.appendChild(cab);
-
-      for (let dy = -10; dy <= 26; dy += 18) {
-        const dLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
-        dLine.setAttribute("x1", f.x - 34);
-        dLine.setAttribute("y1", f.y + dy);
-        dLine.setAttribute("x2", f.x + 34);
-        dLine.setAttribute("y2", f.y + dy);
-        dLine.setAttribute("stroke", "#20140a");
-        dLine.setAttribute("stroke-width", "1.5");
-        fg.appendChild(dLine);
-
-        const handle = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-        handle.setAttribute("x", f.x - 8);
-        handle.setAttribute("y", f.y + dy - 10);
-        handle.setAttribute("width", "16");
-        handle.setAttribute("height", "5");
-        handle.setAttribute("rx", "1.5");
-        handle.setAttribute("fill", "#fcd34d");
-        fg.appendChild(handle);
-      }
-
-      const scroll = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
-      scroll.setAttribute("cx", f.x);
-      scroll.setAttribute("cy", f.y - 31);
-      scroll.setAttribute("rx", "26");
-      scroll.setAttribute("ry", "6");
-      scroll.setAttribute("fill", "#1e3a5f");
-      scroll.setAttribute("stroke", "#93c5fd");
-      scroll.setAttribute("stroke-width", "1");
-      fg.appendChild(scroll);
-    }
-
-    // 5. ANTIQUE BRASS FIXTURE PLAQUE (Positioned by depth tier to eliminate collisions)
-    const plaqueG = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    plaqueG.setAttribute("class", "fixture-plaque");
-
-    // Tier calculation: background fixtures hang at f.y - 56, foreground at f.y - 44
-    const plaqueY = f.y < 180 ? f.y - 56 : f.y - 44;
-
-    const plaqueRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    plaqueRect.setAttribute("x", f.x - 56);
-    plaqueRect.setAttribute("y", plaqueY - 12);
-    plaqueRect.setAttribute("width", "112");
-    plaqueRect.setAttribute("height", "24");
-    plaqueRect.setAttribute("rx", "3");
-    plaqueRect.setAttribute("fill", "#1c150e");
-    plaqueRect.setAttribute("stroke", "#c59b48");
-    plaqueRect.setAttribute("stroke-width", "1.2");
-    plaqueG.appendChild(plaqueRect);
-
-    const titleText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    titleText.setAttribute("x", f.x);
-    titleText.setAttribute("y", plaqueY + 1);
-    titleText.setAttribute("text-anchor", "middle");
-    titleText.setAttribute("fill", "#fff7ed");
-    titleText.setAttribute("font-family", "'Cinzel', Georgia, serif");
-    titleText.setAttribute("font-size", "9");
-    titleText.setAttribute("font-weight", "600");
-    titleText.setAttribute("letter-spacing", "0.04em");
-    titleText.textContent = f.name.toUpperCase();
-    plaqueG.appendChild(titleText);
-
-    const typeText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    typeText.setAttribute("x", f.x);
-    typeText.setAttribute("y", plaqueY + 9);
-    typeText.setAttribute("text-anchor", "middle");
-    typeText.setAttribute("fill", "#d97706");
-    typeText.setAttribute("font-family", "'DM Mono', monospace");
-    typeText.setAttribute("font-size", "7");
-    typeText.setAttribute("font-weight", "700");
-    typeText.textContent = `✦ ${(f.type || "SET PIECE").toUpperCase()} ✦`;
-    plaqueG.appendChild(typeText);
-
-    fg.appendChild(plaqueG);
-
-    // Interactive Click: clicking a fixture auto-selects Spotlight
-    fg.onclick = () => {
-      selectVerb("shift_spotlight");
-      const sel = $("#director-target-select");
-      if (sel) sel.value = f.id;
-    };
-
-    // Tooltip
-    const tip = document.createElementNS("http://www.w3.org/2000/svg", "title");
-    tip.textContent = `${f.name} [${(f.type || "SET").toUpperCase()}]: ${f.desc}`;
-    fg.appendChild(tip);
-
-    svg.appendChild(fg);
-  });
-
-  // 6. RENDER GOTHIC ARCHED EXIT DOORS
-  exits.forEach((exit) => {
-    const isBlocked = blocked.some(([u, v]) => u === currentRoomId && v === exit.target_node);
-    const isLit = spotlightedFixture === String(exit.target_node);
-
+  doorways.forEach((d) => {
+    const isCurtained = isDoorCurtained(d.edge[0], d.edge[1]);
     const dg = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    dg.setAttribute("class", "room-exit-door");
+    dg.setAttribute("class", "doorway-group");
     dg.setAttribute("style", "cursor: pointer;");
 
-    // Limelight on Door
-    if (isLit) {
-      const beam = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-      beam.setAttribute("points", `${exit.x},32 ${exit.x - 55},${exit.y + 60} ${exit.x + 55},${exit.y + 60}`);
-      beam.setAttribute("fill", "url(#limelight-cone)");
-      beam.setAttribute("class", "spotlight-cone");
-      beam.setAttribute("filter", "url(#glow-gold)");
-      svg.appendChild(beam);
-    }
-
-    // Door Portal Arch Frame
-    const doorFrame = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    doorFrame.setAttribute("x", exit.x - 48);
-    doorFrame.setAttribute("y", exit.y - 44);
-    doorFrame.setAttribute("width", "96");
-    doorFrame.setAttribute("height", "88");
-    doorFrame.setAttribute("rx", "16");
-    doorFrame.setAttribute("fill", "#100c09");
-    doorFrame.setAttribute("stroke", isBlocked ? "#781c24" : "#c59b48");
-    doorFrame.setAttribute("stroke-width", "2");
-    dg.appendChild(doorFrame);
-
-    // Gothic Pointed Arch Cresting
-    const archPeak = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    archPeak.setAttribute("d", `M ${exit.x - 48} ${exit.y - 30} Q ${exit.x} ${exit.y - 56} ${exit.x + 48} ${exit.y - 30}`);
-    archPeak.setAttribute("stroke", "#fcd34d");
-    archPeak.setAttribute("stroke-width", "1.5");
-    archPeak.setAttribute("fill", "none");
-    dg.appendChild(archPeak);
-
-    // Inner Doorway Void
-    const doorVoid = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    doorVoid.setAttribute("x", exit.x - 40);
-    doorVoid.setAttribute("y", exit.y - 36);
-    doorVoid.setAttribute("width", "80");
-    doorVoid.setAttribute("height", "74");
-    doorVoid.setAttribute("rx", "12");
-    doorVoid.setAttribute("fill", isBlocked ? "#180a0d" : "#0d0a07");
-    dg.appendChild(doorVoid);
-
-    // Door Nameplate Plaque (Short clean name so it never overflows)
-    const dPlaque = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    dPlaque.setAttribute("x", exit.x - 44);
-    dPlaque.setAttribute("y", exit.y - 40);
-    dPlaque.setAttribute("width", "88");
-    dPlaque.setAttribute("height", "20");
-    dPlaque.setAttribute("rx", "2");
-    dPlaque.setAttribute("fill", "#1c150e");
-    dPlaque.setAttribute("stroke", "#c59b48");
-    dPlaque.setAttribute("stroke-width", "1");
-    dg.appendChild(dPlaque);
-
-    const dShortName = exit.name.includes(":") ? exit.name.split(":")[0] : exit.name.split(" to ")[0];
-    const dName = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    dName.setAttribute("x", exit.x);
-    dName.setAttribute("y", exit.y - 26);
-    dName.setAttribute("text-anchor", "middle");
-    dName.setAttribute("fill", "#fff7ed");
-    dName.setAttribute("font-family", "'Cinzel', Georgia, serif");
-    dName.setAttribute("font-size", "8");
-    dName.setAttribute("font-weight", "700");
-    dName.textContent = dShortName.toUpperCase();
-    dg.appendChild(dName);
-
-    // Target Node Tag
-    const targetTag = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    targetTag.setAttribute("x", exit.x);
-    targetTag.setAttribute("y", exit.y - 4);
-    targetTag.setAttribute("text-anchor", "middle");
-    targetTag.setAttribute("fill", "#c59b48");
-    targetTag.setAttribute("font-family", "'DM Mono', monospace");
-    targetTag.setAttribute("font-size", "7.5");
-    targetTag.setAttribute("font-weight", "700");
-    targetTag.textContent = `→ NODE ${exit.target_node}`;
-    dg.appendChild(targetTag);
-
-    // If Blocked: Draw Velvet Drop Curtain with Bullion Fringe & Wax Seal
-    if (isBlocked) {
+    if (isCurtained) {
+      // Render Dropped Heavy Velvet Curtain
       const curtain = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      curtain.setAttribute("x", exit.x - 48);
-      curtain.setAttribute("y", exit.y - 44);
-      curtain.setAttribute("width", "96");
-      curtain.setAttribute("height", "88");
+      curtain.setAttribute("x", d.x - 4);
+      curtain.setAttribute("y", d.y - 4);
+      curtain.setAttribute("width", d.width + 8);
+      curtain.setAttribute("height", d.height + 8);
+      curtain.setAttribute("rx", "2");
       curtain.setAttribute("fill", "url(#velvet-fold)");
-      curtain.setAttribute("stroke", "#4a0f14");
+      curtain.setAttribute("stroke", "#881e28");
       curtain.setAttribute("stroke-width", "1.5");
       dg.appendChild(curtain);
 
       // Gold bullion bottom fringe
       const fringe = document.createElementNS("http://www.w3.org/2000/svg", "line");
-      fringe.setAttribute("x1", exit.x - 48);
-      fringe.setAttribute("y1", exit.y + 44);
-      fringe.setAttribute("x2", exit.x + 48);
-      fringe.setAttribute("y2", exit.y + 44);
+      fringe.setAttribute("x1", d.x - 4);
+      fringe.setAttribute("y1", d.y + d.height + 4);
+      fringe.setAttribute("x2", d.x + d.width + 4);
+      fringe.setAttribute("y2", d.y + d.height + 4);
       fringe.setAttribute("stroke", "#fcd34d");
-      fringe.setAttribute("stroke-width", "3");
+      fringe.setAttribute("stroke-width", "2.5");
       dg.appendChild(fringe);
 
       // Wax Seal Badge
       const sealG = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      const sealX = d.x + d.width / 2;
+      const sealY = d.y + d.height / 2;
       const sealRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      sealRect.setAttribute("x", exit.x - 42);
-      sealRect.setAttribute("y", exit.y - 12);
-      sealRect.setAttribute("width", "84");
-      sealRect.setAttribute("height", "24");
+      sealRect.setAttribute("x", sealX - 26);
+      sealRect.setAttribute("y", sealY - 8);
+      sealRect.setAttribute("width", "52");
+      sealRect.setAttribute("height", "16");
       sealRect.setAttribute("rx", "3");
       sealRect.setAttribute("fill", "#781c24");
       sealRect.setAttribute("stroke", "#fcd34d");
-      sealRect.setAttribute("stroke-width", "1.5");
+      sealRect.setAttribute("stroke-width", "1");
       sealG.appendChild(sealRect);
 
       const sealText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      sealText.setAttribute("x", exit.x);
-      sealText.setAttribute("y", exit.y + 3);
+      sealText.setAttribute("x", sealX);
+      sealText.setAttribute("y", sealY + 3);
       sealText.setAttribute("text-anchor", "middle");
       sealText.setAttribute("fill", "#fef3c7");
       sealText.setAttribute("font-family", "'DM Mono', monospace");
-      sealText.setAttribute("font-size", "8");
+      sealText.setAttribute("font-size", "7");
       sealText.setAttribute("font-weight", "700");
-      sealText.setAttribute("letter-spacing", "0.06em");
-      sealText.textContent = "CURTAIN SEALED";
+      sealText.textContent = "SEALED";
       sealG.appendChild(sealText);
-
       dg.appendChild(sealG);
+
+    } else {
+      // Render Open Doorway / Passage
+      const openRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      openRect.setAttribute("x", d.x);
+      openRect.setAttribute("y", d.y);
+      openRect.setAttribute("width", d.width);
+      openRect.setAttribute("height", d.height);
+      openRect.setAttribute("fill", "#0b0805");
+      openRect.setAttribute("stroke", "#c59b48");
+      openRect.setAttribute("stroke-width", "1");
+      openRect.setAttribute("stroke-dasharray", "3 2");
+      dg.appendChild(openRect);
+
+      if (d.isVertical) {
+        // Steps indicator
+        for (let sx = d.x + 8; sx < d.x + d.width - 6; sx += 12) {
+          const stepLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+          stepLine.setAttribute("x1", sx);
+          stepLine.setAttribute("y1", d.y + 4);
+          stepLine.setAttribute("x2", sx);
+          stepLine.setAttribute("y2", d.y + d.height - 4);
+          stepLine.setAttribute("stroke", "#5a452d");
+          stepLine.setAttribute("stroke-width", "1.5");
+          dg.appendChild(stepLine);
+        }
+      }
+
+      const passArrow = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      passArrow.setAttribute("x", d.x + d.width / 2);
+      passArrow.setAttribute("y", d.y + d.height / 2 + 3);
+      passArrow.setAttribute("text-anchor", "middle");
+      passArrow.setAttribute("fill", "#94a3b8");
+      passArrow.setAttribute("font-size", "10");
+      passArrow.setAttribute("font-weight", "700");
+      passArrow.textContent = d.isVertical ? "↕" : "↔";
+      dg.appendChild(passArrow);
     }
 
-    // Cast Votes Indicator Tag
-    const voters = characters.filter((c) => c.is_alive && c.voted_exit === exit.target_node);
-    if (voters.length > 0) {
-      const vPill = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      vPill.setAttribute("x", exit.x - 38);
-      vPill.setAttribute("y", exit.y + 30);
-      vPill.setAttribute("width", "76");
-      vPill.setAttribute("height", "18");
-      vPill.setAttribute("rx", "9");
-      vPill.setAttribute("fill", "#1c150e");
-      vPill.setAttribute("stroke", "#c59b48");
-      vPill.setAttribute("stroke-width", "1");
-      dg.appendChild(vPill);
+    const tip = document.createElementNS("http://www.w3.org/2000/svg", "title");
+    tip.textContent = `${d.name}
+Status: ${isCurtained ? 'Velvet Curtain Sealed' : 'Open Passageway'}
+[Click to toggle Velvet Curtain]`;
+    dg.appendChild(tip);
 
-      const vText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      vText.setAttribute("x", exit.x);
-      vText.setAttribute("y", exit.y + 42);
-      vText.setAttribute("text-anchor", "middle");
-      vText.setAttribute("fill", "#fde68a");
-      vText.setAttribute("font-family", "'DM Mono', monospace");
-      vText.setAttribute("font-size", "8.5");
-      vText.setAttribute("font-weight", "700");
-      const initials = voters.map((c) => CHAR_CONFIG[c.id]?.code || c.id[0]).join(", ");
-      vText.textContent = `Votes: ${initials}`;
-      dg.appendChild(vText);
-    }
-
-    // Interactive Click: clicking an exit door pre-selects block_route
-    dg.onclick = () => {
-      selectVerb("block_route");
-      const sel = $("#director-target-select");
-      if (sel) sel.value = String(exit.target_node);
+    dg.onclick = async (e) => {
+      e.stopPropagation();
+      await applyDirectorVerb("block_route", d.edge);
     };
 
     svg.appendChild(dg);
   });
 
-  // 7. RENDER CHARACTERS AS REVERSE: 1999 2D TOKEN MODELS ON STAGE FLOOR
-  const charsByFixture = {};
-  characters.forEach((char) => {
-    if (!char.is_alive) return;
-    const fixId = char.current_fixture || fixtures[0]?.id || "stove";
-    charsByFixture[fixId] = charsByFixture[fixId] || [];
-    charsByFixture[fixId].push(char);
+  // Chamber Background Clicks: Shift Spotlight
+  [1, 2, 3, 4].forEach((cid) => {
+    const el = $(`#chamber-1-group, #chamber-2-group, #chamber-3-group, #chamber-4-group`.split(", ")[cid - 1]);
+    if (el) {
+      el.onclick = async (e) => {
+        if (e.target.closest(".char-standee-group") || e.target.closest(".doorway-group") || e.target.closest(".fixture-portcullis")) return;
+        await applyDirectorVerb("shift_spotlight", cid);
+      };
+    }
   });
 
-  Object.entries(charsByFixture).forEach(([fixId, charList]) => {
-    const fixture = fixtures.find((f) => f.id === fixId) || fixtures[0] || { x: 300, y: 150 };
-    const count = charList.length;
+  // =========================================================================
+  // 5 REVERSE: 1999 2D TOKEN MODELS IN 2X2 DOLLHOUSE CHAMBERS
+  // =========================================================================
 
-    charList.forEach((char, idx) => {
+  const chamberConfigs = {
+    1: { floorY: 178, centerX: 218, name: "Telegraph Office" },
+    2: { floorY: 178, centerX: 622, name: "Locked Platform Gate" },
+    3: { floorY: 368, centerX: 218, name: "Grand Waiting Hall" },
+    4: { floorY: 368, centerX: 622, name: "Baggage & Boiler Room" },
+  };
+
+  [1, 2, 3, 4].forEach((cid) => {
+    const cConf = chamberConfigs[cid];
+    const isLit = (cid === spotlightChamber);
+    const charsInChamber = characters.filter((c) => c.is_alive && (c.node === cid || (!c.node && cid === 1)));
+    const count = charsInChamber.length;
+
+    charsInChamber.forEach((char, idx) => {
       const cfg = getCharConfig(char.id);
-      // Position tokens comfortably on stage floor in front of fixture
-      const offset = (idx - (count - 1) / 2) * 54;
-      const posX = fixture.x + offset;
-      const posY = 320; // Standing firmly on hardwood floorboards!
+      const offset = (idx - (count - 1) / 2) * 58;
+      const posX = cConf.centerX + offset;
+      const posY = cConf.floorY;
 
       const tg = document.createElementNS("http://www.w3.org/2000/svg", "g");
-      tg.setAttribute("class", "char-standee-group");
+      const standeeClass = isLit ? "char-spotlighted" : "char-silhouette";
+      tg.setAttribute("class", `char-standee-group ${standeeClass}`);
       tg.setAttribute("data-char-id", char.id);
       tg.setAttribute("transform", `translate(${posX}, ${posY})`);
       tg.setAttribute("style", `transform: translate(${posX}px, ${posY}px); cursor: pointer;`);
 
-      // 1. Cast Shadow on Floor
+      // 1. Shadow on floor
       const shadow = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
       shadow.setAttribute("cx", "0");
-      shadow.setAttribute("cy", "30");
-      shadow.setAttribute("rx", "28");
-      shadow.setAttribute("ry", "8");
+      shadow.setAttribute("cy", "22");
+      shadow.setAttribute("rx", "20");
+      shadow.setAttribute("ry", "6");
       shadow.setAttribute("fill", "#000");
       shadow.setAttribute("opacity", "0.45");
       shadow.setAttribute("filter", "url(#standee-shadow)");
       tg.appendChild(shadow);
 
-      // 2. Brass Pedestal Stand Base
+      // 2. Brass pedestal base
       const standBase = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
       standBase.setAttribute("cx", "0");
-      standBase.setAttribute("cy", "27");
-      standBase.setAttribute("rx", "24");
-      standBase.setAttribute("ry", "6.5");
+      standBase.setAttribute("cy", "20");
+      standBase.setAttribute("rx", "18");
+      standBase.setAttribute("ry", "5");
       standBase.setAttribute("fill", "url(#brass-plaque)");
       standBase.setAttribute("stroke", "#453214");
-      standBase.setAttribute("stroke-width", "1.2");
+      standBase.setAttribute("stroke-width", "1");
       tg.appendChild(standBase);
-
-      const baseStep = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      baseStep.setAttribute("x", "-16");
-      baseStep.setAttribute("y", "23");
-      baseStep.setAttribute("width", "32");
-      baseStep.setAttribute("height", "4");
-      baseStep.setAttribute("fill", "#2b1c0e");
-      baseStep.setAttribute("rx", "1");
-      tg.appendChild(baseStep);
 
       // 3. Ornate Bronze Bezel Medallion Frame
       const outerRing = document.createElementNS("http://www.w3.org/2000/svg", "circle");
       outerRing.setAttribute("cx", "0");
       outerRing.setAttribute("cy", "0");
-      outerRing.setAttribute("r", "27");
+      outerRing.setAttribute("r", "22");
       outerRing.setAttribute("fill", "#1c140d");
       outerRing.setAttribute("stroke", "#c59b48");
-      outerRing.setAttribute("stroke-width", "2.5");
+      outerRing.setAttribute("stroke-width", "2");
       outerRing.setAttribute("class", "bezel-ring");
       tg.appendChild(outerRing);
 
-      // Inner astrological clockwork ticks
+      // Inner clockwork ticks
       const tickRing = document.createElementNS("http://www.w3.org/2000/svg", "circle");
       tickRing.setAttribute("cx", "0");
       tickRing.setAttribute("cy", "0");
-      tickRing.setAttribute("r", "24.5");
+      tickRing.setAttribute("r", "20");
       tickRing.setAttribute("fill", "none");
       tickRing.setAttribute("stroke", "#fcd34d");
-      tickRing.setAttribute("stroke-width", "0.75");
-      tickRing.setAttribute("stroke-dasharray", "2.5 2");
+      tickRing.setAttribute("stroke-width", "0.6");
+      tickRing.setAttribute("stroke-dasharray", "2 2");
       tg.appendChild(tickRing);
 
-      // 4. 2D Painterly Character Image (clipped in circle)
+      // 4. Painterly Character Image (clipped in circle)
       const imgGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
       imgGroup.setAttribute("clip-path", "url(#token-clip-circle)");
 
       const portrait = document.createElementNS("http://www.w3.org/2000/svg", "image");
       portrait.setAttribute("href", cfg.avatar);
-      portrait.setAttribute("x", "-23");
-      portrait.setAttribute("y", "-23");
-      portrait.setAttribute("width", "46");
-      portrait.setAttribute("height", "46");
+      portrait.setAttribute("x", "-19");
+      portrait.setAttribute("y", "-19");
+      portrait.setAttribute("width", "38");
+      portrait.setAttribute("height", "38");
       portrait.setAttribute("preserveAspectRatio", "xMidYMid slice");
       imgGroup.appendChild(portrait);
       tg.appendChild(imgGroup);
 
       // 5. Glass Sheen Curved Highlight Reflection Overlay
       const sheen = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      sheen.setAttribute("d", "M -16 -16 A 23 23 0 0 1 16 -16 A 23 13 0 0 0 -16 -16");
+      sheen.setAttribute("d", "M -13 -13 A 19 19 0 0 1 13 -13 A 19 11 0 0 0 -13 -13");
       sheen.setAttribute("fill", "#ffffff");
       sheen.setAttribute("opacity", "0.26");
       sheen.setAttribute("pointer-events", "none");
@@ -1836,10 +1817,10 @@ function renderRoomStageSVG() {
       const accentRing = document.createElementNS("http://www.w3.org/2000/svg", "circle");
       accentRing.setAttribute("cx", "0");
       accentRing.setAttribute("cy", "0");
-      accentRing.setAttribute("r", "23");
+      accentRing.setAttribute("r", "19");
       accentRing.setAttribute("fill", "none");
       accentRing.setAttribute("stroke", cfg.color);
-      accentRing.setAttribute("stroke-width", "1.6");
+      accentRing.setAttribute("stroke-width", "1.5");
       tg.appendChild(accentRing);
 
       // 7. Gilded Nameplate on Pedestal
@@ -1847,23 +1828,23 @@ function renderRoomStageSVG() {
       const shortName = isCurator ? "CURATOR" : char.name.split(" ")[0].toUpperCase();
 
       const namePlate = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      namePlate.setAttribute("x", "-25");
-      namePlate.setAttribute("y", "17");
-      namePlate.setAttribute("width", "50");
-      namePlate.setAttribute("height", "14");
-      namePlate.setAttribute("rx", "2");
+      namePlate.setAttribute("x", "-21");
+      namePlate.setAttribute("y", "14");
+      namePlate.setAttribute("width", "42");
+      namePlate.setAttribute("height", "11");
+      namePlate.setAttribute("rx", "1.5");
       namePlate.setAttribute("fill", "#1c140e");
       namePlate.setAttribute("stroke", "#c59b48");
-      namePlate.setAttribute("stroke-width", "1");
+      namePlate.setAttribute("stroke-width", "0.8");
       tg.appendChild(namePlate);
 
       const nameText = document.createElementNS("http://www.w3.org/2000/svg", "text");
       nameText.setAttribute("x", "0");
-      nameText.setAttribute("y", "27");
+      nameText.setAttribute("y", "22");
       nameText.setAttribute("text-anchor", "middle");
       nameText.setAttribute("fill", "#fff8ed");
       nameText.setAttribute("font-family", "'Cinzel', Georgia, serif");
-      nameText.setAttribute("font-size", shortName.length > 7 ? "6.5" : "7.5");
+      nameText.setAttribute("font-size", shortName.length > 7 ? "6" : "6.5");
       nameText.setAttribute("font-weight", "700");
       nameText.setAttribute("letter-spacing", "0.04em");
       nameText.textContent = shortName;
@@ -1872,40 +1853,38 @@ function renderRoomStageSVG() {
       // 8. Staggered VN / Comic Action Bubble
       if (char.room_action) {
         const bubbleG = document.createElementNS("http://www.w3.org/2000/svg", "g");
-        const charIdx = characters.findIndex((c) => c.id === char.id);
-        const isStaggered = charIdx % 2 === 1;
-        const bubbleY = isStaggered ? -74 : -52;
+        const isStaggered = idx % 2 === 1;
+        const bubbleY = isStaggered ? -64 : -46;
 
-        const actShort = char.room_action.length > 20 ? char.room_action.slice(0, 18) + ".." : char.room_action;
-        const bWidth = Math.min(130, Math.max(84, actShort.length * 5.6 + 16));
-        const bubbleX = Math.max(40 + bWidth / 2 - posX, Math.min(760 - bWidth / 2 - posX, 0));
+        const actShort = char.room_action.length > 22 ? char.room_action.slice(0, 20) + ".." : char.room_action;
+        const bWidth = Math.min(120, Math.max(76, actShort.length * 5.2 + 14));
+        const bubbleX = 0;
 
         const bubbleRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
         bubbleRect.setAttribute("x", bubbleX - bWidth / 2);
         bubbleRect.setAttribute("y", bubbleY);
         bubbleRect.setAttribute("width", bWidth);
-        bubbleRect.setAttribute("height", "20");
-        bubbleRect.setAttribute("rx", "4");
+        bubbleRect.setAttribute("height", "17");
+        bubbleRect.setAttribute("rx", "3");
         bubbleRect.setAttribute("fill", "#fffdf5");
         bubbleRect.setAttribute("stroke", "#c59b48");
-        bubbleRect.setAttribute("stroke-width", "1");
+        bubbleRect.setAttribute("stroke-width", "0.9");
         bubbleG.appendChild(bubbleRect);
 
-        // Pointer triangle pointing to token top
         const pointer = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-        pointer.setAttribute("points", `-4,${bubbleY + 20} 4,${bubbleY + 20} 0,-27`);
+        pointer.setAttribute("points", `-3,${bubbleY + 17} 3,${bubbleY + 17} 0,-22`);
         pointer.setAttribute("fill", "#fffdf5");
         pointer.setAttribute("stroke", "#c59b48");
-        pointer.setAttribute("stroke-width", "1");
+        pointer.setAttribute("stroke-width", "0.9");
         bubbleG.appendChild(pointer);
 
         const textEl = document.createElementNS("http://www.w3.org/2000/svg", "text");
         textEl.setAttribute("x", bubbleX);
-        textEl.setAttribute("y", bubbleY + 13);
+        textEl.setAttribute("y", bubbleY + 11.5);
         textEl.setAttribute("text-anchor", "middle");
         textEl.setAttribute("fill", "#291b10");
         textEl.setAttribute("font-family", "'Libre Baskerville', Georgia, serif");
-        textEl.setAttribute("font-size", "8.5");
+        textEl.setAttribute("font-size", "7.5");
         textEl.setAttribute("font-style", "italic");
         textEl.textContent = `"${actShort}"`;
         bubbleG.appendChild(textEl);
@@ -1913,22 +1892,29 @@ function renderRoomStageSVG() {
         tg.appendChild(bubbleG);
       }
 
-      // Interactive Click: clicking character pre-selects plant_rumor
-      tg.onclick = () => {
+      // Interactive Click: Clicking character pre-selects plant_rumor (Whisper)
+      tg.onclick = (e) => {
+        e.stopPropagation();
         selectVerb("plant_rumor");
-        const sel = $("#director-target-select");
+        const sel = $("#verb-param-select");
         if (sel) sel.value = char.id;
       };
 
       // Standee Detail Tooltip
       const tip = document.createElementNS("http://www.w3.org/2000/svg", "title");
-      tip.textContent = `${char.name} (${char.role})\nAt: ${fixture.name}\nAction: ${char.room_action || "Investigating"}\nVoted Exit: Node ${char.voted_exit || "Undecided"}\nHP: ${char.hp}/${char.max_hp} | Stress: ${char.stress}% | Load: ${char.total_weight_kg}kg`;
+      tip.textContent = `${char.name} (${char.role})
+Location: Chamber ${char.node || cid} (${cConf.name})
+State: ${isLit ? 'Spotlighted (Accountable)' : 'In Shadow (Covert)'}
+Action: ${char.room_action || "Observing"}
+HP: ${char.hp}/${char.max_hp} | Stress: ${char.stress}% | Load: ${char.total_weight_kg}kg
+[Click to Whisper / plant rumor]`;
       tg.appendChild(tip);
 
       svg.appendChild(tg);
     });
   });
 }
+
 function renderCastCards() {
   const container = $("#cast-cards-grid");
   if (!container || !stageState.data) return;
@@ -1966,49 +1952,62 @@ function updateDirectorDeckUI() {
   const rumorWrap = $("#rumor-text-wrap");
   if (!label || !select || !rumorWrap || !stageState.data) return;
 
-  const curRoom = stageState.data.current_room || {};
-  const fixtures = curRoom.fixtures || [];
-  const exits = curRoom.exits || [];
+  const blocked = stageState.data.blocked_edges || [];
+  const curtained = stageState.data.curtained_doorways || [];
+  const spotlightId = stageState.data.spotlight_chamber || 1;
 
   rumorWrap.hidden = true;
   select.hidden = false;
 
+  function isCurtained(u, v) {
+    return blocked.some((e) => (e[0] === u && e[1] === v) || (e[0] === v && e[1] === u)) ||
+           curtained.some((e) => (e[0] === u && e[1] === v) || (e[0] === v && e[1] === u));
+  }
+
   if (verb === "block_route") {
-    label.textContent = "Exit to block";
-    if (exits.length > 0) {
-      select.innerHTML = exits.map((e) => `
-        <option value="${e.target_node}">${e.name} (To Node ${e.target_node})</option>
-      `).join("");
-    } else {
-      select.innerHTML = `<option value="">No exit doors in this final room</option>`;
-    }
+    label.textContent = "Velvet curtain door";
+    const doorways = [
+      { edge: [1, 2], name: "Chamber 1 <-> Chamber 2 (East Corridor)" },
+      { edge: [1, 3], name: "Chamber 1 <-> Chamber 3 (Spiral Stairs)" },
+      { edge: [3, 4], name: "Chamber 3 <-> Chamber 4 (Service Doors)" },
+      { edge: [2, 4], name: "Chamber 2 <-> Chamber 4 (Service Ladder)" },
+    ];
+    select.innerHTML = doorways.map((d) => {
+      const sealed = isCurtained(d.edge[0], d.edge[1]);
+      const status = sealed ? "[SEALED - Click to Open]" : "[OPEN - Click to Seal]";
+      return `<option value="${d.edge[0]},${d.edge[1]}">${d.name} ${status}</option>`;
+    }).join("");
   } else if (verb === "shift_spotlight") {
-    label.textContent = "Light up";
-    const fixtureOptions = fixtures.map((f) => `
-      <option value="${f.id}">${f.name} [${(f.type || "SET").toUpperCase()}]</option>
-    `).join("");
-    const exitOptions = exits.map((e) => `
-      <option value="${e.target_node}">Exit: ${e.name}</option>
-    `).join("");
-    select.innerHTML = fixtureOptions + exitOptions;
+    label.textContent = "Train spotlight";
+    const chambers = [
+      { id: 1, name: "Chamber 1: Telegraph Office" },
+      { id: 2, name: "Chamber 2: Locked Platform Gate" },
+      { id: 3, name: "Chamber 3: Grand Waiting Hall" },
+      { id: 4, name: "Chamber 4: Baggage & Boiler Room" },
+    ];
+    select.innerHTML = chambers.map((c) => {
+      const isLit = (c.id === spotlightId);
+      const tag = isLit ? "(Spotlighted)" : "(In Shadow)";
+      return `<option value="${c.id}" ${isLit ? "selected" : ""}>${c.name} ${tag}</option>`;
+    }).join("");
   } else if (verb === "plant_rumor") {
-    label.textContent = "Whisper to";
+    label.textContent = "Whisper to actor";
     const living = Object.values(stageState.data.characters).filter((c) => c.is_alive);
     select.innerHTML = living.map((c) => `
-      <option value="${c.id}">${c.name} (${c.role})</option>
+      <option value="${c.id}">${c.name} (${c.role}) [Chamber ${c.node || 1}]</option>
     `).join("");
     rumorWrap.hidden = false;
   } else if (verb === "cue_prop") {
-    label.textContent = "Place prop";
-    if (fixtures.length > 0) {
-      select.innerHTML = fixtures.map((f) => `
-        <option value="${f.id},Cold Iron Crowbar">${f.name}: Cold Iron Crowbar</option>
-        <option value="${f.id},Restorative Tonic">${f.name}: Restorative Tonic</option>
-        <option value="${f.id},Brass Lantern">${f.name}: Brass Lantern</option>
-      `).join("");
-    } else {
-      select.innerHTML = `<option value="stove,Cold Iron Crowbar">Cold Iron Crowbar</option>`;
-    }
+    label.textContent = "Place prop (Chekhov's Gun)";
+    select.innerHTML = `
+      <option value="hearth_stove,Chekhov's Revolver">Coal Stove: Chekhov's Revolver</option>
+      <option value="padlocked_gate,Cold Iron Crowbar">Platform Gate: Cold Iron Crowbar</option>
+      <option value="cabinets,Forged Train Manifest">Cabinets: Forged Train Manifest</option>
+      <option value="telegraph_desk,Wire Cutters">Telegraph Key: Wire Cutters</option>
+      <option value="steam_furnace,Restorative Tonic">Boiler Furnace: Restorative Tonic</option>
+      <option value="toolbench,Heavy Brass Spanner">Toolbench: Heavy Brass Spanner</option>
+      <option value="smuggler_crate,Dynamite Stick">Smuggler Crate: Dynamite Stick</option>
+    `;
   }
 }
 
@@ -2132,13 +2131,13 @@ if (applyVerbBtn) {
     const statusMsg = $("#verb-status-msg");
 
     if (verb === "block_route") {
-      target = Number(select.value);
+      target = select.value.split(",").map(Number);
     } else if (verb === "shift_spotlight") {
-      target = select.value;
+      target = Number(select.value);
     } else if (verb === "plant_rumor") {
       const char = select.value;
       const text = $("#rumor-text-input").value.trim() || "The path ahead is rigged.";
-      target = { character: char, rumor: text };
+      target = { character: char, rumor: text, actor: char, text: text };
     } else if (verb === "cue_prop") {
       const [fix, prop] = select.value.split(",");
       target = { fixture: fix, prop: (prop || "Item").trim() };

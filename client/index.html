@@ -41,7 +41,7 @@
       <!-- ================================================================= -->
       <div id="stage-experience" class="experience-view game">
         <div class="game-viewport">
-          <svg id="stage-svg" viewBox="0 0 840 400" preserveAspectRatio="xMidYMid meet" class="stage-svg" role="img" aria-label="Stage diorama of the current room"></svg>
+          <svg id="stage-svg" viewBox="0 0 840 440" preserveAspectRatio="xMidYMid meet" class="stage-svg" role="img" aria-label="2x2 Victorian Dollhouse Stage"></svg>
 
           <!-- HUD: room name and progress -->
           <div class="hud hud-room">
@@ -317,5 +317,78 @@
       </div>
     </div>
   </dialog>
+
+  <!-- Slide-Over Archival Folio & Evidence Board Drawer -->
+  <div id="evidence-drawer-backdrop" class="evidence-drawer-backdrop" hidden></div>
+  <aside id="evidence-drawer" class="evidence-drawer" aria-label="Evidence Board" hidden>
+    <div class="evidence-drawer-header">
+      <div class="drawer-title-cluster">
+        <span class="drawer-seal">⚜</span>
+        <div>
+          <h2>ARCHIVAL FOLIO</h2>
+          <small class="drawer-subtitle">Director's Evidence Board &amp; Station Ledger</small>
+        </div>
+      </div>
+      <button type="button" id="close-evidence-drawer" class="close-drawer-btn" aria-label="Close Evidence Board">&times;</button>
+    </div>
+
+    <div class="evidence-climax-banner">
+      <div class="climax-stat">
+        <span class="stat-label">DEPARTURE COUNTDOWN</span>
+        <strong id="climax-bells-val" class="stat-value">8 Bells</strong>
+      </div>
+      <div class="climax-stat">
+        <span class="stat-label">TRACK PORTCULLIS</span>
+        <strong id="climax-gate-status" class="stat-value locked">PADLOCKED</strong>
+      </div>
+    </div>
+
+    <div class="evidence-drawer-body">
+      <!-- Section 1: Flagged Contradictions -->
+      <section class="drawer-section contradictions-section">
+        <div class="section-title-row">
+          <span class="section-badge danger">CRIMSON CONTRADICTIONS</span>
+          <span id="contradiction-count-tag" class="count-pill">0 Detected</span>
+        </div>
+        <div id="contradictions-feed" class="contradictions-feed">
+          <div class="empty-evidence-msg">No sworn contradictions detected yet. As characters speak and roam, false alibis will be flagged here.</div>
+        </div>
+      </section>
+
+      <!-- Section 2: Cast Dossier & Sworn Alibis -->
+      <section class="drawer-section alibis-section">
+        <div class="section-title-row">
+          <span class="section-badge">CAST DOSSIER &amp; SWORN ALIBIS</span>
+        </div>
+        <div id="cast-dossier-grid" class="dossier-grid"></div>
+      </section>
+
+      <!-- Section 3: Physical Truth Log -->
+      <section class="drawer-section truth-section">
+        <div class="section-title-row">
+          <span class="section-badge">STATION PHYSICAL TRUTH LEDGER</span>
+        </div>
+        <div id="physical-truth-log" class="truth-log-feed"></div>
+      </section>
+
+      <!-- Section 4: Accusation Chamber -->
+      <section class="drawer-section accusation-section">
+        <div class="section-title-row">
+          <span class="section-badge highlight">CONFRONT THE TRAITOR</span>
+        </div>
+        <p class="accusation-desc">Confront the suspect under the Spotlight before boarding the Midnight Express. False accusations waste precious bells!</p>
+        <div class="accusation-controls">
+          <select id="accuse-suspect-select" class="select-input">
+            <option value="Julian">Julian Vance (The Archivist)</option>
+            <option value="Vesper">Vesper Cross (The Smuggler)</option>
+            <option value="Beatrice">Beatrice Thorne (The Machinist)</option>
+            <option value="The Curator">The Curator (The Director's Shadow)</option>
+          </select>
+          <button type="button" id="submit-accusation-btn" class="accuse-btn">Drop Spotlight &amp; Accuse</button>
+        </div>
+        <div id="accusation-result-banner" class="accusation-banner" hidden></div>
+      </section>
+    </div>
+  </aside>
 </body>
 </html>
