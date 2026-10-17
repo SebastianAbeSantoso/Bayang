@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
   ArrowRight,
   ArrowRightLeft,
@@ -76,6 +76,31 @@ export default function ShiftLogin({
   const [leadPin, setLeadPin] = useState<string>("");
   const [pinError, setPinError] = useState<string>("");
 
+  const leadDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Click / touch outside to dismiss the Shift Lead dropdown
+  useEffect(() => {
+    if (!isLeadDropdownOpen) return;
+    const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
+      if (leadDropdownRef.current && !leadDropdownRef.current.contains(e.target as Node)) {
+        setIsLeadDropdownOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsLeadDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("touchstart", handleOutsideClick);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("touchstart", handleOutsideClick);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isLeadDropdownOpen]);
+
   const floorRosterLabels = roster
     .filter(m => m.role === "floor_staff")
     .map(m => `${m.name} (${m.station})`);
@@ -86,15 +111,35 @@ export default function ShiftLogin({
 
   const [selectedCrew, setSelectedCrew] = useState<string[]>(crewOptions.slice(0, 2));
 
-  const filteredStaff = roster.filter(m => {
+  // If the query matches any staff member's name, display all staff members in roster
+  const filteredStaff = useMemo(() => {
     const q = leadSearchQuery.toLowerCase().trim();
-    if (!q) return true;
-    return (
+    if (!q) return roster;
+
+    const matchesAnyStaffName = roster.some(m => {
+      const name = m.name.toLowerCase();
+      const station = m.station.toLowerCase();
+      const role = m.role.toLowerCase();
+      return (
+        name === q ||
+        `${name} (${station})` === q ||
+        `${name} (${role})` === q ||
+        `${name} (manager)` === q ||
+        `${name} · ${station}` === q ||
+        `${name} - ${station}` === q
+      );
+    });
+
+    if (matchesAnyStaffName) {
+      return roster;
+    }
+
+    return roster.filter(m =>
       m.name.toLowerCase().includes(q) ||
       m.station.toLowerCase().includes(q) ||
       m.role.toLowerCase().includes(q)
     );
-  });
+  }, [leadSearchQuery, roster]);
 
   const handleSelectShift = (newShiftId: string) => {
     setSelectedShiftId(newShiftId);
@@ -263,7 +308,7 @@ export default function ShiftLogin({
             </div>
 
             {/* Step 2: Searchable Shift Lead Box */}
-            <div style={{ marginBottom: "22px", position: "relative" }}>
+            <div ref={leadDropdownRef} style={{ marginBottom: "22px", position: "relative" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
                 <label className="field-label" htmlFor="shift-lead-search">
                   Shift Lead Signing In

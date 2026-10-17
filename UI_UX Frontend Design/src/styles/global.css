@@ -382,17 +382,29 @@ html, body {
   display: flex; align-items: center; gap: var(--space-9); padding: var(--space-4-5) var(--space-9);
   background: var(--color-surface); border-bottom: var(--border-width) solid var(--color-border);
   position: relative; z-index: var(--z-sticky);
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
-.brand { display: flex; align-items: center; gap: var(--space-5); flex: none; }
+.topbar,
+.topbar * {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+.brand { display: flex; align-items: center; gap: var(--space-5); flex: none; user-select: none; -webkit-user-select: none; }
 .brand-emblem {
   display: inline-flex; align-items: center; justify-content: center; width: var(--size-emblem); height: var(--size-emblem);
   border-radius: var(--radius-lg); background: var(--color-primary); color: var(--color-text-inverse);
   font-family: var(--font-serif); font-weight: var(--weight-bold); font-size: var(--text-xl);
+  user-select: none; -webkit-user-select: none;
 }
-.brand-text { display: flex; flex-direction: column; }
-.brand-name { font-family: var(--font-serif); font-size: var(--text-3xl); font-weight: var(--weight-bold); line-height: var(--leading-tight); }
-.brand-sub { font-size: var(--text-xs); color: var(--color-text-muted); }
-.topbar-right { margin-left: auto; display: flex; align-items: center; gap: var(--space-5-5); }
+.brand-text { display: flex; flex-direction: column; user-select: none; -webkit-user-select: none; }
+.brand-name { font-family: var(--font-serif); font-size: var(--text-3xl); font-weight: var(--weight-bold); line-height: var(--leading-tight); user-select: none; -webkit-user-select: none; }
+.brand-sub { font-size: var(--text-xs); color: var(--color-text-muted); user-select: none; -webkit-user-select: none; }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: var(--space-5-5); user-select: none; -webkit-user-select: none; }
 
 .body-grid { display: grid; grid-template-columns: var(--size-rail) minmax(0, 1fr); min-height: 0; }
 .sidebar {
