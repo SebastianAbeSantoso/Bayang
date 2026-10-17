@@ -2,13 +2,8 @@
 One-command Hugging Face Spaces deployer for ShiftGuard.
 Supports both Docker Spaces (full Python backend + React 19 UI + AMD_API_KEY secret)
 and automatic fallback to Static Spaces (for free Hugging Face accounts where cpu-basic Docker is gated).
-
-Usage:
-  1. Ensure you are logged in with a WRITE token:
-       hf auth login
-     (or set HF_TOKEN=hf_... in your environment)
-  2. Run:
-       python deploy_hf_space.py
+When deploying to a Static Space, it also places index.html, favicon.svg, and assets/* at the root
+of the Space so https://<user>-shiftguard.hf.space/ serves the React 19 workbench immediately.
 """
 
 import os
@@ -82,19 +77,11 @@ def main() -> None:
     if sdk_used == "docker" and amd_key:
         try:
             api.add_space_secret(repo_id=repo_id, key="AMD_API_KEY", value=amd_key)
-            api.add_space_Variable(repo_id=repo_id, key="AMD_API_BASE", value="https://api.tokenfactory.amd.com/v1")
-            api.add_space_Variable(repo_id=repo_id, key="AMD_MODEL_ID", value="google/gemma-3-27b-it")
+            api.add_space_variable(repo_id=repo_id, key="AMD_API_BASE", value="https://api.tokenfactory.amd.com/v1")
+            api.add_space_variable(repo_id=repo_id, key="AMD_MODEL_ID", value="google/gemma-3-27b-it")
             print("[*] Configured AMD_API_KEY secret and AMD Token Factory variables on Space.")
         except Exception as sec_exc:
             print(f"[!] Note: Could not set Space secrets automatically ({sec_exc}).")
-
-    # If fallback to static was used, ensure README frontmatter specifies sdk: static and app_file: client/index.html
-    readme_text = (ROOT / "README.md").read_text(encoding="utf-8")
-    if sdk_used == "static":
-        readme_text = readme_text.replace(
-            "sdk: docker\napp_port: 7860",
-            "sdk: static\napp_file: client/index.html",
-        )
 
     print(f"[*] Uploading ShiftGuard repository to https://huggingface.co/spaces/{repo_id} ...")
     api.upload_folder(
@@ -116,6 +103,18 @@ def main() -> None:
     )
 
     if sdk_used == "static":
+        print("[*] Uploading prebuilt React 19 bundle (index.html + assets/) to Space root for Static SDK...")
+        api.upload_folder(
+            repo_id=repo_id,
+            repo_type="space",
+            folder_path=str(ROOT / "client"),
+            path_in_repo="",
+        )
+        readme_text = (ROOT / "README.md").read_text(encoding="utf-8")
+        readme_text = readme_text.replace(
+            "sdk: docker\napp_port: 7860",
+            "sdk: static\napp_file: index.html",
+        )
         api.upload_file(
             path_or_fileobj=readme_text.encode("utf-8"),
             path_in_repo="README.md",
@@ -124,7 +123,8 @@ def main() -> None:
         )
 
     print(f"\n[+] Successfully deployed ShiftGuard to Hugging Face Spaces ({sdk_used.upper()} SDK)!")
-    print(f"    Live URL: https://huggingface.co/spaces/{repo_id}")
+    print(f"    Space Page: https://huggingface.co/spaces/{repo_id}")
+    print(f"    Direct App: https://{username}-shiftguard.hf.space/")
 
 
 if __name__ == "__main__":
