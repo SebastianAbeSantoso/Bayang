@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { ChevronRight, X } from "lucide-react";
-import type { Bucket, Check, Finding, Role, Shift, ShiftData } from "../data";
-import { STAFF, bucketOf, EVIDENCE_LABEL } from "../data";
+import { ChevronRight, Plus, X } from "lucide-react";
+import type { Bucket, Check, Evidence, Finding, Severity, Shift, ShiftData } from "../data";
+import { STAFF, bucketOf, EVIDENCE_LABEL, STAFF_NAMES, SUPERVISOR } from "../data";
 import { EmptyState, EvidenceTag, PageHeader, SeverityTag, Tag, WorkflowTag } from "./ui";
 
 export type CheckAction = "resolve" | "carry" | "override" | "false_positive";
@@ -29,6 +29,19 @@ const toneOf = (f: Finding) => {
   return "resolved";
 };
 
+export interface NewFindingInput {
+  title: string;
+  category: Finding["category"];
+  severity: Severity;
+  evidence: Evidence;
+  ruleCode: string;
+  quote: string;
+  explanation: string;
+  requiredAction: string;
+  recordId: string;
+  actor: string;
+}
+
 interface Props {
   shift: Shift;
   data: ShiftData;
@@ -39,10 +52,25 @@ interface Props {
   onBulkInfo: (ids: Array<[string, string]>) => void;
   onGoReport: () => void;
   onOpenRecord?: (recordId: string) => void;
+  onAddFinding?: (input: NewFindingInput) => void;
 }
 
-export default function Ledger({ shift, data, locked, selectedId, onSelect, onAction, onBulkInfo, onGoReport, onOpenRecord }: Props) {
+export default function Ledger({ shift, data, locked, selectedId, onSelect, onAction, onBulkInfo, onGoReport, onOpenRecord, onAddFinding }: Props) {
   const [filter, setFilter] = useState<Filter>("all");
+  const [showAddFinding, setShowAddFinding] = useState(false);
+  const [draft, setDraft] = useState<NewFindingInput>({
+    title: "",
+    category: "stock",
+    severity: "review",
+    evidence: "unverified",
+    ruleCode: "R-OPS-MANUAL",
+    quote: "",
+    explanation: "",
+    requiredAction: "Verify during incoming shift handover",
+    recordId: "PO-4481",
+    actor: shift.outgoing,
+  });
+
   const checks = data.findings.flatMap(f => f.checks.map(c => ({ f, c })));
   const count = (b: Bucket) => checks.filter(x => bucketOf(x.c) === b).length;
   const countF = (fl: Filter) => data.findings.filter(f => matches(f, fl)).length;
@@ -50,15 +78,75 @@ export default function Ledger({ shift, data, locked, selectedId, onSelect, onAc
   const selected = data.findings.find(f => f.id === selectedId) ?? null;
   const eligibleInfo = checks.filter(x => bucketOf(x.c) === "info" && !x.c.obligation);
 
-  if (!data.submitted) {
+  const actorOptions = Array.from(new Set([
+    shift.outgoing,
+    shift.incoming,
+    `${SUPERVISOR} (Supervisor)`,
+    ...STAFF_NAMES,
+  ]));
+
+  const openAddModal = () => {
+    setDraft({
+      title: "",
+      category: "stock",
+      severity: "review",
+      evidence: "unverified",
+      ruleCode: "R-OPS-MANUAL",
+      quote: "",
+      explanation: "",
+      requiredAction: "Inspect & verify during incoming briefing",
+      recordId: "PO-4481",
+      actor: shift.outgoing,
+    });
+    setShowAddFinding(true);
+  };
+
+  if (!data.submitted && data.findings.length === 0) {
     return (
       <>
-        <PageHeader title="Handover ledger" subtitle="Worker claims checked against the shift records." />
+        <PageHeader title="Handover ledger" subtitle="Worker claims and operational issues checked against the shift records.">
+          {!locked && onAddFinding && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={openAddModal}
+              style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+            >
+              <Plus className="icon icon-sm" aria-hidden="true" />
+              + Add Ledger Issue
+            </button>
+          )}
+        </PageHeader>
         <EmptyState
           title="No report completed yet"
-          body={shift.phase === "upcoming" ? "This shift has not started." : `Findings appear here once ${shift.outgoing} completes the shift report.`}
-          action={shift.phase !== "upcoming" ? <button type="button" className="btn btn-primary" onClick={onGoReport}>Go to shift report</button> : undefined}
+          body={shift.phase === "upcoming" ? "This shift has not started." : `Findings appear here once ${shift.outgoing} completes the shift report, or you can log an operational issue directly.`}
+          action={
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", justifyContent: "center" }}>
+              {shift.phase !== "upcoming" && (
+                <button type="button" className="btn btn-primary" onClick={onGoReport}>
+                  Go to shift report
+                </button>
+              )}
+              {!locked && onAddFinding && (
+                <button type="button" className="btn btn-secondary" onClick={openAddModal}>
+                  + Log operational issue directly
+                </button>
+              )}
+            </div>
+          }
         />
+        {showAddFinding && onAddFinding && (
+          <AddFindingModal
+            draft={draft}
+            setDraft={setDraft}
+            actorOptions={actorOptions}
+            onClose={() => setShowAddFinding(false)}
+            onSave={() => {
+              onAddFinding(draft);
+              setShowAddFinding(false);
+            }}
+          />
+        )}
       </>
     );
   }
@@ -66,7 +154,22 @@ export default function Ledger({ shift, data, locked, selectedId, onSelect, onAc
   return (
     <div className={`ledger ${selected ? "has-drawer" : ""}`}>
       <div className="ledger-main">
-        <PageHeader title="Handover ledger" subtitle="Worker claims checked against the shift records. A missing record means “not independently verified”, never that the worker is wrong." />
+        <PageHeader
+          title="Handover ledger"
+          subtitle="Worker claims and operational checks reconciled against shift records. Issues added here or flagged from Operational Records flow directly into the Incoming Briefing."
+        >
+          {!locked && onAddFinding && (
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={openAddModal}
+              style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+            >
+              <Plus className="icon icon-sm" aria-hidden="true" />
+              + Add Ledger Issue
+            </button>
+          )}
+        </PageHeader>
 
         <div className="triage" role="group" aria-label="Triage summary">
           {BUCKETS.map(b => {
@@ -136,6 +239,221 @@ export default function Ledger({ shift, data, locked, selectedId, onSelect, onAc
       {selected && (
         <FindingDrawer key={selected.id} shift={shift} finding={selected} data={data} locked={locked} onClose={() => onSelect(null)} onAction={onAction} onOpenRecord={onOpenRecord} />
       )}
+
+      {showAddFinding && onAddFinding && (
+        <AddFindingModal
+          draft={draft}
+          setDraft={setDraft}
+          actorOptions={actorOptions}
+          onClose={() => setShowAddFinding(false)}
+          onSave={() => {
+            onAddFinding(draft);
+            setShowAddFinding(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function AddFindingModal({
+  draft,
+  setDraft,
+  actorOptions,
+  onClose,
+  onSave,
+}: {
+  draft: NewFindingInput;
+  setDraft: React.Dispatch<React.SetStateAction<NewFindingInput>>;
+  actorOptions: string[];
+  onClose: () => void;
+  onSave: () => void;
+}) {
+  return (
+    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="add-finding-title">
+      <div className="modal-dialog modal-dialog-wide">
+        <div className="modal-header">
+          <h3 id="add-finding-title" className="modal-title">Add Operational Issue to Handover Ledger</h3>
+          <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
+            <X className="icon" aria-hidden="true" />
+          </button>
+        </div>
+        <p className="modal-sub">
+          Log an issue directly in the Handover Ledger (e.g., supplier delivery discrepancy, failed hygiene check, equipment fault, or stock variance). It will automatically appear in the <strong>Incoming briefing</strong>.
+        </p>
+
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", marginBottom: "14px" }}>
+          <span style={{ fontSize: "11.5px", color: "var(--ink-500)", fontWeight: 600 }}>Quick presets:</span>
+          <button
+            type="button"
+            className="btn btn-ghost btn-xs"
+            style={{ border: "1px solid var(--paper-400)", borderRadius: "999px", padding: "2px 10px", fontSize: "11.5px" }}
+            onClick={() =>
+              setDraft({
+                ...draft,
+                title: "Delivery discrepancy: Tube ice PO-4481 arriving after 07:00 rush",
+                category: "stock",
+                severity: "critical",
+                evidence: "supported",
+                ruleCode: "R-SUP-4481",
+                quote: "Tube ice at 0 bags; PO-4481 scheduled 10:00 AM leaves 3-hour morning gap",
+                explanation: "Arctic Ice Co. delivery PO-4481 (5 bags) arrives at 10:00 AM, leaving the 07:00–10:00 peak rush with 0 bags of ice.",
+                requiredAction: "Transfer 2 emergency bags from Kemang branch before 07:00 AM",
+                recordId: "PO-4481",
+              })
+            }
+          >
+            Tube Ice Delivery Gap (PO-4481)
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-xs"
+            style={{ border: "1px solid var(--paper-400)", borderRadius: "999px", padding: "2px 10px", fontSize: "11.5px" }}
+            onClick={() =>
+              setDraft({
+                ...draft,
+                title: "Operational hygiene check: Milk chiller temperature drift (5.4°C)",
+                category: "cleaning",
+                severity: "review",
+                evidence: "unverified",
+                ruleCode: "R-HYG-002",
+                quote: "Under-counter milk chiller reading 5.4°C after afternoon rush door openings",
+                explanation: "Target cold-chain threshold is ≤ 4.0°C. Condenser coil dust buildup or door gasket wear may be reducing cooling efficiency.",
+                requiredAction: "Verify chiller reaches ≤ 4.0°C at opening & vacuum condenser intake screen",
+                recordId: "SCH-HYG-01",
+              })
+            }
+          >
+            Milk Chiller Hygiene Check
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-xs"
+            style={{ border: "1px solid var(--paper-400)", borderRadius: "999px", padding: "2px 10px", fontSize: "11.5px" }}
+            onClick={() =>
+              setDraft({
+                ...draft,
+                title: "Friday ingredient truck cold-storage space prep required",
+                category: "stock",
+                severity: "review",
+                evidence: "supported",
+                ruleCode: "R-SCH-FRI",
+                quote: "Weekly Friday 08:00 truck arriving with 24 oat milk cartons & 10kg house blend",
+                explanation: "Cold room shelf B needs FIFO rotation before the Friday 08:00 supply truck unloads.",
+                requiredAction: "Clear & rotate cold-room shelf B before 08:00 Friday truck pickup",
+                recordId: "SCH-FRI-TRUCK",
+              })
+            }
+          >
+            Friday Truck Storage Prep
+          </button>
+        </div>
+
+        <div className="field-grid field-grid-3" style={{ gap: "10px", marginBottom: "10px" }}>
+          <label className="field" style={{ gridColumn: "span 2" }}>
+            <span className="field-label">Issue Title</span>
+            <input
+              className="input input-sm"
+              value={draft.title}
+              onChange={e => setDraft({ ...draft, title: e.target.value })}
+              placeholder="e.g. Delivery discrepancy or hygiene check exception…"
+            />
+          </label>
+          <label className="field">
+            <span className="field-label">Logged by</span>
+            <select className="input input-sm" value={draft.actor} onChange={e => setDraft({ ...draft, actor: e.target.value })}>
+              {actorOptions.map(a => (
+                <option key={a} value={a}>{a}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="field-grid field-grid-3" style={{ gap: "10px", marginBottom: "10px" }}>
+          <label className="field">
+            <span className="field-label">Category</span>
+            <select
+              className="input input-sm"
+              value={draft.category}
+              onChange={e => setDraft({ ...draft, category: e.target.value as Finding["category"] })}
+            >
+              <option value="equipment">Equipment</option>
+              <option value="stock">Stock & Deliveries</option>
+              <option value="cleaning">Hygiene & Cleaning</option>
+              <option value="cash">Cash & POS</option>
+              <option value="customer">Customer</option>
+            </select>
+          </label>
+          <label className="field">
+            <span className="field-label">Severity</span>
+            <select
+              className="input input-sm"
+              value={draft.severity}
+              onChange={e => setDraft({ ...draft, severity: e.target.value as Severity })}
+            >
+              <option value="critical">Critical blocker</option>
+              <option value="review">Needs review</option>
+              <option value="info">Informational</option>
+            </select>
+          </label>
+          <label className="field">
+            <span className="field-label">Linked Record / Schedule ID</span>
+            <input
+              className="input input-sm mono"
+              value={draft.recordId}
+              onChange={e => setDraft({ ...draft, recordId: e.target.value })}
+              placeholder="e.g. PO-4481, SCH-HYG-01"
+            />
+          </label>
+        </div>
+
+        <label className="field" style={{ marginBottom: "10px" }}>
+          <span className="field-label">Observation / Claim Quote</span>
+          <input
+            className="input input-sm"
+            value={draft.quote}
+            onChange={e => setDraft({ ...draft, quote: e.target.value })}
+            placeholder="Short summary quote shown in the Handover Ledger & Briefing…"
+          />
+        </label>
+
+        <div className="field-grid" style={{ gap: "10px", marginBottom: "14px" }}>
+          <label className="field">
+            <span className="field-label">Details & Operational Context</span>
+            <textarea
+              className="input textarea"
+              rows={2}
+              value={draft.explanation}
+              onChange={e => setDraft({ ...draft, explanation: e.target.value })}
+              placeholder="What records or operational checks established this issue…"
+            />
+          </label>
+          <label className="field">
+            <span className="field-label">Required Next Action</span>
+            <textarea
+              className="input textarea"
+              rows={2}
+              value={draft.requiredAction}
+              onChange={e => setDraft({ ...draft, requiredAction: e.target.value })}
+              placeholder="What the incoming shift or supervisor needs to do…"
+            />
+          </label>
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="btn btn-ghost" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={!draft.title.trim()}
+            onClick={onSave}
+          >
+            Add to Handover Ledger & Briefing
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

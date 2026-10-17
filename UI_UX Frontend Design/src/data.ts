@@ -128,6 +128,46 @@ export interface ReportState {
   notes: string[];
 }
 
+export type ScheduleCategory = "delivery" | "hygiene" | "maintenance" | "inventory" | "custom";
+export type ScheduleRecurrence = "one_time" | "every_shift" | "daily" | "weekly_fri" | "weekly_mon";
+
+export interface OperationalScheduleItem {
+  id: string;
+  category: ScheduleCategory;
+  title: string;
+  whenLabel: string;
+  recurrence: ScheduleRecurrence;
+  vendorOrArea: string;
+  referenceCode: string;
+  instructions: string;
+  owner?: string;
+  placement: "coming_up" | "needs_attention";
+  severity: Severity;
+  status: "scheduled" | "completed" | "issue_raised";
+  solvedBy?: string;
+  solvedWhat?: string;
+  solvedWith?: string;
+  solvedAt?: string;
+  linkedRecordId?: string;
+  linkedFindingId?: string;
+}
+
+export const SCHEDULE_CATEGORY_LABEL: Record<ScheduleCategory, string> = {
+  delivery: "Supplier delivery & receiving",
+  hygiene: "Operational hygiene & food safety",
+  maintenance: "Equipment calibration & maintenance",
+  inventory: "Stock & cold-room putaway",
+  custom: "Store operational task",
+};
+
+export const RECURRENCE_LABEL: Record<ScheduleRecurrence, string> = {
+  one_time: "One-time scheduled",
+  every_shift: "Every shift handover",
+  daily: "Daily recurring",
+  weekly_fri: "Every week on Friday",
+  weekly_mon: "Every week on Monday",
+};
+
 export interface ShiftData {
   report: ReportState;
   submitted: boolean;
@@ -135,6 +175,7 @@ export interface ShiftData {
   checklist: ChecklistItem[];
   findings: Finding[];
   records: SourceRecord[];
+  schedules: OperationalScheduleItem[];
   audit: AuditEvent[];
   signedOff: boolean;
   signedOffAt?: string;
@@ -595,6 +636,63 @@ export function reconcile(shift: Shift, data: ShiftData): { findings: Finding[];
   return { findings, checklist, events };
 }
 
+export function schedulesFor(shift: Shift): OperationalScheduleItem[] {
+  const isCurrentOrUpcoming = shift.phase !== "past";
+  return [
+    {
+      id: "PO-4481",
+      category: "delivery",
+      title: "Delivery: Tube ice, 5 bags",
+      whenLabel: "Tue 13 Oct, 10:00 (stated by supplier)",
+      recurrence: "one_time",
+      vendorOrArea: "Arctic Ice Co.",
+      referenceCode: "PO-4481",
+      instructions: "Receive 5 bags of tube ice at back loading door and transfer immediately to backup chest freezer. Note: 3-hour gap between 07:00 rush and 10:00 delivery.",
+      owner: shift.incoming,
+      placement: "coming_up",
+      severity: "review",
+      status: isCurrentOrUpcoming ? "scheduled" : "completed",
+      solvedBy: isCurrentOrUpcoming ? undefined : shift.incoming,
+      solvedWhat: isCurrentOrUpcoming ? undefined : "Received 5 bags of tube ice",
+      solvedWith: isCurrentOrUpcoming ? undefined : "Signed delivery docket PO-4481 & stored in chest freezer",
+      solvedAt: isCurrentOrUpcoming ? undefined : "10:04",
+      linkedRecordId: "PO-4481",
+    },
+    {
+      id: "SCH-FRI-TRUCK",
+      category: "delivery",
+      title: "Weekly ingredient truck pickup & cold-room storage",
+      whenLabel: "Every Friday, 08:00 (Weekly recurring schedule)",
+      recurrence: "weekly_fri",
+      vendorOrArea: "Central Roastery & Dairy Truck",
+      referenceCode: "SOP-RCV-04",
+      instructions: "Pick up 12× Oat Milk Barista cases + 15kg House Blend beans from Friday delivery truck, check cold-chain temp, and store in walk-in chiller.",
+      owner: shift.incoming,
+      placement: "coming_up",
+      severity: "info",
+      status: "scheduled",
+    },
+    {
+      id: "SCH-HYG-01",
+      category: "hygiene",
+      title: "Operational hygiene checking: Milk chiller & sanitizer audit",
+      whenLabel: `Every shift start (${shift.end} handover)`,
+      recurrence: "every_shift",
+      vendorOrArea: "Espresso Bar & Undercounter Chiller",
+      referenceCode: "SOP-HYG-01",
+      instructions: "Verify undercounter milk chiller ≤ 4.0°C, test sanitizer strip ppm, and inspect steam wand purge nozzle before opening bar.",
+      owner: shift.incoming,
+      placement: "needs_attention",
+      severity: "review",
+      status: isCurrentOrUpcoming ? "scheduled" : "completed",
+      solvedBy: isCurrentOrUpcoming ? undefined : shift.incoming,
+      solvedWhat: isCurrentOrUpcoming ? undefined : "Milk chiller 3.4°C & sanitizer verified",
+      solvedWith: isCurrentOrUpcoming ? undefined : "Digital probe log SOP-HYG-01 signed",
+      solvedAt: isCurrentOrUpcoming ? undefined : shift.start,
+    },
+  ];
+}
+
 // ---------- Seed ------------------------------------------------------------
 function historical(shift: Shift): ShiftData {
   const records = recordsFor(shift);
@@ -612,6 +710,7 @@ function historical(shift: Shift): ShiftData {
     checklist: checklistFor(true),
     findings: [],
     records,
+    schedules: schedulesFor(shift),
     audit: [],
     signedOff: true,
     acknowledged: true,
@@ -653,6 +752,7 @@ export function buildInitialDb(): Record<string, ShiftData> {
         checklist: checklistFor(false),
         findings: [],
         records: recordsFor(s),
+        schedules: schedulesFor(s),
         audit: [],
         signedOff: false,
         acknowledged: false,
@@ -667,6 +767,7 @@ export function buildInitialDb(): Record<string, ShiftData> {
         checklist: checklistFor(false),
         findings: [],
         records,
+        schedules: schedulesFor(s),
         signedOff: false,
         acknowledged: false,
         signedIn: false,

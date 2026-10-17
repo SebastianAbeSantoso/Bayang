@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ArrowRight, ArrowRightLeft, ClipboardCheck, LayoutDashboard, Database, Download, ListChecks, ScrollText, X } from "lucide-react";
-import type { AuditEvent, ChecklistItem, Finding, ReportState, ShiftData } from "./data";
+import type { AuditEvent, ChecklistItem, Finding, OperationalScheduleItem, ReportState, ShiftData, SourceRecord } from "./data";
 import {
   CAFE, CURRENT_SHIFT_ID, SHIFTS, SUPERVISOR, SHIFT_TYPE_LABEL, STAFF_NAMES, buildInitialDb, categoryComplete, effectiveShift, makeEvent, reconcile, shiftById, signoffState, stampTime, bucketOf,
 } from "./data";
 import Dashboard from "./components/Dashboard";
 import WorkerReport from "./components/WorkerReport";
-import Ledger, { type CheckAction } from "./components/Ledger";
+import Ledger, { type CheckAction, type NewFindingInput } from "./components/Ledger";
 import Records from "./components/Records";
 import AuditLog from "./components/AuditLog";
 import Briefing from "./components/Briefing";
@@ -100,6 +100,293 @@ export default function App() {
     }));
   };
 
+  const handleSaveSchedule = (item: OperationalScheduleItem, isNew: boolean) => {
+    update(d => {
+      const exists = d.schedules.some(s => s.id === item.id);
+      const schedules = exists
+        ? d.schedules.map(s => (s.id === item.id ? item : s))
+        : [item, ...d.schedules];
+
+      // Sync to SourceRecord if linkedRecordId or PO-*
+      let records = d.records;
+      const recId = item.linkedRecordId || (item.id.startsWith("PO-") ? item.id : null);
+      if (recId) {
+        const cleanItemText = item.title.replace(/^Delivery:\s*/i, "").trim();
+        const existingRec = d.records.find(r => r.id === recId);
+        if (existingRec) {
+          records = d.records.map(r =>
+            r.id === recId
+              ? {
+                  ...r,
+                  location: item.vendorOrArea || r.location,
+                  fields: [
+                    ["Item & qty", cleanItemText],
+                    ["Scheduled", item.whenLabel],
+                    ["Status", item.status === "completed" ? `Received by ${item.solvedBy || shift.incoming}` : "Confirmed, not yet delivered"],
+                  ],
+                }
+              : r
+          );
+        } else {
+          const newRec: SourceRecord = {
+            id: recId,
+            category: "stock",
+            name: item.category === "delivery" ? "Supplier purchase order" : "Operational schedule record",
+            source: item.category === "delivery" ? "Email / Supplier PO" : "Store Schedule",
+            location: item.vendorOrArea,
+            timestamp: stampTime().slice(0, 5),
+            coverage: item.whenLabel,
+            availability: "available",
+            entries: 1,
+            establishes: `Scheduled ${item.title} (${item.whenLabel}).`,
+            doesNotEstablish: "Actual physical arrival or verification until signed off by shift staff.",
+            fields: [
+              ["Item & qty", cleanItemText],
+              ["Scheduled", item.whenLabel],
+              ["Status", "Scheduled"],
+            ],
+          };
+          records = [...d.records, newRec];
+        }
+      }
+
+      return {
+        ...d,
+        schedules,
+        records,
+        audit: [
+          ...d.audit,
+          ev({
+            actor: shift.outgoing,
+            actorKind: "human",
+            type: "shift",
+            action: isNew ? "Operational schedule added" : "Operational schedule updated",
+            explanation: `${item.id}: ${item.title} (${item.whenLabel} · ${item.vendorOrArea}).`,
+          }),
+        ],
+      };
+    });
+  };
+
+  const handleDeleteSchedule = (scheduleId: string) => {
+    update(d => {
+      const target = d.schedules.find(s => s.id === scheduleId);
+      return {
+        ...d,
+        schedules: d.schedules.filter(s => s.id !== scheduleId),
+        audit: [
+          ...d.audit,
+          ev({
+            actor: shift.outgoing,
+            actorKind: "human",
+            type: "shift",
+            action: "Operational schedule removed",
+            explanation: `${scheduleId}${target ? `: ${target.title}` : ""} removed from schedule.`,
+          }),
+        ],
+      };
+    });
+  };
+
+  const handleCompleteSchedule = (scheduleId: string, payload: { solvedBy: string; solvedWhat: string; solvedWith: string }) => {
+    update(d => {
+      const solvedAt = stampTime().slice(0, 5);
+      const schedules = d.schedules.map(s =>
+        s.id === scheduleId
+          ? {
+              ...s,
+              status: "completed" as const,
+              solvedBy: payload.solvedBy,
+              solvedWhat: payload.solvedWhat,
+              solvedWith: payload.solvedWith,
+              solvedAt,
+            }
+          : s
+      );
+      const target = d.schedules.find(s => s.id === scheduleId);
+      const recId = target?.linkedRecordId || scheduleId;
+      const records = d.records.map(r =>
+        r.id === recId
+          ? {
+              ...r,
+              fields: r.fields.map(([k, v]) => (k.toLowerCase().includes("status") ? [k, `Completed by ${payload.solvedBy} at ${solvedAt} (${payload.solvedWith})`] as [string, string] : [k, v] as [string, string])),
+            }
+          : r
+      );
+      const findings = d.findings.map(f =>
+        f.recordIds.includes(scheduleId) || f.recordIds.includes(recId)
+          ? {
+              ...f,
+              checks: f.checks.map(c => ({
+                ...c,
+                workflow: "resolved" as const,
+                resolution: "resolved" as const,
+                solvedBy: payload.solvedBy,
+                solvedWhat: payload.solvedWhat,
+                solvedWith: payload.solvedWith,
+                solvedAt,
+              })),
+            }
+          : f
+      );
+      return {
+        ...d,
+        schedules,
+        records,
+        findings,
+        audit: [
+          ...d.audit,
+          ev({
+            actor: payload.solvedBy,
+            actorKind: "human",
+            type: "resolved",
+            action: "Operational schedule / delivery completed",
+            explanation: `${scheduleId}: ${payload.solvedWhat} · Verified with: “${payload.solvedWith}”.`,
+          }),
+        ],
+      };
+    });
+  };
+
+  const handlePromoteScheduleToIssue = (item: OperationalScheduleItem, issueReason: string, actor = shift.outgoing) => {
+    update(d => {
+      const schedules = d.schedules.map(s =>
+        s.id === item.id
+          ? { ...s, status: "issue_raised" as const, placement: "needs_attention" as const }
+          : s
+      );
+      const nextIdx = d.findings.length + 1;
+      const fid = `FND-OPS-${String(nextIdx).padStart(2, "0")}`;
+      const cat: Finding["category"] =
+        item.category === "hygiene_check"
+          ? "cleaning"
+          : item.category === "maintenance"
+            ? "equipment"
+            : "stock";
+      const recId = item.linkedRecordId || item.id;
+      const newFinding: Finding = {
+        id: fid,
+        title: `${item.title} — Operational schedule issue`,
+        category: cat,
+        quote: issueReason || `${item.title} (${item.whenLabel}) flagged for handover attention`,
+        structured: `Operational Schedule ${item.id} · ${item.whenLabel} · ${item.vendorOrArea}`,
+        explanation: `${issueReason}. Linked to schedule ${item.id} (${item.whenLabel}).`,
+        unknowns: "Requires incoming shift verification and physical sign-off.",
+        recordIds: [recId],
+        checks: [
+          {
+            id: `${fid}-CHK-1`,
+            title: `${item.title} (${item.id})`,
+            ruleCode: item.category === "hygiene_check" ? "R-HYG-SCH" : "R-SUP-SCH",
+            severity: item.category === "hygiene_check" ? "critical" : "review",
+            evidence: "supported",
+            workflow: "open",
+            reason: issueReason,
+            requiredAction: item.notes || `Verify and resolve ${item.title} during shift handover`,
+          },
+        ],
+      };
+
+      return {
+        ...d,
+        schedules,
+        findings: [newFinding, ...d.findings],
+        audit: [
+          ...d.audit,
+          ev({
+            actor,
+            actorKind: "human",
+            type: "claim",
+            findingId: fid,
+            action: "Operational schedule flagged as Handover Issue",
+            explanation: `${item.id} (${item.title}) escalated to Handover Ledger as ${fid}: “${issueReason}”.`,
+          }),
+        ],
+      };
+    });
+  };
+
+  const handleUpdateRecordFields = (recordId: string, newFields: Array<[string, string]>) => {
+    update(d => {
+      const records = d.records.map(r => (r.id === recordId ? { ...r, fields: newFields } : r));
+      // Sync back to schedule if recordId matches PO-4481 or linkedRecordId
+      const itemField = newFields.find(([k]) => k.toLowerCase().includes("item"))?.[1];
+      const schedField = newFields.find(([k]) => k.toLowerCase().includes("scheduled") || k.toLowerCase().includes("time"))?.[1];
+      const schedules = d.schedules.map(s => {
+        if (s.id === recordId || s.linkedRecordId === recordId) {
+          return {
+            ...s,
+            title: itemField ? (s.category === "delivery" && !itemField.toLowerCase().startsWith("delivery:") ? `Delivery: ${itemField}` : itemField) : s.title,
+            whenLabel: schedField || s.whenLabel,
+          };
+        }
+        return s;
+      });
+      return {
+        ...d,
+        records,
+        schedules,
+        audit: [
+          ...d.audit,
+          ev({
+            actor: shift.outgoing,
+            actorKind: "human",
+            type: "shift",
+            action: `Operational record ${recordId} updated`,
+            explanation: newFields.map(([k, v]) => `${k}: ${v}`).join(" · "),
+          }),
+        ],
+      };
+    });
+  };
+
+  const handleAddFinding = (input: NewFindingInput) => {
+    let createdId = "";
+    update(d => {
+      const nextIdx = d.findings.length + 1;
+      const fid = `FND-${String(nextIdx).padStart(2, "0")}`;
+      createdId = fid;
+      const newFinding: Finding = {
+        id: fid,
+        title: input.title.trim(),
+        category: input.category,
+        quote: input.quote.trim() || input.title.trim(),
+        structured: `Manual Ledger Entry · Rule ${input.ruleCode} · Logged by ${input.actor}`,
+        explanation: input.explanation.trim() || `Logged directly in Handover Ledger by ${input.actor}.`,
+        unknowns: "Requires verification by incoming shift or supervisor.",
+        recordIds: input.recordId.trim() ? [input.recordId.trim()] : [],
+        checks: [
+          {
+            id: `${fid}-CHK-1`,
+            title: input.title.trim(),
+            ruleCode: input.ruleCode.trim() || "R-OPS-MANUAL",
+            severity: input.severity,
+            evidence: input.evidence,
+            workflow: "open",
+            reason: input.explanation.trim() || input.title.trim(),
+            requiredAction: input.requiredAction.trim() || "Verify and resolve during shift handover",
+          },
+        ],
+      };
+      return {
+        ...d,
+        findings: [newFinding, ...d.findings],
+        audit: [
+          ...d.audit,
+          ev({
+            actor: input.actor,
+            actorKind: "human",
+            type: "claim",
+            findingId: fid,
+            action: "Operational issue added to Handover Ledger",
+            explanation: `${fid}: ${newFinding.title} (${input.severity}).`,
+          }),
+        ],
+      };
+    });
+    if (createdId) setSelectedFinding(createdId);
+  };
+
   const submit = async () => {
     setIsReconciling(true);
     try {
@@ -112,6 +399,7 @@ export default function App() {
       });
 
       update(d => {
+        const manualOrScheduleFindings = d.findings.filter(f => f.id.startsWith("FND-OPS-") || f.structured.startsWith("Manual Ledger Entry"));
         const mappedFindings: Finding[] = res.findings.map(bf => {
           const matchingChecks = d.findings.flatMap(f => f.checks).filter(c => c.ruleCode === bf.rule_id || bf.title.includes(c.title));
           const checks = matchingChecks.length > 0 ? matchingChecks : [
@@ -166,11 +454,12 @@ export default function App() {
         };
 
         const time = stampTime();
+        const combinedFindings = [...manualOrScheduleFindings, ...(mappedFindings.length > 0 ? mappedFindings : d.findings.filter(f => !manualOrScheduleFindings.includes(f)))];
         return {
           ...d,
           submitted: true,
           submittedAt: time.slice(0, 5),
-          findings: mappedFindings.length > 0 ? mappedFindings : d.findings,
+          findings: combinedFindings,
           incomingBriefing: briefing,
           gemmaTelemetry,
           audit: [
@@ -195,13 +484,21 @@ export default function App() {
     } catch (err) {
       console.warn("Backend reconciliation API error, using deterministic local engine fallback", err);
       update(d => {
+        const manualOrScheduleFindings = d.findings.filter(f => f.id.startsWith("FND-OPS-") || f.structured.startsWith("Manual Ledger Entry"));
         const time = stampTime();
         const pre: AuditEvent[] = [
           { ...ev({ actor: shift.outgoing, actorKind: "human", type: "report", action: "Shift report completed", explanation: `All 5 categories answered. ${d.report.notes.length} note(s).` }), time },
           ...d.report.notes.map(n => ev({ actor: shift.outgoing, actorKind: "human", type: "note", action: "Original worker note recorded", explanation: `“${n}”` })),
         ];
         const r = reconcile(shift, { ...d, audit: [] });
-        return { ...d, submitted: true, submittedAt: time.slice(0, 5), findings: r.findings, checklist: r.checklist, audit: [...d.audit, ...pre, ...r.events] };
+        return {
+          ...d,
+          submitted: true,
+          submittedAt: time.slice(0, 5),
+          findings: [...manualOrScheduleFindings, ...r.findings],
+          checklist: r.checklist,
+          audit: [...d.audit, ...pre, ...r.events],
+        };
       });
     } finally {
       setIsReconciling(false);
@@ -389,9 +686,9 @@ export default function App() {
   const NAV: Array<{ id: Tab; label: string; Icon: typeof ListChecks; meta?: string }> = [
     { id: "dashboard", label: "Dashboard", Icon: LayoutDashboard },
     { id: "report", label: "Finish your shift", Icon: ClipboardCheck, meta: data.submitted ? "Done" : `${reportDone}/5` },
-    { id: "ledger", label: "Handover ledger", Icon: ListChecks, meta: data.submitted ? String(openChecks) : "" },
-    { id: "briefing", label: "Incoming briefing", Icon: ArrowRightLeft, meta: data.acknowledged ? "Ack" : "" },
-    { id: "records", label: "Operational records", Icon: Database, meta: String(data.records.length || "") },
+    { id: "ledger", label: "Handover ledger", Icon: ListChecks, meta: data.submitted || openChecks > 0 ? String(openChecks) : "" },
+    { id: "briefing", label: "Incoming briefing", Icon: ArrowRightLeft, meta: data.acknowledged ? "Ack" : String((data.schedules || []).length) },
+    { id: "records", label: "Operational records", Icon: Database, meta: String(data.records.length + (data.schedules || []).length) },
     { id: "audit", label: "Audit log", Icon: ScrollText, meta: String(data.audit.length) },
   ];
 
@@ -575,6 +872,7 @@ export default function App() {
                 setSelectedRecordId(rid);
                 setTab("records");
               }}
+              onAddFinding={handleAddFinding}
             />
           )}
           {tab === "briefing" && (
@@ -595,9 +893,26 @@ export default function App() {
               onOpenReport={() => setTab("report")}
               onSolveCheck={handleSolveCheckFromBriefing}
               onSolveTask={handleSolveTaskFromBriefing}
+              onSaveSchedule={handleSaveSchedule}
+              onCompleteSchedule={handleCompleteSchedule}
+              onPromoteScheduleToIssue={handlePromoteScheduleToIssue}
             />
           )}
-          {tab === "records" && <Records key={shiftId} data={data} initialRecordId={selectedRecordId} />}
+          {tab === "records" && (
+            <Records
+              key={shiftId}
+              shift={shift}
+              data={data}
+              initialRecordId={selectedRecordId}
+              onSaveSchedule={handleSaveSchedule}
+              onDeleteSchedule={handleDeleteSchedule}
+              onPromoteScheduleToIssue={item => {
+                handlePromoteScheduleToIssue(item, item.notes || `Escalated from Operational Records: ${item.title}`, shift.outgoing);
+                setTab("briefing");
+              }}
+              onUpdateRecordFields={handleUpdateRecordFields}
+            />
+          )}
           {tab === "audit" && <AuditLog events={allEvents} currentShiftId={shiftId} />}
         </main>
       </div>
