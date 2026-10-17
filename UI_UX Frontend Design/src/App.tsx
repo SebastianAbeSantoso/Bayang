@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowRight, ArrowRightLeft, ClipboardCheck, LayoutDashboard, Database, Download, ListChecks, LogIn, ScrollText, X } from "lucide-react";
+import { ArrowRight, ArrowRightLeft, ClipboardCheck, LayoutDashboard, Database, Download, ListChecks, LogIn, ScrollText, ShieldCheck, Users, X } from "lucide-react";
 import type { AuditEvent, ChecklistItem, Finding, OperationalScheduleItem, ReportState, ShiftData, SourceRecord } from "./data";
 import {
   CAFE, CURRENT_SHIFT_ID, SHIFTS, SUPERVISOR, SHIFT_TYPE_LABEL, STAFF_NAMES, buildInitialDb, categoryComplete, effectiveShift, makeEvent, reconcile, shiftById, signoffState, stampTime, bucketOf,
@@ -11,15 +11,18 @@ import Records from "./components/Records";
 import AuditLog from "./components/AuditLog";
 import Briefing from "./components/Briefing";
 import ShiftLogin from "./components/ShiftLogin";
+import StaffRoster, { INITIAL_STAFF_ROSTER, type StaffMember } from "./components/StaffRoster";
 import { Tag } from "./components/ui";
 import { api, type SystemStatus } from "./api";
 
-type Tab = "dashboard" | "report" | "ledger" | "briefing" | "records" | "audit";
+type Tab = "dashboard" | "report" | "ledger" | "briefing" | "records" | "audit" | "roster";
 
 export default function App() {
   const [db, setDb] = useState<Record<string, ShiftData>>(buildInitialDb);
   const [shiftId, setShiftId] = useState(CURRENT_SHIFT_ID);
   const [showLoginScreen, setShowLoginScreen] = useState(true);
+  const [isOwnerMode, setIsOwnerMode] = useState(false);
+  const [roster, setRoster] = useState<StaffMember[]>(INITIAL_STAFF_ROSTER);
   const [tab, setTab] = useState<Tab>("dashboard");
   const [justSubmitted, setJustSubmitted] = useState(false);
   const [selectedFinding, setSelectedFinding] = useState<string | null>(null);
@@ -64,10 +67,13 @@ export default function App() {
     outgoingLead: string;
     incomingLead: string;
     crew: string[];
-    openTab: "dashboard" | "report" | "briefing" | "ledger";
+    ownerMode?: boolean;
+    openTab: "dashboard" | "report" | "briefing" | "ledger" | "roster";
   }) => {
     const time = stampTime().slice(0, 5);
     const targetShift = shiftById(params.shiftId);
+    const ownerActive = Boolean(params.ownerMode);
+    setIsOwnerMode(ownerActive);
     setShiftId(params.shiftId);
     setSelectedFinding(null);
     setSelectedRecordId(null);
@@ -78,8 +84,10 @@ export default function App() {
         actor: params.outgoingLead,
         actorKind: "human",
         type: "shift",
-        action: "Signed in & started shift",
-        explanation: `${params.outgoingLead} signed in on POS tablet to start ${SHIFT_TYPE_LABEL[targetShift.type]} shift (${targetShift.start}–${targetShift.end}). Handover recipient: ${params.incomingLead}${params.crew.length ? ` · Floor crew: ${params.crew.join(", ")}` : ""}.`,
+        action: ownerActive ? "Signed in (Owner Mode)" : "Signed in & started shift",
+        explanation: ownerActive
+          ? `${params.outgoingLead} signed in with Owner PIN to manage staff rosters and oversee ${SHIFT_TYPE_LABEL[targetShift.type]} shift.`
+          : `${params.outgoingLead} signed in on POS tablet to start ${SHIFT_TYPE_LABEL[targetShift.type]} shift (${targetShift.start}–${targetShift.end}).${params.crew.length ? ` Floor crew: ${params.crew.join(", ")}.` : ""}`,
       });
       return {
         ...prev,
@@ -87,7 +95,7 @@ export default function App() {
           ...curr,
           signedIn: true,
           signedInAt: curr.signedInAt || time,
-          outgoingLead: params.outgoingLead,
+          outgoingLead: ownerActive ? curr.outgoingLead : params.outgoingLead,
           incomingLead: params.incomingLead,
           audit: [startEv, ...curr.audit],
         },
@@ -95,6 +103,62 @@ export default function App() {
     });
     setTab(params.openTab);
     setShowLoginScreen(false);
+  };
+
+  const handleAddStaff = (member: Omit<StaffMember, "id">) => {
+    setRoster(prev => {
+      const nextNum = prev.length + 1;
+      const id = `STF-${String(nextNum).padStart(2, "0")}`;
+      return [...prev, { id, ...member }];
+    });
+    update(d => ({
+      ...d,
+      audit: [
+        ...d.audit,
+        ev({
+          actor: `${SUPERVISOR} (Owner)`,
+          actorKind: "human",
+          type: "shift",
+          action: "Staff member added to roster",
+          explanation: `${member.name} (${member.station}) added with PIN ${member.pin}.`,
+        }),
+      ],
+    }));
+  };
+
+  const handleUpdateStaff = (updated: StaffMember) => {
+    setRoster(prev => prev.map(m => (m.id === updated.id ? updated : m)));
+    update(d => ({
+      ...d,
+      audit: [
+        ...d.audit,
+        ev({
+          actor: `${SUPERVISOR} (Owner)`,
+          actorKind: "human",
+          type: "shift",
+          action: "Staff roster entry updated",
+          explanation: `${updated.id}: ${updated.name} (${updated.station} · PIN ${updated.pin}).`,
+        }),
+      ],
+    }));
+  };
+
+  const handleDeleteStaff = (id: string) => {
+    const target = roster.find(m => m.id === id);
+    setRoster(prev => prev.filter(m => m.id !== id));
+    update(d => ({
+      ...d,
+      audit: [
+        ...d.audit,
+        ev({
+          actor: `${SUPERVISOR} (Owner)`,
+          actorKind: "human",
+          type: "shift",
+          action: "Staff member removed from roster",
+          explanation: `${target ? `${target.name} (${target.station})` : id} removed from roster.`,
+        }),
+      ],
+    }));
   };
 
   const handleSignIn = (staffName: string) => {
@@ -730,6 +794,9 @@ export default function App() {
     { id: "briefing", label: "Incoming briefing", Icon: ArrowRightLeft, meta: data.acknowledged ? "Ack" : String((data.schedules || []).length) },
     { id: "records", label: "Operational records", Icon: Database, meta: String(data.records.length + (data.schedules || []).length) },
     { id: "audit", label: "Audit log", Icon: ScrollText, meta: String(data.audit.length) },
+    ...(isOwnerMode
+      ? [{ id: "roster" as Tab, label: "Staff roster", Icon: Users, meta: String(roster.length) }]
+      : []),
   ];
 
   const goBlockers = () => {
@@ -745,6 +812,7 @@ export default function App() {
     `${shift.outgoing} (Outgoing Lead)`,
     `${SUPERVISOR} (Supervisor)`,
     `${shift.incoming} (Incoming Lead)`,
+    ...roster.map(m => m.name),
     ...STAFF_NAMES,
   ]));
 
@@ -753,6 +821,7 @@ export default function App() {
       <ShiftLogin
         shiftId={shiftId}
         db={db}
+        roster={roster}
         gemmaMode={gemmaMode}
         onToggleGemmaMode={() => setGemmaMode(m => (m === "live" ? "seeded" : "live"))}
         onStartShiftSession={handleStartShiftSession}
@@ -809,6 +878,25 @@ export default function App() {
         </button>
 
         <div className="topbar-right" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          {isOwnerMode && (
+            <span
+              className="mono-small"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "5px",
+                background: "var(--amber-50)",
+                border: "1px solid var(--espresso-600)",
+                color: "var(--espresso-600)",
+                padding: "4px 10px",
+                borderRadius: "6px",
+                fontWeight: 600,
+              }}
+            >
+              <ShieldCheck className="icon icon-xs" aria-hidden="true" />
+              Owner Mode
+            </span>
+          )}
           <span className="mono-small" style={{ color: "var(--ink-600)", background: "var(--paper-100)", border: "1px solid var(--paper-300)", padding: "4px 10px", borderRadius: "6px" }}>
             {SHIFT_TYPE_LABEL[shift.type]} Shift ({shift.start}–{shift.end}) · Lead: <strong>{shift.outgoing}</strong>
           </span>
@@ -976,6 +1064,14 @@ export default function App() {
             />
           )}
           {tab === "audit" && <AuditLog events={allEvents} currentShiftId={shiftId} />}
+          {tab === "roster" && (
+            <StaffRoster
+              roster={roster}
+              onAddStaff={handleAddStaff}
+              onUpdateStaff={handleUpdateStaff}
+              onDeleteStaff={handleDeleteStaff}
+            />
+          )}
         </main>
       </div>
 

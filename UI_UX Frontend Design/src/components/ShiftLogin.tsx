@@ -23,11 +23,13 @@ import {
   SUPERVISOR,
   effectiveShift,
 } from "../data";
+import type { StaffMember } from "./StaffRoster";
 import { Tag } from "./ui";
 
 interface Props {
   shiftId: string;
   db: Record<string, ShiftData>;
+  roster: StaffMember[];
   gemmaMode: "live" | "seeded";
   onToggleGemmaMode: () => void;
   onStartShiftSession: (params: {
@@ -35,13 +37,15 @@ interface Props {
     outgoingLead: string;
     incomingLead: string;
     crew: string[];
-    openTab: "dashboard" | "report" | "briefing" | "ledger";
+    ownerMode?: boolean;
+    openTab: "dashboard" | "report" | "briefing" | "ledger" | "roster";
   }) => void;
 }
 
 export default function ShiftLogin({
   shiftId: initialShiftId,
   db,
+  roster,
   onStartShiftSession,
 }: Props) {
   const [selectedShiftId, setSelectedShiftId] = useState<string>(initialShiftId);
@@ -49,25 +53,37 @@ export default function ShiftLogin({
   const shiftData = db[selectedShiftId];
   const shift: Shift = effectiveShift(rawShift, shiftData);
 
-  const staffPins: Record<string, string> = {
-    Rina: "1024",
-    Sarah: "2048",
-    Dimas: "3012",
-    Bima: "4096",
-    Sari: "5120",
-  };
+  const staffPins: Record<string, string> = {};
+  for (const m of roster) {
+    staffPins[m.name] = m.pin;
+  }
+
+  const ownerPins = new Set([
+    "0000",
+    "9999",
+    ...roster.filter(m => m.role === "owner").map(m => m.pin),
+  ]);
+
   const [leadName, setLeadName] = useState<string>(shift.outgoing);
   const [leadPin, setLeadPin] = useState<string>(staffPins[shift.outgoing] ?? "1024");
   const [pinError, setPinError] = useState<string>("");
-  const [selectedCrew, setSelectedCrew] = useState<string[]>(["Sari (Barista)", "Bima (Cashier)"]);
 
-  const staffRoster = Array.from(new Set([...STAFF_NAMES, shift.outgoing, shift.incoming]));
-  const crewOptions = [
-    "Sari (Barista)",
-    "Bima (Cashier)",
-    "Nadia (Cold Bar)",
-    "Reza (Roastery Support)",
-  ];
+  const floorRosterLabels = roster
+    .filter(m => m.role === "floor_staff")
+    .map(m => `${m.name} (${m.station})`);
+  const crewOptions =
+    floorRosterLabels.length > 0
+      ? floorRosterLabels
+      : ["Sari (Barista)", "Bima (Cashier)", "Nadia (Cold Bar)", "Reza (Roastery Support)"];
+
+  const [selectedCrew, setSelectedCrew] = useState<string[]>(crewOptions.slice(0, 2));
+
+  const leadNamesFromRoster = roster
+    .filter(m => m.role === "shift_lead" || m.role === "floor_staff")
+    .map(m => m.name);
+  const staffRoster = Array.from(new Set([...leadNamesFromRoster, ...STAFF_NAMES, shift.outgoing, shift.incoming]));
+
+  const isOwnerPinEntered = leadPin.trim().length === 4 && ownerPins.has(leadPin.trim());
 
   const handleSelectShift = (newShiftId: string) => {
     setSelectedShiftId(newShiftId);
@@ -91,17 +107,21 @@ export default function ShiftLogin({
   };
 
   const handleSignIn = () => {
-    if (leadPin.trim().length < 4) {
-      setPinError("Enter your 4-digit Shift Lead PIN to sign in.");
+    const cleanPin = leadPin.trim();
+    if (cleanPin.length < 4) {
+      setPinError("Enter a 4-digit PIN to sign in.");
       return;
     }
     setPinError("");
+    const ownerMember = roster.find(m => m.role === "owner" && m.pin === cleanPin);
+    const enterOwnerMode = ownerPins.has(cleanPin);
     onStartShiftSession({
       shiftId: selectedShiftId,
-      outgoingLead: leadName,
+      outgoingLead: enterOwnerMode ? (ownerMember?.name ?? leadName) : leadName,
       incomingLead: shift.incoming,
       crew: selectedCrew,
-      openTab: "report",
+      ownerMode: enterOwnerMode,
+      openTab: enterOwnerMode ? "roster" : "report",
     });
   };
 
@@ -248,21 +268,35 @@ export default function ShiftLogin({
                 })}
               </div>
 
-              <label className="field" style={{ maxWidth: "240px" }}>
-                <span className="field-label">Shift Lead PIN ({leadName})</span>
+              <label className="field" style={{ maxWidth: "260px" }}>
+                <span className="field-label">PIN</span>
                 <input
                   type="password"
                   inputMode="numeric"
                   className="input input-sm mono"
                   value={leadPin}
                   onChange={e => {
-                    setLeadPin(e.target.value.replace(/\D/g, "").slice(0, 4));
+                    const nextVal = e.target.value.replace(/\D/g, "").slice(0, 4);
+                    setLeadPin(nextVal);
                     if (pinError) setPinError("");
                   }}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") handleSignIn();
+                  }}
                   maxLength={4}
-                  placeholder="4-digit PIN"
+                  placeholder="4-digit PIN (0000 for Owner)"
                   style={{ letterSpacing: "0.25em", fontWeight: 700 }}
                 />
+                {isOwnerPinEntered ? (
+                  <span style={{ color: "var(--espresso-600)", fontSize: "11.5px", fontWeight: 600, marginTop: "4px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                    <ShieldCheck className="icon icon-xs" aria-hidden="true" />
+                    Owner PIN detected — signs into Owner Mode (Staff Roster tab)
+                  </span>
+                ) : (
+                  <span className="muted-text" style={{ fontSize: "11px", marginTop: "4px", display: "block" }}>
+                    Enter 0000 for Owner Mode (Staff Roster management)
+                  </span>
+                )}
                 {pinError && (
                   <span style={{ color: "var(--crimson-600)", fontSize: "11.5px", marginTop: "4px", display: "block" }}>
                     {pinError}
@@ -319,7 +353,9 @@ export default function ShiftLogin({
               }}
             >
               <LogIn className="icon icon-sm" aria-hidden="true" />
-              Sign In & Start {SHIFT_TYPE_LABEL[shift.type]} Shift as {leadName} ({shift.start}–{shift.end})
+              {isOwnerPinEntered
+                ? "Sign In to Owner Mode & Manage Staff Roster"
+                : `Sign In & Start ${SHIFT_TYPE_LABEL[shift.type]} Shift as ${leadName} (${shift.start}–${shift.end})`}
               <ArrowRight className="icon icon-sm" aria-hidden="true" />
             </button>
           </section>
