@@ -1,19 +1,11 @@
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import {
   ArrowRight,
-  ArrowRightLeft,
-  CalendarClock,
   Check,
-  ChevronDown,
   Clock,
   Coffee,
   LogIn,
-  Search,
   ShieldCheck,
-  Sparkles,
-  Truck,
-  UserCheck,
-  Users,
 } from "lucide-react";
 import type { Shift, ShiftData } from "../data";
 import {
@@ -21,8 +13,6 @@ import {
   RECURRENCE_LABEL,
   SHIFT_TYPE_LABEL,
   SHIFTS,
-  STAFF_NAMES,
-  SUPERVISOR,
   effectiveShift,
 } from "../data";
 import type { StaffMember } from "./StaffRoster";
@@ -55,51 +45,23 @@ export default function ShiftLogin({
   const shiftData = db[selectedShiftId];
   const shift: Shift = effectiveShift(rawShift, shiftData);
 
-  const staffPins: Record<string, string> = {};
-  for (const m of roster) {
-    staffPins[m.name] = m.pin;
-  }
-
-  const ownerPins = new Set([
-    "0000",
-    "9999",
-    ...roster.filter(m => m.role === "owner").map(m => m.pin),
-  ]);
-
-  // Default selection for shift lead signing in is the current shift's usual manager
-  const initialLeadMember = roster.find(m => m.name.toLowerCase() === rawShift.outgoing.toLowerCase());
-  const [leadName, setLeadName] = useState<string>(rawShift.outgoing);
-  const [leadSearchQuery, setLeadSearchQuery] = useState<string>(
-    initialLeadMember ? `${initialLeadMember.name} (${initialLeadMember.station})` : `${rawShift.outgoing} (Manager)`
-  );
-  const [isLeadDropdownOpen, setIsLeadDropdownOpen] = useState(false);
   const [leadPin, setLeadPin] = useState<string>("");
   const [pinError, setPinError] = useState<string>("");
 
-  const leadDropdownRef = useRef<HTMLDivElement>(null);
+  const ownerPins = useMemo(
+    () =>
+      new Set([
+        "0000",
+        "9999",
+        ...roster.filter(m => m.role === "owner").map(m => m.pin),
+      ]),
+    [roster]
+  );
 
-  // Click / touch outside to dismiss the Shift Lead dropdown
-  useEffect(() => {
-    if (!isLeadDropdownOpen) return;
-    const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
-      if (leadDropdownRef.current && !leadDropdownRef.current.contains(e.target as Node)) {
-        setIsLeadDropdownOpen(false);
-      }
-    };
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setIsLeadDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleOutsideClick);
-    document.addEventListener("touchstart", handleOutsideClick);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
-      document.removeEventListener("touchstart", handleOutsideClick);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isLeadDropdownOpen]);
+  const cleanPin = leadPin.trim();
+  const matchedMember = cleanPin.length === 4 ? roster.find(m => m.pin === cleanPin) : null;
+  const isOwner = cleanPin.length === 4 && ownerPins.has(cleanPin);
+  const ownerMember = isOwner ? roster.find(m => m.role === "owner" && m.pin === cleanPin) : null;
 
   const floorRosterLabels = roster
     .filter(m => m.role === "floor_staff")
@@ -111,52 +73,8 @@ export default function ShiftLogin({
 
   const [selectedCrew, setSelectedCrew] = useState<string[]>(crewOptions.slice(0, 2));
 
-  // If the query matches any staff member's name, display all staff members in roster
-  const filteredStaff = useMemo(() => {
-    const q = leadSearchQuery.toLowerCase().trim();
-    if (!q) return roster;
-
-    const matchesAnyStaffName = roster.some(m => {
-      const name = m.name.toLowerCase();
-      const station = m.station.toLowerCase();
-      const role = m.role.toLowerCase();
-      return (
-        name === q ||
-        `${name} (${station})` === q ||
-        `${name} (${role})` === q ||
-        `${name} (manager)` === q ||
-        `${name} · ${station}` === q ||
-        `${name} - ${station}` === q
-      );
-    });
-
-    if (matchesAnyStaffName) {
-      return roster;
-    }
-
-    return roster.filter(m =>
-      m.name.toLowerCase().includes(q) ||
-      m.station.toLowerCase().includes(q) ||
-      m.role.toLowerCase().includes(q)
-    );
-  }, [leadSearchQuery, roster]);
-
   const handleSelectShift = (newShiftId: string) => {
     setSelectedShiftId(newShiftId);
-    const nextRaw = SHIFTS.find(s => s.id === newShiftId) ?? SHIFTS[1];
-    // Automatically default to the new shift's usual manager
-    const nextMember = roster.find(m => m.name.toLowerCase() === nextRaw.outgoing.toLowerCase());
-    setLeadName(nextRaw.outgoing);
-    setLeadSearchQuery(nextMember ? `${nextMember.name} (${nextMember.station})` : `${nextRaw.outgoing} (Manager)`);
-    setIsLeadDropdownOpen(false);
-    setLeadPin("");
-    setPinError("");
-  };
-
-  const handleSelectLead = (member: StaffMember) => {
-    setLeadName(member.name);
-    setLeadSearchQuery(`${member.name} (${member.station})`);
-    setIsLeadDropdownOpen(false);
     setLeadPin("");
     setPinError("");
   };
@@ -167,10 +85,27 @@ export default function ShiftLogin({
     );
   };
 
+  const handleNumpadPress = (val: string) => {
+    if (val === "C") {
+      setLeadPin("");
+      if (pinError) setPinError("");
+      return;
+    }
+    if (val === "BACK") {
+      setLeadPin(prev => prev.slice(0, -1));
+      if (pinError) setPinError("");
+      return;
+    }
+    if (leadPin.length < 4) {
+      const nextPin = leadPin + val;
+      setLeadPin(nextPin);
+      if (pinError) setPinError("");
+    }
+  };
+
   const handleSignIn = () => {
-    const cleanPin = leadPin.trim();
     if (!cleanPin) {
-      setPinError("Enter 4-digit PIN.");
+      setPinError("Please enter your 4-digit staff PIN.");
       return;
     }
     if (cleanPin.length < 4) {
@@ -178,20 +113,17 @@ export default function ShiftLogin({
       return;
     }
 
-    const isOwner = ownerPins.has(cleanPin);
-    const activeMember = roster.find(m => m.name.toLowerCase() === leadName.toLowerCase());
-    const expectedPin = activeMember?.pin || staffPins[leadName];
-
-    if (!isOwner && expectedPin && cleanPin !== expectedPin) {
-      setPinError("Incorrect PIN. Please enter the correct 4-digit PIN.");
+    if (!matchedMember && !isOwner) {
+      setPinError("Unrecognized PIN. Please enter a valid registered staff PIN.");
       return;
     }
 
     setPinError("");
-    const ownerMember = roster.find(m => m.role === "owner" && m.pin === cleanPin);
+    const resolvedLeadName = matchedMember ? matchedMember.name : (ownerMember?.name ?? "Store Owner");
+
     onStartShiftSession({
       shiftId: selectedShiftId,
-      outgoingLead: isOwner ? (ownerMember?.name ?? leadName) : leadName,
+      outgoingLead: resolvedLeadName,
       incomingLead: shift.incoming,
       crew: selectedCrew,
       ownerMode: isOwner,
@@ -307,143 +239,23 @@ export default function ShiftLogin({
               </select>
             </div>
 
-            {/* Step 2: Searchable Shift Lead Box */}
-            <div ref={leadDropdownRef} style={{ marginBottom: "22px", position: "relative" }}>
+            {/* Step 2: Staff PIN Input with POS Touch Keypad */}
+            <div style={{ marginBottom: "24px" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-                <label className="field-label" htmlFor="shift-lead-search">
-                  Shift Lead Signing In
+                <label className="field-label" htmlFor="staff-pin-input">
+                  Staff PIN
                 </label>
                 <span className="muted-text" style={{ fontSize: "11.5px" }}>
-                  Search or select from staff roster
+                  Enter your 4-digit staff or manager PIN
                 </span>
               </div>
 
-              {/* Searchable input */}
-              <div style={{ position: "relative" }}>
-                <Search
-                  className="icon icon-xs"
-                  style={{
-                    position: "absolute",
-                    left: "12px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    color: "var(--ink-500)",
-                    pointerEvents: "none",
-                  }}
-                  aria-hidden="true"
-                />
-                <input
-                  id="shift-lead-search"
-                  type="text"
-                  className="input"
-                  value={leadSearchQuery}
-                  onChange={e => {
-                    setLeadSearchQuery(e.target.value);
-                    setIsLeadDropdownOpen(true);
-                  }}
-                  onFocus={() => setIsLeadDropdownOpen(true)}
-                  placeholder="Search or select shift lead (e.g. Dimas, Rina, Sarah)…"
-                  style={{ width: "100%", fontWeight: 600, paddingLeft: "36px", paddingRight: "36px" }}
-                  autoComplete="off"
-                />
-                <button
-                  type="button"
-                  onClick={() => setIsLeadDropdownOpen(prev => !prev)}
-                  style={{
-                    position: "absolute",
-                    right: "8px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    background: "transparent",
-                    border: "none",
-                    padding: "4px",
-                    cursor: "pointer",
-                    color: "var(--ink-600)",
-                    display: "flex",
-                    alignItems: "center",
-                  }}
-                  aria-label="Toggle staff roster dropdown"
-                >
-                  <ChevronDown className="icon icon-xs" />
-                </button>
-
-                {isLeadDropdownOpen && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "calc(100% + 4px)",
-                      left: 0,
-                      right: 0,
-                      zIndex: 60,
-                      background: "var(--paper-0)",
-                      border: "1.5px solid var(--espresso-600)",
-                      borderRadius: "8px",
-                      boxShadow: "0 10px 25px rgba(28, 25, 23, 0.15)",
-                      maxHeight: "220px",
-                      overflowY: "auto",
-                      padding: "6px",
-                    }}
-                  >
-                    {filteredStaff.length === 0 ? (
-                      <div style={{ padding: "10px 12px", fontSize: "12.5px", color: "var(--ink-500)" }}>
-                        No staff found matching "{leadSearchQuery}"
-                      </div>
-                    ) : (
-                      filteredStaff.map(m => {
-                        const isSelected = leadName.toLowerCase() === m.name.toLowerCase();
-                        return (
-                          <button
-                            key={m.id}
-                            type="button"
-                            onClick={() => handleSelectLead(m)}
-                            style={{
-                              width: "100%",
-                              textAlign: "left",
-                              padding: "8px 12px",
-                              borderRadius: "6px",
-                              border: "none",
-                              background: isSelected ? "var(--amber-50)" : "transparent",
-                              color: isSelected ? "var(--espresso-600)" : "var(--ink-900)",
-                              cursor: "pointer",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              fontSize: "13px",
-                              fontWeight: isSelected ? 700 : 500,
-                              marginBottom: "2px",
-                            }}
-                          >
-                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                              {isSelected ? (
-                                <Check className="icon icon-xs" style={{ color: "var(--espresso-600)" }} />
-                              ) : (
-                                <span style={{ width: "14px", display: "inline-block" }} />
-                              )}
-                              <span>
-                                {m.name} · <span style={{ color: "var(--ink-500)", fontWeight: 400 }}>{m.station}</span>
-                              </span>
-                            </div>
-                            <span className="mono-small" style={{ fontSize: "11px", color: "var(--ink-500)" }}>
-                              {m.role === "shift_lead" ? "Manager" : m.station}
-                            </span>
-                          </button>
-                        );
-                      })
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* PIN Input */}
-              <div style={{ maxWidth: "260px" }}>
-                <label className="field-label" htmlFor="staff-pin-input" style={{ display: "block", marginBottom: "6px" }}>
-                  PIN
-                </label>
+              <div style={{ maxWidth: "240px" }}>
                 <input
                   id="staff-pin-input"
                   type="password"
                   inputMode="numeric"
-                  className="input input-sm mono"
+                  className="input mono"
                   value={leadPin}
                   onChange={e => {
                     const nextVal = e.target.value.replace(/\D/g, "").slice(0, 4);
@@ -455,13 +267,94 @@ export default function ShiftLogin({
                   }}
                   maxLength={4}
                   placeholder="••••"
-                  style={{ letterSpacing: "0.25em", fontWeight: 700, fontSize: "16px" }}
+                  autoFocus
+                  style={{
+                    letterSpacing: "0.4em",
+                    fontWeight: 700,
+                    fontSize: "20px",
+                    textAlign: "center",
+                    padding: "10px 14px",
+                  }}
                 />
+
+                {/* Instant Recognition Feedback */}
+                {matchedMember && (
+                  <div
+                    style={{
+                      marginTop: "8px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      color: "var(--color-success)",
+                      fontSize: "12.5px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    <Check className="icon icon-xs" />
+                    <span>
+                      Recognized: <strong>{matchedMember.name}</strong> · {matchedMember.role === "shift_lead" ? "Manager" : matchedMember.station}
+                    </span>
+                  </div>
+                )}
+                {isOwner && !matchedMember && (
+                  <div
+                    style={{
+                      marginTop: "8px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      color: "var(--espresso-600)",
+                      fontSize: "12.5px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    <ShieldCheck className="icon icon-xs" />
+                    <span>
+                      Recognized: <strong>{ownerMember?.name || "Hendra"} (Store Owner · Owner Mode)</strong>
+                    </span>
+                  </div>
+                )}
                 {pinError && (
-                  <span style={{ color: "var(--crimson-600)", fontSize: "11.5px", marginTop: "4px", display: "block" }}>
+                  <span style={{ color: "var(--crimson-600)", fontSize: "12px", marginTop: "6px", display: "block" }}>
                     {pinError}
                   </span>
                 )}
+
+                {/* POS Touch Keypad */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(3, 1fr)",
+                    gap: "8px",
+                    marginTop: "12px",
+                  }}
+                >
+                  {["1", "2", "3", "4", "5", "6", "7", "8", "9", "C", "0", "⌫"].map(btn => (
+                    <button
+                      key={btn}
+                      type="button"
+                      onClick={() => handleNumpadPress(btn === "⌫" ? "BACK" : btn)}
+                      style={{
+                        padding: "10px 0",
+                        fontSize: "16px",
+                        fontWeight: 600,
+                        fontFamily: "var(--font-mono)",
+                        borderRadius: "8px",
+                        border: "1px solid var(--paper-300)",
+                        background: btn === "C" || btn === "⌫" ? "var(--paper-100)" : "var(--paper-0)",
+                        color: btn === "C" ? "var(--crimson-600)" : "var(--ink-900)",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        minHeight: "44px",
+                      }}
+                      aria-label={btn === "⌫" ? "Backspace" : btn === "C" ? "Clear" : `Digit ${btn}`}
+                    >
+                      {btn}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -513,7 +406,11 @@ export default function ShiftLogin({
               }}
             >
               <LogIn className="icon icon-sm" aria-hidden="true" />
-              Sign In & Start {SHIFT_TYPE_LABEL[shift.type]} Shift as {leadName} ({shift.start}–{shift.end})
+              {matchedMember
+                ? `Sign In & Start ${SHIFT_TYPE_LABEL[shift.type]} Shift as ${matchedMember.name}`
+                : isOwner
+                  ? `Sign In as Owner (Owner Mode)`
+                  : `Enter PIN to Start ${SHIFT_TYPE_LABEL[shift.type]} Shift`}
               <ArrowRight className="icon icon-sm" aria-hidden="true" />
             </button>
           </section>
@@ -557,7 +454,7 @@ export default function ShiftLogin({
               </div>
               <ul style={{ margin: 0, paddingLeft: "18px", color: "var(--ink-700)", display: "flex", flexDirection: "column", gap: "4px" }}>
                 <li>
-                  Signing in starts the <strong>{SHIFT_TYPE_LABEL[shift.type].toLowerCase()} shift</strong> for <strong>{leadName}</strong>.
+                  Signing in starts the <strong>{SHIFT_TYPE_LABEL[shift.type].toLowerCase()} shift</strong> for <strong>{matchedMember ? matchedMember.name : isOwner ? (ownerMember?.name || "Store Owner") : "authenticated shift lead"}</strong>.
                 </li>
                 <li>
                   You can log equipment issues, waste, and shift notes anytime during the shift.
