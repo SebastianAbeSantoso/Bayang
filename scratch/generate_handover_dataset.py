@@ -162,7 +162,7 @@ def generate_recorded_claims():
         },
         {
             "claim_id": "CLM-04",
-            "technician": "Julian Vance (Electrical)",
+            "technician": "Julian Bennett (Electrical)",
             "equipment_id": "PUMP_03",
             "metric_column": "PUMP_03_BEARING_TEMP_C",
             "claim_type": "STABLE_WITHIN_SPEC",
@@ -176,7 +176,7 @@ def generate_recorded_claims():
         },
         {
             "claim_id": "CLM-05",
-            "technician": "Julian Vance (Electrical)",
+            "technician": "Julian Bennett (Electrical)",
             "equipment_id": "COOLANT_LOOP_01",
             "metric_column": "L1_FILTER_DP_BAR",
             "claim_type": "UPPER_BOUND",
@@ -189,7 +189,7 @@ def generate_recorded_claims():
         },
         {
             "claim_id": "CLM-06",
-            "technician": "Marco Rossi / Julian Vance",
+            "technician": "Marco Rossi / Julian Bennett",
             "equipment_id": "COOLANT_LOOP_01",
             "metric_column": "COOLANT_BYPASS_VALVE",
             "claim_type": "VALVE_STATE",
@@ -270,7 +270,7 @@ def generate_recorded_claims():
         },
         {
             "claim_id": "CLM-12",
-            "technician": "Julian Vance (Electrical)",
+            "technician": "Julian Bennett (Electrical)",
             "equipment_id": "COOLANT_LOOP_01",
             "metric_column": "COOLANT_FLOW_LPM",
             "claim_type": "VALUE_APPROX",
@@ -283,7 +283,7 @@ def generate_recorded_claims():
         },
         {
             "claim_id": "CLM-13",
-            "technician": "Julian Vance (Electrical)",
+            "technician": "Julian Bennett (Electrical)",
             "equipment_id": "HYD_PRESS_02",
             "metric_column": "HYD_TEMP_02_C",
             "claim_type": "VALUE_APPROX",

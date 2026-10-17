@@ -1,6 +1,5 @@
-"""
-Unit tests for ShiftGuard Cafe Shift-Handover Reconciliation Engine (server/stage_engine.py).
-Covers all required verification scenarios from shiftguard_cafe_product_brief.md:
+"""Unit tests for ShiftGuard Cafe Shift-Handover Reconciliation Engine (server/stage_engine.py).
+Covers all required verification scenarios:
 1. Exact quote validation pass (Indonesian primary scenario quotes)
 2. Exact quote validation fail -> Needs review
 3. Negation preservation ("Did not clean the steam wand" -> Contradicted)
@@ -24,8 +23,9 @@ import sys
 import unittest
 from pathlib import Path
 
-SERVER_DIR = Path(__file__).resolve().parent
-ROOT = SERVER_DIR.parent
+TESTS_DIR = Path(__file__).resolve().parent
+ROOT = TESTS_DIR.parent
+SERVER_DIR = ROOT / "server"
 if str(SERVER_DIR) not in sys.path:
     sys.path.insert(0, str(SERVER_DIR))
 if str(ROOT) not in sys.path:

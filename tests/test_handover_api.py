@@ -1,5 +1,4 @@
-"""
-Integration tests for ShiftGuard Cafe Shift-Handover Reconciliation HTTP API routes in server/app.py.
+"""Integration tests for ShiftGuard Cafe Shift-Handover Reconciliation HTTP API routes in server/app.py.
 Tests /api/handover/state, /api/handover/select_shift, /api/handover/save_draft,
 /api/handover/run, /api/handover/resolve, /api/handover/carryover, /api/handover/export, and /api/handover/reset.
 """
@@ -13,8 +12,9 @@ import urllib.request
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 
-SERVER_DIR = Path(__file__).resolve().parent
-ROOT = SERVER_DIR.parent
+TESTS_DIR = Path(__file__).resolve().parent
+ROOT = TESTS_DIR.parent
+SERVER_DIR = ROOT / "server"
 if str(SERVER_DIR) not in sys.path:
     sys.path.insert(0, str(SERVER_DIR))
 if str(ROOT) not in sys.path:

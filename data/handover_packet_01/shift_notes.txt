@@ -15,7 +15,7 @@ DATE: 2026-10-16 | HANDOVER WINDOW: 06:00
 04:30 | HYD_PRESS_02 main ram pressure stabilized around 04:30 at 115 bar after accumulator check.
 05:00 | Coolant bypass valve left CLOSED after line check at 05:00, normal routing restored.
 
-[LOG SECTION 2: ELECTRICAL & CONTROLS - Tech: Julian Vance]
+[LOG SECTION 2: ELECTRICAL & CONTROLS - Tech: Julian Bennett]
 --------------------------------------------------------------------------------
 02:45 | COOLANT_LOOP_01 main supply flow steady at 52 L/min around 02:45, VFD current draw nominal.
 03:00 | Checked PUMP_03 drive bearing temp at 03:00 (62 C normal), unit running cool for rest of shift.

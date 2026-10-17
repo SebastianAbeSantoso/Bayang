@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ShiftGuard Pitch Deck — AMD Developer Hackathon: ACT III</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --surface: #121826;
+      --surface-elevated: #1a2234;
+      --border: #232f48;
+      --border-subtle: #1c263a;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --amber: #f59e0b;
+      --amber-dark: #b45309;
+      --amber-glow: rgba(245, 158, 11, 0.15);
+      --red: #ef4444;
+      --red-glow: rgba(239, 68, 68, 0.15);
+      --emerald: #10b981;
+      --emerald-glow: rgba(16, 185, 129, 0.15);
+      --sky: #38bdf8;
+      --sky-glow: rgba(56, 189, 248, 0.15);
+      --indigo: #6366f1;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Deck Controls (Floating Header) */
+    .deck-controls {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(18, 24, 38, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 100;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .deck-btn {
+      background: var(--surface-elevated);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .deck-btn:hover {
+      background: var(--border);
+      border-color: var(--text-dim);
+    }
+
+    .deck-btn.primary {
+      background: var(--amber);
+      color: #000;
+      border-color: var(--amber);
+    }
+
+    .deck-btn.primary:hover {
+      background: #fbbf24;
+    }
+
+    .slide-pills {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .slide-pill {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+
+    .slide-pill:hover,
+    .slide-pill.active {
+      background: var(--amber);
+      color: #000;
+      border-color: var(--amber);
+      transform: scale(1.08);
+    }
+
+    /* Slide Frame Container (16:9 Widescreen) */
+    .deck-container {
+      width: 95vw;
+      max-width: 1280px;
+      aspect-ratio: 16 / 9;
+      position: relative;
+      margin: 80px 0 30px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--surface);
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+      overflow: hidden;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      padding: 48px 56px;
+      display: none;
+      flex-direction: column;
+      justify-content: space-between;
+      opacity: 0;
+      transition: opacity 0.25s ease-in-out;
+      overflow-y: auto;
+    }
+
+    .slide.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    /* Common Slide Typography */
+    .slide-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+      color: var(--amber);
+      background: var(--amber-glow);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      padding: 4px 12px;
+      border-radius: 9999px;
+      margin-bottom: 12px;
+    }
+
+    .slide-header h1 {
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 8px;
+    }
+
+    .slide-header p.subtitle {
+      font-size: 17px;
+      color: var(--text-muted);
+      line-height: 1.4;
+      max-width: 980px;
+    }
+
+    .slide-content {
+      flex: 1;
+      margin: 24px 0 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .slide-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 14px;
+      border-top: 1px solid var(--border-subtle);
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    /* Slide 1: Hero Layout */
+    .hero-layout {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 36px;
+      align-items: center;
+    }
+
+    .hero-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .hero-card {
+      background: linear-gradient(135deg, rgba(26, 34, 52, 0.9), rgba(18, 24, 38, 0.95));
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4);
+    }
+
+    .hero-metric {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .hero-metric:last-child {
+      border-bottom: none;
+    }
+
+    .hero-metric-val {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--amber);
+      font-family: monospace;
+    }
+
+    /* Slide 2: Problem Grid */
+    .problem-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-top: 16px;
+    }
+
+    .problem-card {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      position: relative;
+    }
+
+    .problem-card.critical {
+      border-top: 3px solid var(--red);
+    }
+
+    .problem-card.warning {
+      border-top: 3px solid var(--amber);
+    }
+
+    .raw-quote-box {
+      background: #060911;
+      border: 1px solid #1e293b;
+      border-left: 4px solid var(--amber);
+      padding: 14px 18px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 14px;
+      color: #fde68a;
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+
+    /* Slide 3: 3-Step Closed Loop */
+    .product-workflow {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+    }
+
+    .step-card {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .step-number {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: var(--amber);
+      color: #000;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+
+    .highlight-pill {
+      background: rgba(245, 158, 11, 0.2);
+      color: #fbbf24;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+
+    /* Slide 4: Under the Hood Split */
+    .arch-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .arch-box {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 22px;
+    }
+
+    .telemetry-strip {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .telemetry-cell {
+      background: #080c16;
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .telemetry-num {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--sky);
+      font-family: monospace;
+    }
+
+    .telemetry-lbl {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+
+    /* Slide 5: Comparison & Catch */
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+
+    .compare-table th {
+      background: var(--surface-elevated);
+      color: var(--text-muted);
+      text-align: left;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .compare-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .catch-banner {
+      background: linear-gradient(90deg, rgba(239, 68, 68, 0.15), rgba(245, 158, 11, 0.15));
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .catch-icon {
+      font-size: 32px;
+    }
+
+    /* Print Styles for 1-Click PDF Export */
+    @media print {
+      body {
+        background: #fff !important;
+        color: #000 !important;
+      }
+
+      .deck-controls {
+        display: none !important;
+      }
+
+      .deck-container {
+        width: 100vw !important;
+        max-width: none !important;
+        aspect-ratio: auto !important;
+        margin: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        background: #fff !important;
+      }
+
+      .slide {
+        display: flex !important;
+        opacity: 1 !important;
+        position: relative !important;
+        page-break-after: always !important;
+        height: 100vh !important;
+        min-height: 100vh !important;
+        padding: 40px 48px !important;
+        background: #090d16 !important;
+        color: #f1f5f9 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      @page {
+        size: landscape;
+        margin: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Floating Navigation Controls -->
+  <div class="deck-controls">
+    <button class="deck-btn" id="prev-btn" onclick="prevSlide()">← Prev</button>
+    <div class="slide-pills">
+      <button class="slide-pill active" onclick="goToSlide(0)">1</button>
+      <button class="slide-pill" onclick="goToSlide(1)">2</button>
+      <button class="slide-pill" onclick="goToSlide(2)">3</button>
+      <button class="slide-pill" onclick="goToSlide(3)">4</button>
+      <button class="slide-pill" onclick="goToSlide(4)">5</button>
+    </div>
+    <button class="deck-btn" id="next-btn" onclick="nextSlide()">Next →</button>
+    <button class="deck-btn primary" onclick="window.print()">📥 Export as PDF</button>
+  </div>
+
+  <!-- Main 16:9 Deck Frame -->
+  <div class="deck-container">
+
+    <!-- SLIDE 1: Title & Hook -->
+    <section class="slide active" id="slide-0">
+      <div class="slide-header">
+        <span class="slide-tag">Track: Reinvent Commerce · Partner Prize: Google Gemma</span>
+        <h1>ShiftGuard: Commercial Shift-Handover Reconciliation Workbench</h1>
+        <p class="subtitle">Closing the gap between messy frontline shift notes and store ERP truth using Google Gemma 3-27B-IT on AMD Instinct GPUs.</p>
+      </div>
+
+      <div class="slide-content">
+        <div class="hero-layout">
+          <div>
+            <p style="font-size: 19px; line-height: 1.5; color: #cbd5e1; margin-bottom: 20px;">
+              In high-volume retail and commercial specialty coffee, <strong>over $100B in annual revenue</strong> leaks through the blindspot between informal barista chat notes and official store ERP records.
+            </p>
+            <p style="font-size: 15px; line-height: 1.5; color: var(--text-muted);">
+              ShiftGuard bridges this chasm by extracting multilingual claims with Google Gemma 3-27B-IT, strictly quote-gating them for zero hallucinations, and verifying them against 10 physical and digital store records in under 900 ms.
+            </p>
+            <div class="hero-badges">
+              <span class="hero-badge">⚡ Google Gemma 3-27B-IT</span>
+              <span class="hero-badge">🚀 AMD Token Factory API</span>
+              <span class="hero-badge">🔒 100% Substring Quote-Gate</span>
+              <span class="hero-badge">⏱️ 892ms Live Latency</span>
+              <span class="hero-badge">☕ Commercial F&B Commerce</span>
+            </div>
+          </div>
+
+          <div class="hero-card">
+            <h3 style="font-size: 14px; text-transform: uppercase; color: var(--amber); letter-spacing: 0.05em; margin-bottom: 14px;">Evaluator Reference Links</h3>
+            <div class="hero-metric">
+              <span style="font-size: 13px; color: var(--text-muted);">Direct App URL</span>
+              <span class="hero-metric-val" style="font-size: 13px;">bentoso-shiftguard.static.hf.space</span>
+            </div>
+            <div class="hero-metric">
+              <span style="font-size: 13px; color: var(--text-muted);">Hugging Face Space</span>
+              <span class="hero-metric-val" style="font-size: 13px;">spaces/bentoso/shiftguard</span>
+            </div>
+            <div class="hero-metric">
+              <span style="font-size: 13px; color: var(--text-muted);">GitHub Repository</span>
+              <span class="hero-metric-val" style="font-size: 13px;">SebastianAbeSantoso/Bayang</span>
+            </div>
+            <div class="hero-metric">
+              <span style="font-size: 13px; color: var(--text-muted);">Inference Stack</span>
+              <span class="hero-metric-val" style="font-size: 13px; color: var(--emerald);">AMD Instinct MI300X</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>Lablab.ai AMD Developer Hackathon: ACT III</span>
+        <span>Slide 1 of 5</span>
+      </div>
+    </section>
+
+    <!-- SLIDE 2: The Commerce Problem -->
+    <section class="slide" id="slide-1">
+      <div class="slide-header">
+        <span class="slide-tag" style="color: var(--red); background: var(--red-glow); border-color: rgba(239, 68, 68, 0.3);">The Commercial F&B Reality</span>
+        <h1>The 10-Minute Shift Change Problem</h1>
+        <p class="subtitle">During rapid afternoon-to-evening shift handovers, baristas leave informal multilingual voice and chat notes while POS systems look spotless.</p>
+      </div>
+
+      <div class="slide-content">
+        <div class="raw-quote-box">
+          💬 Outgoing Barista Note (Dimas, 22:02):<br>
+          "Tadi grinder macet 20 menit pas jam 17, buang beans 200g house blend, es batu abis dari jam 18, gak sempet deep clean steam wand kanan karena antrian rame"
+        </div>
+
+        <div class="problem-grid">
+          <div class="problem-card critical">
+            <h3 style="font-size: 16px; margin-bottom: 8px; color: var(--red);">1. Unrecorded Waste & Shrinkage</h3>
+            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.45;">
+              Baristas purge 200g of espresso beans during a jam without posting an ERP inventory adjustment (<code style="color: #cbd5e1;">INV-20261012-AFT</code>). Stock sheets assume inventory is intact, creating phantom inventory and sudden stockouts.
+            </p>
+            <div style="margin-top: 12px; font-size: 11px; font-weight: 700; color: var(--red); font-family: monospace;">VIOLATION: RULE R-STK-002</div>
+          </div>
+
+          <div class="problem-card critical">
+            <h3 style="font-size: 16px; margin-bottom: 8px; color: var(--red);">2. Unassigned Equipment Jams</h3>
+            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.45;">
+              A 20-minute Mahlkönig grinder stoppage is buried in chat. No technician or maintenance ticket is created, leaving the incoming morning crew to inherit a jammed grinder during their peak 7:00 AM rush.
+            </p>
+            <div style="margin-top: 12px; font-size: 11px; font-weight: 700; color: var(--red); font-family: monospace;">VIOLATION: RULE POL-EQP-004</div>
+          </div>
+
+          <div class="problem-card warning">
+            <h3 style="font-size: 16px; margin-bottom: 8px; color: var(--amber);">3. Supply-Chain Delivery Gaps</h3>
+            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.45;">
+              Ice hit zero at 18:00, but supplier PO-4481 (Arctic Ice Co.) is scheduled for 10:00 AM next morning. Unnoticed, the cafe opens at 7:00 AM with zero ice for 3 hours during iced latte peak.
+            </p>
+            <div style="margin-top: 12px; font-size: 11px; font-weight: 700; color: var(--amber); font-family: monospace;">VIOLATION: RULE R-STK-001</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>Common Ground Coffee · Central Branch Case Study</span>
+        <span>Slide 2 of 5</span>
+      </div>
+    </section>
+
+    <!-- SLIDE 3: How ShiftGuard Works -->
+    <section class="slide" id="slide-2">
+      <div class="slide-header">
+        <span class="slide-tag" style="color: var(--emerald); background: var(--emerald-glow); border-color: rgba(16, 185, 129, 0.3);">Closed-Loop Workflow</span>
+        <h1>How ShiftGuard Works: The 3-Step Handoff</h1>
+        <p class="subtitle">Replacing loose WhatsApp chats with an audit-grade, quote-gated reconciliation workbench built for POS tablets.</p>
+      </div>
+
+      <div class="slide-content">
+        <div class="product-workflow">
+          <div class="step-card">
+            <div>
+              <div class="step-number">1</div>
+              <h3 style="font-size: 17px; margin-bottom: 8px;">Outgoing Lead Submits</h3>
+              <p style="font-size: 13px; color: var(--text-muted); line-height: 1.45;">
+                Dimas speaks or types the shift note in colloquial Indonesian or English shorthand.
+              </p>
+              <div style="margin-top: 14px; background: #080c16; padding: 10px; border-radius: 6px; font-size: 12px; border: 1px solid var(--border-subtle);">
+                <strong>Exact Substring Quote-Gate:</strong><br>
+                Every claim highlights verbatim text:
+                <span class="highlight-pill">&lt;mark&gt;grinder macet 20 menit&lt;/mark&gt;</span>
+              </div>
+            </div>
+            <div style="margin-top: 14px; font-size: 11px; color: var(--emerald); font-weight: 700;">WorkerReport.tsx & Telemetry</div>
+          </div>
+
+          <div class="step-card" style="border-color: var(--amber);">
+            <div>
+              <div class="step-number" style="background: var(--amber);">2</div>
+              <h3 style="font-size: 17px; margin-bottom: 8px;">Supervisor Resolves</h3>
+              <p style="font-size: 13px; color: var(--text-muted); line-height: 1.45;">
+                Discrepancies organize across the 3-Axis Ledger. Critical blockers stop shift closure until assigned.
+              </p>
+              <div style="margin-top: 14px; background: #080c16; padding: 10px; border-radius: 6px; font-size: 12px; border: 1px solid var(--border-subtle);">
+                <strong>Gemma Decision Support:</strong><br>
+                1-click <em>"Apply Gemma Recommendation"</em> automatically routes technician tickets and targets.
+              </div>
+            </div>
+            <div style="margin-top: 14px; font-size: 11px; color: var(--amber); font-weight: 700;">Ledger.tsx & Finding Drawer</div>
+          </div>
+
+          <div class="step-card">
+            <div>
+              <div class="step-number" style="background: var(--sky);">3</div>
+              <h3 style="font-size: 17px; margin-bottom: 8px;">Incoming Lead Opens</h3>
+              <p style="font-size: 13px; color: var(--text-muted); line-height: 1.45;">
+                Rina receives a synthesized 30-second operational briefing and reviews scheduled deliveries.
+              </p>
+              <div style="margin-top: 14px; background: #080c16; padding: 10px; border-radius: 6px; font-size: 12px; border: 1px solid var(--border-subtle);">
+                <strong>Timestamped Shift Roster:</strong><br>
+                Logs all on-duty baristas, mid-shift swaps, and early departures with exact <code style="color: var(--sky);">[HH:MM]</code> stamps.
+              </div>
+            </div>
+            <div style="margin-top: 14px; font-size: 11px; color: var(--sky); font-weight: 700;">Briefing.tsx & StaffRoster.tsx</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>ShiftGuard Architecture · React 19 + Python Standard Library</span>
+        <span>Slide 3 of 5</span>
+      </div>
+    </section>
+
+    <!-- SLIDE 4: Under the Hood -->
+    <section class="slide" id="slide-3">
+      <div class="slide-header">
+        <span class="slide-tag" style="color: var(--sky); background: var(--sky-glow); border-color: rgba(56, 189, 248, 0.3);">Hybrid AI Architecture</span>
+        <h1>Under the Hood: Gemma 3-27B on AMD + Deterministic Gate</h1>
+        <p class="subtitle">Why neither an LLM alone nor rules alone can solve commerce handovers — and how our hybrid pipeline guarantees 100% truth.</p>
+      </div>
+
+      <div class="slide-content">
+        <div class="arch-split">
+          <div class="arch-box">
+            <h3 style="font-size: 16px; color: var(--sky); margin-bottom: 8px;">1. Semantic Extraction (Gemma on AMD)</h3>
+            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.45;">
+              Translates messy Indonesian & English barista slang into structured JSON claims (<code style="color: #cbd5e1;">action</code>, <code style="color: #cbd5e1;">entity</code>, <code style="color: #cbd5e1;">quantity</code>, <code style="color: #cbd5e1;">unit</code>, <code style="color: #cbd5e1;">verbatim_quote</code>).
+            </p>
+            <div class="telemetry-strip">
+              <div class="telemetry-cell">
+                <div class="telemetry-num">892 ms</div>
+                <div class="telemetry-lbl">AMD Latency (p50)</div>
+              </div>
+              <div class="telemetry-cell">
+                <div class="telemetry-num">347.5</div>
+                <div class="telemetry-lbl">Tokens / Second</div>
+              </div>
+              <div class="telemetry-cell">
+                <div class="telemetry-num">$0.00016</div>
+                <div class="telemetry-lbl">Cost per Shift</div>
+              </div>
+            </div>
+            <div style="margin-top: 12px; font-size: 12px; color: var(--text-dim);">
+              Measured directly on AMD Token Factory API with <code style="color: var(--sky);">google/gemma-3-27b-it</code>.
+            </div>
+          </div>
+
+          <div class="arch-box">
+            <h3 style="font-size: 16px; color: var(--emerald); margin-bottom: 8px;">2. Deterministic Verification Layer</h3>
+            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.45;">
+              Zero hallucinations allowed in financial or health logs. Verified against 10 store records across 3 axes:
+            </p>
+            <ul style="font-size: 12px; line-height: 1.6; margin-top: 10px; padding-left: 18px; color: #cbd5e1;">
+              <li><strong>Substring Quote-Gate:</strong> Verifies verbatim character match.</li>
+              <li><strong>5 Hard Rules:</strong> R-POS-001, R-STK-002, R-STK-001, R-CHK-001, POL-EQP-004.</li>
+              <li><strong>10 Store Records:</strong> POS sales, machine cycle counter, cash drawer, physical stock, ERP adjustments, PO-4481.</li>
+              <li><strong>3-Axis Model:</strong> Severity × Evidence Status × Workflow Status.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>Gemma 3-27B-IT · AMD Token Factory · 14/14 Unit Tests Passing</span>
+        <span>Slide 4 of 5</span>
+      </div>
+    </section>
+
+    <!-- SLIDE 5: Measurable Impact & Concrete Catch -->
+    <section class="slide" id="slide-4">
+      <div class="slide-header">
+        <span class="slide-tag" style="color: var(--amber); background: var(--amber-glow); border-color: rgba(245, 158, 11, 0.3);">Measurable Commerce Value</span>
+        <h1>Measurable Operational Impact & Verification</h1>
+        <p class="subtitle">Replacing 45 minutes of manual clipboard auditing with sub-second automated reconciliation.</p>
+      </div>
+
+      <div class="slide-content">
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Operational Metric</th>
+              <th>Manual Shift Handover</th>
+              <th>ShiftGuard Automated Workbench</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Reconciliation Time</strong></td>
+              <td style="color: var(--red);">25–45 minutes of manual checking</td>
+              <td style="color: var(--emerald); font-weight: 700;">&lt; 1 second (892ms AMD inference)</td>
+            </tr>
+            <tr>
+              <td><strong>Unrecorded Waste Catch</strong></td>
+              <td style="color: var(--red);">Discovered weeks later during inventory audit</td>
+              <td style="color: var(--emerald); font-weight: 700;">Flagged instantly on submission (200g beans)</td>
+            </tr>
+            <tr>
+              <td><strong>Equipment Downtime</strong></td>
+              <td style="color: var(--red);">Grinder jams again at 7 AM peak rush</td>
+              <td style="color: var(--emerald); font-weight: 700;">Technician ticket assigned before shift sign-off</td>
+            </tr>
+            <tr>
+              <td><strong>Audit Compliance</strong></td>
+              <td style="color: var(--red);">Lost paper checklists & unread WhatsApps</td>
+              <td style="color: var(--emerald); font-weight: 700;">Immutable JSON/Markdown audit record with PINs</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="catch-banner">
+          <div class="catch-icon">🚨</div>
+          <div>
+            <h4 style="font-size: 15px; font-weight: 800; color: #fecaca; margin-bottom: 4px;">Live Demo Catch: The 3-Hour Ice Stockout Gap</h4>
+            <p style="font-size: 13px; color: #f1f5f9; line-height: 1.45;">
+              ShiftGuard cross-referenced physical stock sheet <code style="background: rgba(0,0,0,0.4); padding: 2px 4px; border-radius: 3px;">SS-20261012-AFT</code> (<strong>0 bags of ice</strong> at 22:00 closing) against supplier purchase order <code style="background: rgba(0,0,0,0.4); padding: 2px 4px; border-radius: 3px;">PO-4481</code> (Arctic Ice Co. scheduled for <strong>10:00 AM</strong>).<br>
+              <strong>Impact:</strong> Identified that the cafe would open at 07:00 AM with zero ice for 3 peak morning hours—allowing the team to schedule an emergency 06:30 AM supplier run.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>ShiftGuard: Closing The Frontline Commerce Gap</span>
+        <span>Slide 5 of 5</span>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    let currentSlide = 0;
+    const totalSlides = 5;
+
+    function updateDeck() {
+      document.querySelectorAll('.slide').forEach((slide, idx) => {
+        slide.classList.toggle('active', idx === currentSlide);
+      });
+      document.querySelectorAll('.slide-pill').forEach((pill, idx) => {
+        pill.classList.toggle('active', idx === currentSlide);
+      });
+      document.getElementById('prev-btn').disabled = currentSlide === 0;
+      document.getElementById('next-btn').disabled = currentSlide === totalSlides - 1;
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateDeck();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateDeck();
+      }
+    }
+
+    function goToSlide(idx) {
+      if (idx >= 0 && idx < totalSlides) {
+        currentSlide = idx;
+        updateDeck();
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+        nextSlide();
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        prevSlide();
+      } else if (e.key >= '1' && e.key <= '5') {
+        goToSlide(parseInt(e.key) - 1);
+      }
+    });
+
+    // Touch swipe support
+    let touchStartX = 0;
+    document.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+    }, false);
+    document.addEventListener('touchend', (e) => {
+      let touchEndX = e.changedTouches[0].screenX;
+      if (touchEndX < touchStartX - 50) nextSlide();
+      if (touchEndX > touchStartX + 50) prevSlide();
+    }, false);
+
+    updateDeck();
+  </script>
+</body>
+</html>

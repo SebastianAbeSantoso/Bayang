@@ -1,0 +1,4 @@
+# ShiftGuard: Commercial Shift-Handover Reconciliation Workbench
+# Core runtime runs on Python 3.10+ standard library (zero external dependencies required)
+# Deployment & ecosystem utilities:
+huggingface_hub>=0.28.0

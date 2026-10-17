@@ -10,16 +10,21 @@ license: mit
 short_description: Cafe Shift-Handover Reconciliation Workbench (Gemma 3-27B)
 ---
 
-# ShiftGuard: Cafe Shift-Handover Reconciliation Workbench
+# ShiftGuard: Commercial Shift-Handover Reconciliation Workbench
+
+**Live Demo (Direct App)**: [https://bentoso-shiftguard.static.hf.space/](https://bentoso-shiftguard.static.hf.space/)  
+**Hugging Face Space**: [https://huggingface.co/spaces/bentoso/shiftguard](https://huggingface.co/spaces/bentoso/shiftguard)  
+**GitHub Repository**: [https://github.com/SebastianAbeSantoso/Bayang](https://github.com/SebastianAbeSantoso/Bayang)
 
 [![Track: Reinvent Commerce](https://img.shields.io/badge/Track-Reinvent_Commerce-FF6F00?style=for-the-badge&logo=shopify)](https://lablab.ai/event/amd-developer-hackathon-act-iii)
 [![Partner Prize: Google Gemma](https://img.shields.io/badge/Partner_Prize-Google_Gemma_3--27B--IT-4285F4?style=for-the-badge&logo=google)](https://huggingface.co/google/gemma-3-27b-it)
 [![Inference: AMD Token Factory](https://img.shields.io/badge/Inference-AMD_Token_Factory_API-ED1C24?style=for-the-badge&logo=amd)](https://api.tokenfactory.amd.com/v1)
 [![Frontend: React 19 + TypeScript](https://img.shields.io/badge/Frontend-React_19_·_TypeScript-61DAFB?style=for-the-badge&logo=react)](https://react.dev)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
 
-> **ShiftGuard** is an audit-grade commercial shift-handover reconciliation & verification workbench built for the **Reinvent Commerce** track (**Lablab.ai AMD Developer Hackathon: ACT III**) and the **Google Gemma Partner Prize**.
+> **ShiftGuard** closes the operational gap between messy frontline shift handover notes and store ERP truth using **Google Gemma 3-27B-IT on AMD Instinct GPUs** (via AMD Token Factory) and a 5-rule deterministic verification engine. Built for the **Reinvent Commerce** track (**Lablab.ai AMD Developer Hackathon: ACT III**) and the **Google Gemma Partner Prize**.
 >
-> It solves the single largest operational blindspot in high-volume retail and specialty coffee: **the unverified gap between messy end-of-shift worker handover notes and structured store records (POS sales, physical inventory sheets, machine counters, and supplier purchase orders).**
+> It solves the single largest operational blindspot in high-volume retail and commercial coffee: **unlogged waste creates phantom inventory, unbooked equipment jams trigger peak-hour morning downtime, and missed handovers leave 3-hour supplier delivery gaps.**
 
 ---
 
@@ -97,11 +102,36 @@ flowchart LR
 - Any claim whose quote cannot be verified as an exact substring is rejected from automatic corroboration and flagged for human review.
 
 ### Stage 3: 5 Deterministic Verification Rules (`server/stage_engine.py`)
-1. **`R-POS-001` / `R-CASH-001` (Sales, Machine Cycles & Cash Drawer)**: Cross-checks espresso machine brew cycles (`MC-20261012-AFT`) against POS drinks sold (`POS-20261012-AFT`) and counted cash (`CD-20261012-AFT`).
-2. **`R-STK-002` (Unrecorded Supply Waste)**: Flags worker-reported bean or milk waste that has no corresponding inventory adjustment in `INV-20261012-AFT`.
-3. **`R-STK-001` (Depleted Stock vs. Supplier PO)**: Cross-references zero-stock items (`Ice: 0 bags`) against scheduled supplier deliveries (`PO-4481`).
-4. **`R-CHK-001` (Mandatory Closing Checklist)**: Blocks shift transfer if mandatory closing hygiene tasks are skipped without an assigned incoming shift handoff.
-5. **`POL-EQP-004` (Equipment Malfunction Escalation)**: Requires an assigned follow-up owner or technician before shift sign-off when equipment malfunctions are reported.
+1. **`R-POS-001` / `R-CASH-001` (Sales, Cycles & Cash Drawer)**: Cross-checks espresso machine brew cycles (`MC-20261012-AFT`) against POS drinks sold (`POS-20261012-AFT`) and counted cash (`CD-20261012-AFT`). Reconciles 84 machine cycles against 83 POS transactions + 1 test flush.
+2. **`R-STK-002` / `R-WST-001` (Unrecorded Supply Waste & Shrinkage)**: Flags worker-reported bean or milk waste that has no corresponding inventory adjustment in `INV-20261012-AFT` (e.g., catching 200g House Blend bean purge omitted from stock sheet).
+3. **`R-STK-001` / `R-SUP-001` (Depleted Stock vs. Supplier Delivery Gap)**: Cross-references zero-stock items against scheduled supplier purchase orders (`PO-4481`, Arctic Ice Co.), catching a 3-hour morning stockout window (0 bags at closing vs. delivery at 10:00 AM, leaving the 07:00–10:00 AM rush uncovered).
+4. **`R-CHK-001` / `R-CLN-001` (Mandatory Closing Sanitation Checklist)**: Blocks shift transfer if mandatory closing hygiene tasks (`CHK-1` right steam wand deep clean) are skipped without an assigned incoming shift handoff.
+5. **`POL-EQP-004` / `R-INC-001` (Equipment Malfunction & Incident Escalation)**: Detects unbooked equipment jams (20-minute Mahlkönig grinder stoppage) and requires an assigned follow-up owner or technician before shift sign-off.
+
+### Grounded against 10 Store Records
+ShiftGuard verifies extracted claims against 10 physical and digital records:
+1. `POS-20261012-AFT` — POS Sales Transaction Batch
+2. `MC-20261012-AFT` — Espresso Machine Brew Cycle Counter
+3. `CD-20261012-AFT` — Cash Drawer Close & Float Count
+4. `SS-20261012-AFT` — Physical Stock Count Sheet
+5. `INV-20261012-AFT` — Store ERP Inventory Adjustment Ledger
+6. `PO-4481` — Arctic Ice Co. Supplier Purchase Order
+7. `CHK-20261012-AFT` — Mandatory Closing Sanitation Checklist
+8. `INC-20261012-AFT` — Maintenance Ticket & Incident Book
+9. `SCH-HYG-204` — Weekly Sanitation & Deep Clean Registry
+10. `SCH-MNT-108` — Espresso Machine Preventative Maintenance Log
+
+---
+
+## 3. The 3-Axis Classification Model
+
+Every finding is evaluated across three orthogonal operational dimensions:
+
+| Axis | States | Operational Meaning |
+| :--- | :--- | :--- |
+| **1. Severity** | `Critical`<br>`Needs Review`<br>`Info` | • **Critical**: Hard sign-off blocker. Prevents shift sign-off until resolved or carried forward.<br>• **Needs Review**: Operational warning requiring supervisor verification.<br>• **Info**: Corroborated clean reconciliation (e.g. brew cycles matching POS sales). |
+| **2. Evidence Status** | `Supported`<br>`Contradicted`<br>`Not Confirmed` | • **Supported**: Verifiable proof found in store records (e.g. zero ice confirmed by stock sheet).<br>• **Contradicted**: Claim directly conflicts with records (e.g. claiming task done when checklist shows incomplete).<br>• **Not Confirmed**: Claim describes real event not yet posted to ERP (e.g. unlogged bean waste). |
+| **3. Workflow Status** | `Open`<br>`Carry Forward`<br>`Resolved` | • **Open**: Active discrepancy awaiting supervisor action.<br>• **Carry Forward**: Delegated to incoming shift with target due time and assigned owner.<br>• **Resolved**: Accounted for with signed supervisor justification. |
 
 ---
 
@@ -171,6 +201,7 @@ Evaluated across **10 realistic commercial shift notes** spanning Indonesian sho
 ```bash
 git clone https://github.com/SebastianAbeSantoso/Bayang.git
 cd Bayang
+pip install -r requirements.txt
 ```
 
 Create a `.env` file (or copy `.env.example`) for live AMD Token Factory inference:
