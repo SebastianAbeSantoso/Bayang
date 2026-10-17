@@ -29,13 +29,15 @@ const ROLE_LABELS: Record<StaffMember["role"], string> = {
 
 interface Props {
   roster: StaffMember[];
-  onAddStaff: (member: Omit<StaffMember, "id">) => void;
-  onUpdateStaff: (member: StaffMember) => void;
-  onDeleteStaff: (id: string) => void;
+  isOwner?: boolean;
+  onAddStaff?: (member: Omit<StaffMember, "id">) => void;
+  onUpdateStaff?: (member: StaffMember) => void;
+  onDeleteStaff?: (id: string) => void;
 }
 
 export default function StaffRoster({
   roster,
+  isOwner = false,
   onAddStaff,
   onUpdateStaff,
   onDeleteStaff,
@@ -54,6 +56,7 @@ export default function StaffRoster({
   const [editPin, setEditPin] = useState("");
 
   const startEdit = (m: StaffMember) => {
+    if (!isOwner) return;
     setEditingId(m.id);
     setEditName(m.name);
     setEditRole(m.role);
@@ -62,6 +65,7 @@ export default function StaffRoster({
   };
 
   const handleSaveEdit = (id: string) => {
+    if (!isOwner || !onUpdateStaff) return;
     if (!editName.trim()) return;
     if (editPin.trim().length < 4) return;
     onUpdateStaff({
@@ -76,6 +80,7 @@ export default function StaffRoster({
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isOwner || !onAddStaff) return;
     if (!newName.trim()) {
       setFormError("Staff name is required.");
       return;
@@ -93,7 +98,7 @@ export default function StaffRoster({
     });
     setNewName("");
     setNewRole("shift_lead");
-    setNewStation("Shift Lead");
+    setNewStation("Manager");
     setNewPin("");
     setShowAddForm(false);
   };
@@ -107,24 +112,37 @@ export default function StaffRoster({
       <header className="page-header">
         <div>
           <span className="eyebrow" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-            <ShieldCheck className="icon icon-xs" aria-hidden="true" />
-            Owner Mode · Store Staff & PIN Access
+            {isOwner ? (
+              <>
+                <ShieldCheck className="icon icon-xs" aria-hidden="true" />
+                Owner Mode · Store Staff & PIN Access
+              </>
+            ) : (
+              <>
+                <Users className="icon icon-xs" aria-hidden="true" />
+                Staff Directory
+              </>
+            )}
           </span>
-          <h1 className="page-title">Staff Roster Management</h1>
+          <h1 className="page-title">{isOwner ? "Staff Roster Management" : "Staff Roster"}</h1>
           <p className="page-subtitle">
-            Add, edit, or remove Shift Leads, floor staff, and 4-digit POS tablet PINs. Changes update the Shift Sign-In screen immediately.
+            {isOwner
+              ? "Add, edit, or remove Managers, floor staff, and 4-digit POS tablet PINs. Changes update the Shift Sign-In screen immediately."
+              : "Active store staff directory and assigned station roles for Common Ground Coffee."}
           </p>
         </div>
-        <div className="page-header-actions">
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => setShowAddForm(v => !v)}
-          >
-            <Plus className="icon icon-sm" aria-hidden="true" />
-            {showAddForm ? "Close Form" : "Add Staff Member"}
-          </button>
-        </div>
+        {isOwner && (
+          <div className="page-header-actions">
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => setShowAddForm(v => !v)}
+            >
+              <Plus className="icon icon-sm" aria-hidden="true" />
+              {showAddForm ? "Close Form" : "Add Staff Member"}
+            </button>
+          </div>
+        )}
       </header>
 
       {/* Summary Strip */}
@@ -252,15 +270,15 @@ export default function StaffRoster({
             <tr style={{ background: "var(--paper-100)", borderBottom: "1px solid var(--paper-300)", textAlign: "left", fontSize: "11.5px", color: "var(--ink-600)" }}>
               <th style={{ padding: "12px 16px" }}>ID</th>
               <th style={{ padding: "12px 16px" }}>Name</th>
-              <th style={{ padding: "12px 16px" }}>Access Role</th>
-              <th style={{ padding: "12px 16px" }}>Station / Title</th>
-              <th style={{ padding: "12px 16px" }}>PIN</th>
-              <th style={{ padding: "12px 16px", textAlign: "right" }}>Actions</th>
+              <th style={{ padding: "12px 16px" }}>Role</th>
+              <th style={{ padding: "12px 16px" }}>Station</th>
+              {isOwner && <th style={{ padding: "12px 16px" }}>PIN</th>}
+              {isOwner && <th style={{ padding: "12px 16px", textAlign: "right" }}>Actions</th>}
             </tr>
           </thead>
           <tbody>
             {roster.map(member => {
-              const isEditing = editingId === member.id;
+              const isEditing = isOwner && editingId === member.id;
               return (
                 <tr key={member.id} style={{ borderBottom: "1px solid var(--paper-200)", fontSize: "13px" }}>
                   <td style={{ padding: "12px 16px" }} className="mono-small">
@@ -284,7 +302,7 @@ export default function StaffRoster({
                         value={editRole}
                         onChange={e => setEditRole(e.target.value as StaffMember["role"])}
                       >
-                        <option value="shift_lead">Shift Lead</option>
+                        <option value="shift_lead">Manager</option>
                         <option value="floor_staff">Staff in shift</option>
                         <option value="owner">Owner / Supervisor</option>
                       </select>
@@ -313,77 +331,81 @@ export default function StaffRoster({
                       member.station
                     )}
                   </td>
-                  <td style={{ padding: "12px 16px" }}>
-                    {isEditing ? (
-                      <input
-                        className="input input-sm mono"
-                        maxLength={4}
-                        value={editPin}
-                        onChange={e => setEditPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                        style={{ width: "90px" }}
-                      />
-                    ) : (
-                      <span
-                        className="mono"
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "5px",
-                          background: "var(--paper-100)",
-                          border: "1px solid var(--paper-300)",
-                          padding: "2px 8px",
-                          borderRadius: "6px",
-                          fontSize: "12px",
-                          fontWeight: 600,
-                        }}
-                      >
-                        <KeyRound className="icon icon-xs" aria-hidden="true" />
-                        {member.pin}
-                      </span>
-                    )}
-                  </td>
-                  <td style={{ padding: "12px 16px", textAlign: "right" }}>
-                    {isEditing ? (
-                      <div style={{ display: "inline-flex", gap: "6px" }}>
-                        <button
-                          type="button"
-                          className="btn btn-primary btn-xs"
-                          onClick={() => handleSaveEdit(member.id)}
+                  {isOwner && (
+                    <td style={{ padding: "12px 16px" }}>
+                      {isEditing ? (
+                        <input
+                          className="input input-sm mono"
+                          maxLength={4}
+                          value={editPin}
+                          onChange={e => setEditPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                          style={{ width: "90px" }}
+                        />
+                      ) : (
+                        <span
+                          className="mono"
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "5px",
+                            background: "var(--paper-100)",
+                            border: "1px solid var(--paper-300)",
+                            padding: "2px 8px",
+                            borderRadius: "6px",
+                            fontSize: "12px",
+                            fontWeight: 600,
+                          }}
                         >
-                          <Check className="icon icon-xs" aria-hidden="true" />
-                          Save
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-xs"
-                          onClick={() => setEditingId(null)}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <div style={{ display: "inline-flex", gap: "6px" }}>
-                        <button
-                          type="button"
-                          className="btn btn-secondary btn-xs"
-                          onClick={() => startEdit(member)}
-                        >
-                          <Edit3 className="icon icon-xs" aria-hidden="true" />
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-xs"
-                          onClick={() => onDeleteStaff(member.id)}
-                          style={{ color: "var(--crimson-600)" }}
-                          title="Delete staff member"
-                        >
-                          <Trash2 className="icon icon-xs" aria-hidden="true" />
-                          Delete
-                        </button>
-                      </div>
-                    )}
-                  </td>
+                          <KeyRound className="icon icon-xs" aria-hidden="true" />
+                          {member.pin}
+                        </span>
+                      )}
+                    </td>
+                  )}
+                  {isOwner && (
+                    <td style={{ padding: "12px 16px", textAlign: "right" }}>
+                      {isEditing ? (
+                        <div style={{ display: "inline-flex", gap: "6px" }}>
+                          <button
+                            type="button"
+                            className="btn btn-primary btn-xs"
+                            onClick={() => handleSaveEdit(member.id)}
+                          >
+                            <Check className="icon icon-xs" aria-hidden="true" />
+                            Save
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-xs"
+                            onClick={() => setEditingId(null)}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display: "inline-flex", gap: "6px" }}>
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-xs"
+                            onClick={() => startEdit(member)}
+                          >
+                            <Edit3 className="icon icon-xs" aria-hidden="true" />
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-xs"
+                            onClick={() => onDeleteStaff && onDeleteStaff(member.id)}
+                            style={{ color: "var(--crimson-600)" }}
+                            title="Delete staff member"
+                          >
+                            <Trash2 className="icon icon-xs" aria-hidden="true" />
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  )}
                 </tr>
               );
             })}

@@ -106,6 +106,7 @@ export default function App() {
   };
 
   const handleAddStaff = (member: Omit<StaffMember, "id">) => {
+    if (!isOwnerMode) return;
     setRoster(prev => {
       const nextNum = prev.length + 1;
       const id = `STF-${String(nextNum).padStart(2, "0")}`;
@@ -120,13 +121,14 @@ export default function App() {
           actorKind: "human",
           type: "shift",
           action: "Staff member added to roster",
-          explanation: `${member.name} (${member.station}) added with PIN ${member.pin}.`,
+          explanation: `${member.name} (${member.station}) registered to store roster.`,
         }),
       ],
     }));
   };
 
   const handleUpdateStaff = (updated: StaffMember) => {
+    if (!isOwnerMode) return;
     setRoster(prev => prev.map(m => (m.id === updated.id ? updated : m)));
     update(d => ({
       ...d,
@@ -137,13 +139,14 @@ export default function App() {
           actorKind: "human",
           type: "shift",
           action: "Staff roster entry updated",
-          explanation: `${updated.id}: ${updated.name} (${updated.station} · PIN ${updated.pin}).`,
+          explanation: `${updated.id}: ${updated.name} (${updated.station}) record updated.`,
         }),
       ],
     }));
   };
 
   const handleDeleteStaff = (id: string) => {
+    if (!isOwnerMode) return;
     const target = roster.find(m => m.id === id);
     setRoster(prev => prev.filter(m => m.id !== id));
     update(d => ({
@@ -1065,6 +1068,7 @@ export default function App() {
           {tab === "roster" && (
             <StaffRoster
               roster={roster}
+              isOwner={isOwnerMode}
               onAddStaff={handleAddStaff}
               onUpdateStaff={handleUpdateStaff}
               onDeleteStaff={handleDeleteStaff}
