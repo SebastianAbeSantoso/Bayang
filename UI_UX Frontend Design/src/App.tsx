@@ -793,10 +793,8 @@ export default function App() {
     { id: "ledger", label: "Handover ledger", Icon: ListChecks, meta: data.submitted || openChecks > 0 ? String(openChecks) : "" },
     { id: "briefing", label: "Incoming briefing", Icon: ArrowRightLeft, meta: data.acknowledged ? "Ack" : String((data.schedules || []).length) },
     { id: "records", label: "Operational records", Icon: Database, meta: String(data.records.length + (data.schedules || []).length) },
+    { id: "roster", label: "Staff roster", Icon: Users, meta: String(roster.length) },
     { id: "audit", label: "Audit log", Icon: ScrollText, meta: String(data.audit.length) },
-    ...(isOwnerMode
-      ? [{ id: "roster" as Tab, label: "Staff roster", Icon: Users, meta: String(roster.length) }]
-      : []),
   ];
 
   const goBlockers = () => {

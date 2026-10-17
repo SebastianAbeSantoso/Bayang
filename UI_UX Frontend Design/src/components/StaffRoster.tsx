@@ -12,9 +12,9 @@ export interface StaffMember {
 
 export const INITIAL_STAFF_ROSTER: StaffMember[] = [
   { id: "STF-00", name: "Kevin", role: "owner", station: "Owner / Supervisor", pin: "0000" },
-  { id: "STF-01", name: "Rina", role: "shift_lead", station: "Shift Lead", pin: "1024" },
-  { id: "STF-02", name: "Sarah", role: "shift_lead", station: "Shift Lead", pin: "2048" },
-  { id: "STF-03", name: "Dimas", role: "shift_lead", station: "Shift Lead", pin: "3012" },
+  { id: "STF-01", name: "Rina", role: "shift_lead", station: "Manager", pin: "1024" },
+  { id: "STF-02", name: "Sarah", role: "shift_lead", station: "Manager", pin: "2048" },
+  { id: "STF-03", name: "Dimas", role: "shift_lead", station: "Manager", pin: "3012" },
   { id: "STF-04", name: "Sari", role: "floor_staff", station: "Barista", pin: "5120" },
   { id: "STF-05", name: "Bima", role: "floor_staff", station: "Cashier", pin: "4096" },
   { id: "STF-06", name: "Nadia", role: "floor_staff", station: "Cold Bar", pin: "6144" },
@@ -23,7 +23,7 @@ export const INITIAL_STAFF_ROSTER: StaffMember[] = [
 
 const ROLE_LABELS: Record<StaffMember["role"], string> = {
   owner: "Owner / Supervisor",
-  shift_lead: "Shift Lead",
+  shift_lead: "Manager",
   floor_staff: "Staff in shift",
 };
 
@@ -43,7 +43,7 @@ export default function StaffRoster({
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState<StaffMember["role"]>("shift_lead");
-  const [newStation, setNewStation] = useState("Shift Lead");
+  const [newStation, setNewStation] = useState("Manager");
   const [newPin, setNewPin] = useState("");
   const [formError, setFormError] = useState("");
 
@@ -137,7 +137,7 @@ export default function StaffRoster({
         }}
       >
         <div className="card" style={{ padding: "14px 18px" }}>
-          <span className="mono-label">SHIFT LEADS</span>
+          <span className="mono-label">MANAGERS</span>
           <div style={{ fontSize: "22px", fontWeight: 700, marginTop: "4px" }}>{leadsCount}</div>
           <span className="muted-text" style={{ fontSize: "12px" }}>Can sign in & transfer shifts</span>
         </div>
@@ -147,9 +147,9 @@ export default function StaffRoster({
           <span className="muted-text" style={{ fontSize: "12px" }}>Selectable on shift floor roster</span>
         </div>
         <div className="card" style={{ padding: "14px 18px" }}>
-          <span className="mono-label">OWNER / SUPERVISOR PINS</span>
+          <span className="mono-label">OWNER / SUPERVISOR</span>
           <div style={{ fontSize: "22px", fontWeight: 700, marginTop: "4px" }}>{ownerCount}</div>
-          <span className="muted-text" style={{ fontSize: "12px" }}>Unlocks this Staff Roster tab</span>
+          <span className="muted-text" style={{ fontSize: "12px" }}>Store owner / supervisor access</span>
         </div>
       </div>
 
@@ -192,14 +192,14 @@ export default function StaffRoster({
                 onChange={e => {
                   const r = e.target.value as StaffMember["role"];
                   setNewRole(r);
-                  if (r === "shift_lead") setNewStation("Shift Lead");
+                  if (r === "shift_lead") setNewStation("Manager");
                   else if (r === "owner") setNewStation("Owner / Supervisor");
                   else setNewStation("Barista");
                 }}
               >
-                <option value="shift_lead">Shift Lead (Signs in with PIN)</option>
+                <option value="shift_lead">Manager (Signs in on POS)</option>
                 <option value="floor_staff">Staff in shift (Barista / Cashier / Floor)</option>
-                <option value="owner">Owner / Supervisor (Unlocks Owner Mode)</option>
+                <option value="owner">Owner / Supervisor (Owner Access)</option>
               </select>
             </label>
 

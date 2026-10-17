@@ -211,7 +211,7 @@ const SHIFT_TIMES: Record<ShiftType, [string, string]> = {
 const LEADS: Record<ShiftType, string> = { morning: "Sarah", afternoon: "Dimas", night: "Rina" };
 const NEXT: Record<ShiftType, ShiftType> = { morning: "afternoon", afternoon: "night", night: "morning" };
 
-export const STAFF = ["Sarah (Morning Lead)", "Dimas (Afternoon Lead)", "Rina (Night Lead)", "Kevin (Supervisor)", "Ayu (Barista Cover)", "Budi (Shift Cover)", "BaristaPro Service (Technician)"];
+export const STAFF = ["Sarah (Morning Manager)", "Dimas (Afternoon Manager)", "Rina (Night Manager)", "Kevin (Supervisor)", "Ayu (Barista Cover)", "Budi (Shift Cover)", "BaristaPro Service (Technician)"];
 export const STAFF_NAMES = ["Dimas", "Rina", "Sarah", "Kevin", "Ayu", "Budi"];
 
 const DAYS = [

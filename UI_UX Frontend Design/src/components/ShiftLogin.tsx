@@ -55,29 +55,13 @@ export default function ShiftLogin({
   const shiftData = db[selectedShiftId];
   const shift: Shift = effectiveShift(rawShift, shiftData);
 
-  const staffPins: Record<string, string> = {};
-  for (const m of roster) {
-    staffPins[m.name] = m.pin;
-  }
-
-  const ownerPins = new Set([
-    "0000",
-    "9999",
-    ...roster.filter(m => m.role === "owner").map(m => m.pin),
-  ]);
-
-  const initialLeadMember = roster.find(m => m.name.toLowerCase() === shift.outgoing.toLowerCase());
-  const [leadName, setLeadName] = useState<string>(shift.outgoing);
+  // Default selection for shift lead signing in is the current shift's usual manager
+  const initialLeadMember = roster.find(m => m.name.toLowerCase() === rawShift.outgoing.toLowerCase());
+  const [leadName, setLeadName] = useState<string>(rawShift.outgoing);
   const [leadSearchQuery, setLeadSearchQuery] = useState<string>(
-    initialLeadMember ? `${initialLeadMember.name} (${initialLeadMember.station})` : shift.outgoing
+    initialLeadMember ? `${initialLeadMember.name} (${initialLeadMember.station})` : `${rawShift.outgoing} (Manager)`
   );
   const [isLeadDropdownOpen, setIsLeadDropdownOpen] = useState(false);
-  const [leadPin, setLeadPin] = useState<string>("");
-  const [showPin, setShowPin] = useState(false);
-  const [pinError, setPinError] = useState<string>("");
-
-  const activeMember = roster.find(m => m.name.toLowerCase() === leadName.toLowerCase());
-  const expectedPin = activeMember?.pin || staffPins[leadName] || "1024";
 
   const floorRosterLabels = roster
     .filter(m => m.role === "floor_staff")
@@ -89,36 +73,30 @@ export default function ShiftLogin({
 
   const [selectedCrew, setSelectedCrew] = useState<string[]>(crewOptions.slice(0, 2));
 
-  const isOwnerPinEntered = leadPin.trim().length === 4 && ownerPins.has(leadPin.trim());
-
   const filteredStaff = roster.filter(m => {
     const q = leadSearchQuery.toLowerCase().trim();
     if (!q) return true;
     return (
       m.name.toLowerCase().includes(q) ||
       m.station.toLowerCase().includes(q) ||
-      m.role.toLowerCase().includes(q) ||
-      m.pin.includes(q)
+      m.role.toLowerCase().includes(q)
     );
   });
 
   const handleSelectShift = (newShiftId: string) => {
     setSelectedShiftId(newShiftId);
     const nextRaw = SHIFTS.find(s => s.id === newShiftId) ?? SHIFTS[1];
-    const nextEff = effectiveShift(nextRaw, db[newShiftId]);
-    const nextMember = roster.find(m => m.name.toLowerCase() === nextEff.outgoing.toLowerCase());
-    setLeadName(nextEff.outgoing);
-    setLeadSearchQuery(nextMember ? `${nextMember.name} (${nextMember.station})` : nextEff.outgoing);
-    setLeadPin("");
-    setPinError("");
+    // Automatically default to the new shift's usual manager
+    const nextMember = roster.find(m => m.name.toLowerCase() === nextRaw.outgoing.toLowerCase());
+    setLeadName(nextRaw.outgoing);
+    setLeadSearchQuery(nextMember ? `${nextMember.name} (${nextMember.station})` : `${nextRaw.outgoing} (Manager)`);
+    setIsLeadDropdownOpen(false);
   };
 
   const handleSelectLead = (member: StaffMember) => {
     setLeadName(member.name);
     setLeadSearchQuery(`${member.name} (${member.station})`);
     setIsLeadDropdownOpen(false);
-    setLeadPin("");
-    setPinError("");
   };
 
   const toggleCrew = (member: string) => {
@@ -128,31 +106,12 @@ export default function ShiftLogin({
   };
 
   const handleSignIn = () => {
-    const cleanPin = leadPin.trim();
-    if (!cleanPin) {
-      setPinError(`Please input ${leadName}’s 4-digit PIN (or enter 0000 for Owner Mode).`);
-      return;
-    }
-    if (cleanPin.length < 4) {
-      setPinError("PIN must be 4 digits.");
-      return;
-    }
-
-    const isOwner = ownerPins.has(cleanPin);
-    if (!isOwner && expectedPin && cleanPin !== expectedPin) {
-      setPinError(`Incorrect PIN for ${leadName}. Registered PIN is ${expectedPin} (or enter 0000 for Owner Mode).`);
-      return;
-    }
-
-    setPinError("");
-    const ownerMember = roster.find(m => m.role === "owner" && m.pin === cleanPin);
     onStartShiftSession({
       shiftId: selectedShiftId,
-      outgoingLead: isOwner ? (ownerMember?.name ?? leadName) : leadName,
+      outgoingLead: leadName,
       incomingLead: shift.incoming,
       crew: selectedCrew,
-      ownerMode: isOwner,
-      openTab: isOwner ? "roster" : "report",
+      openTab: "report",
     });
   };
 
@@ -264,8 +223,8 @@ export default function ShiftLogin({
               </select>
             </div>
 
-            {/* Step 2: Searchable Shift Lead Box + PIN */}
-            <div style={{ marginBottom: "20px", position: "relative" }}>
+            {/* Step 2: Searchable Shift Lead Box */}
+            <div style={{ marginBottom: "22px", position: "relative" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
                 <label className="field-label" htmlFor="shift-lead-search">
                   Shift Lead Signing In
@@ -276,7 +235,7 @@ export default function ShiftLogin({
               </div>
 
               {/* Searchable input */}
-              <div style={{ position: "relative", marginBottom: "14px" }}>
+              <div style={{ position: "relative" }}>
                 <Search
                   className="icon icon-xs"
                   style={{
@@ -380,8 +339,8 @@ export default function ShiftLogin({
                                 {m.name} · <span style={{ color: "var(--ink-500)", fontWeight: 400 }}>{m.station}</span>
                               </span>
                             </div>
-                            <span className="mono-small" style={{ fontSize: "11px", color: "var(--espresso-600)" }}>
-                              PIN: {m.pin}
+                            <span className="mono-small" style={{ fontSize: "11px", color: "var(--ink-500)" }}>
+                              {m.role === "shift_lead" ? "Manager" : m.station}
                             </span>
                           </button>
                         );
@@ -390,80 +349,10 @@ export default function ShiftLogin({
                   </div>
                 )}
               </div>
-
-              {/* PIN input that requires actual entry */}
-              <label className="field" style={{ maxWidth: "340px" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span className="field-label">PIN</span>
-                  {expectedPin && (
-                    <button
-                      type="button"
-                      className="link-btn"
-                      onClick={() => {
-                        setLeadPin(expectedPin);
-                        if (pinError) setPinError("");
-                      }}
-                      style={{ fontSize: "11px" }}
-                    >
-                      Fill {leadName}'s PIN ({expectedPin})
-                    </button>
-                  )}
-                </div>
-                <input
-                  type={showPin ? "text" : "password"}
-                  inputMode="numeric"
-                  className="input input-sm mono"
-                  value={leadPin}
-                  onChange={e => {
-                    const nextVal = e.target.value.replace(/\D/g, "").slice(0, 4);
-                    setLeadPin(nextVal);
-                    if (pinError) setPinError("");
-                  }}
-                  onKeyDown={e => {
-                    if (e.key === "Enter") handleSignIn();
-                  }}
-                  maxLength={4}
-                  placeholder={`Input 4-digit PIN for ${leadName}`}
-                  style={{ letterSpacing: "0.25em", fontWeight: 700, fontSize: "14px" }}
-                />
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "4px" }}>
-                  <button
-                    type="button"
-                    className="link-btn"
-                    onClick={() => setShowPin(v => !v)}
-                    style={{ fontSize: "11px", color: "var(--ink-500)" }}
-                  >
-                    {showPin ? "Hide numbers" : "Show numbers"}
-                  </button>
-                  <button
-                    type="button"
-                    className="link-btn"
-                    onClick={() => {
-                      setLeadPin("0000");
-                      if (pinError) setPinError("");
-                    }}
-                    style={{ fontSize: "11px", color: "var(--espresso-600)" }}
-                  >
-                    Use Owner PIN (0000)
-                  </button>
-                </div>
-
-                {isOwnerPinEntered && (
-                  <span style={{ color: "var(--espresso-600)", fontSize: "11.5px", fontWeight: 600, marginTop: "4px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                    <ShieldCheck className="icon icon-xs" aria-hidden="true" />
-                    Owner PIN recognized — will unlock Staff Roster management
-                  </span>
-                )}
-                {pinError && (
-                  <span style={{ color: "var(--crimson-600)", fontSize: "11.5px", marginTop: "4px", display: "block" }}>
-                    {pinError}
-                  </span>
-                )}
-              </label>
             </div>
 
             {/* Step 3: Staff in shift */}
-            <div style={{ marginBottom: "24px" }}>
+            <div style={{ marginBottom: "26px" }}>
               <span className="field-label" style={{ display: "block", marginBottom: "8px" }}>
                 Staff in shift
               </span>
@@ -510,9 +399,7 @@ export default function ShiftLogin({
               }}
             >
               <LogIn className="icon icon-sm" aria-hidden="true" />
-              {isOwnerPinEntered
-                ? "Sign In to Owner Mode & Manage Staff Roster"
-                : `Sign In & Start ${SHIFT_TYPE_LABEL[shift.type]} Shift as ${leadName} (${shift.start}–${shift.end})`}
+              Sign In & Start {SHIFT_TYPE_LABEL[shift.type]} Shift as {leadName} ({shift.start}–{shift.end})
               <ArrowRight className="icon icon-sm" aria-hidden="true" />
             </button>
           </section>
