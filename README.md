@@ -1,3 +1,15 @@
+---
+title: ShiftGuard
+emoji: ☕
+colorFrom: yellow
+colorTo: gray
+sdk: docker
+app_port: 7860
+pinned: false
+license: mit
+short_description: Cafe Shift-Handover Reconciliation Workbench (Gemma 3-27B)
+---
+
 # ShiftGuard: Cafe Shift-Handover Reconciliation Workbench
 
 [![Track: Reinvent Commerce](https://img.shields.io/badge/Track-Reinvent_Commerce-FF6F00?style=for-the-badge&logo=shopify)](https://lablab.ai/event/amd-developer-hackathon-act-iii)
