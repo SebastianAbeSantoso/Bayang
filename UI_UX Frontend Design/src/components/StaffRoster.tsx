@@ -1,6 +1,8 @@
 import React, { useState } from "react";
-import { Check, Edit3, KeyRound, Plus, ShieldCheck, Trash2, UserCheck, Users, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Clock, Edit3, KeyRound, Plus, ShieldCheck, Trash2, Users, X } from "lucide-react";
 import { Tag } from "./ui";
+import type { Shift, ShiftData } from "../data";
+import { CAFE, SHIFT_TYPE_LABEL, STAFF_NAMES } from "../data";
 
 export interface StaffMember {
   id: string;
@@ -30,6 +32,9 @@ const ROLE_LABELS: Record<StaffMember["role"], string> = {
 interface Props {
   roster: StaffMember[];
   isOwner?: boolean;
+  shift?: Shift;
+  data?: ShiftData;
+  onChangeStaff?: (which: "outgoing" | "incoming", newName: string) => void;
   onAddStaff?: (member: Omit<StaffMember, "id">) => void;
   onUpdateStaff?: (member: StaffMember) => void;
   onDeleteStaff?: (id: string) => void;
@@ -38,6 +43,9 @@ interface Props {
 export default function StaffRoster({
   roster,
   isOwner = false,
+  shift,
+  data,
+  onChangeStaff,
   onAddStaff,
   onUpdateStaff,
   onDeleteStaff,
@@ -54,6 +62,21 @@ export default function StaffRoster({
   const [editRole, setEditRole] = useState<StaffMember["role"]>("shift_lead");
   const [editStation, setEditStation] = useState("");
   const [editPin, setEditPin] = useState("");
+
+  const PAGE_SIZE = 5;
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(roster.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIndex = (safePage - 1) * PAGE_SIZE;
+  const paginatedRoster = roster.slice(startIndex, startIndex + PAGE_SIZE);
+
+  const staffSelectOptions = Array.from(
+    new Set([
+      ...roster.map(m => m.name),
+      ...STAFF_NAMES,
+      ...(shift ? [shift.outgoing, shift.incoming] : []),
+    ])
+  );
 
   const startEdit = (m: StaffMember) => {
     if (!isOwner) return;
@@ -277,7 +300,7 @@ export default function StaffRoster({
             </tr>
           </thead>
           <tbody>
-            {roster.map(member => {
+            {paginatedRoster.map(member => {
               const isEditing = isOwner && editingId === member.id;
               return (
                 <tr key={member.id} style={{ borderBottom: "1px solid var(--paper-200)", fontSize: "13px" }}>
@@ -411,6 +434,167 @@ export default function StaffRoster({
             })}
           </tbody>
         </table>
+
+        {/* Pagination Controls - Max 5 with Next Page > */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "10px 16px",
+            background: "var(--paper-50)",
+            borderTop: "1px solid var(--paper-200)",
+            fontSize: "12px",
+            color: "var(--ink-600)",
+            flexWrap: "wrap",
+            gap: "8px",
+          }}
+        >
+          <div>
+            Showing <strong>{roster.length === 0 ? 0 : startIndex + 1}–{Math.min(startIndex + PAGE_SIZE, roster.length)}</strong> of <strong>{roster.length}</strong> staff members
+          </div>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ marginRight: "4px" }}>
+              Page <strong>{safePage}</strong> of <strong>{totalPages}</strong>
+            </span>
+            <button
+              type="button"
+              className="btn btn-secondary btn-xs"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={safePage <= 1}
+              style={{ padding: "4px 8px", minHeight: "26px", display: "inline-flex", alignItems: "center", gap: "2px" }}
+              aria-label="Previous page of staff"
+            >
+              <ChevronLeft className="icon icon-xs" aria-hidden="true" />
+              Prev
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-xs"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={safePage >= totalPages}
+              style={{ padding: "4px 8px", minHeight: "26px", display: "inline-flex", alignItems: "center", gap: "2px" }}
+              aria-label="Next page of staff"
+            >
+              Next
+              <ChevronRight className="icon icon-xs" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Part 2: Current Shift (Lead on duty: Dimas · transfers to Rina) */}
+      <section
+        className="card"
+        style={{
+          marginTop: "24px",
+          padding: "20px 22px",
+          background: "var(--paper-0)",
+          border: "1px solid var(--paper-300)",
+          borderRadius: "10px",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px", marginBottom: "14px" }}>
+          <div>
+            <span className="eyebrow" style={{ display: "inline-flex", alignItems: "center", gap: "5px", color: "var(--espresso-600)" }}>
+              <Clock className="icon icon-xs" aria-hidden="true" />
+              Part 2 · Current Shift
+            </span>
+            <h2 style={{ fontSize: "16px", fontWeight: 700, margin: "2px 0 0" }}>
+              {shift ? `${SHIFT_TYPE_LABEL[shift.type]} Shift (${shift.start}–${shift.end})` : "Current Shift"}
+            </h2>
+            <p className="muted-text" style={{ fontSize: "12px", margin: "2px 0 0" }}>
+              {shift ? `${shift.dayShort} ${shift.dateLabel} · ${CAFE.name} (${CAFE.branch})` : "Active floor shift handover"}
+            </p>
+          </div>
+
+          {data && (
+            <Tag tone={data.signedOff ? "neutral" : data.submitted ? "info" : data.signedIn ? "success" : "warning"}>
+              {data.signedOff
+                ? `Transferred ${data.signedOffAt}`
+                : data.submitted
+                  ? `Report completed ${data.submittedAt}`
+                  : data.signedIn
+                    ? `Active · Signed in ${data.signedInAt || (shift ? shift.start : "")}`
+                    : "Shift in progress"}
+            </Tag>
+          )}
+        </div>
+
+        {shift ? (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              flexWrap: "wrap",
+              padding: "14px 18px",
+              background: "var(--paper-50)",
+              border: "1px solid var(--paper-300)",
+              borderRadius: "8px",
+              fontSize: "13px",
+            }}
+          >
+            <div style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+              <span className="muted-text" style={{ fontWeight: 500 }}>Lead on duty:</span>
+              {!data?.signedOff && onChangeStaff ? (
+                <select
+                  aria-label="Current shift lead on duty"
+                  className="input input-sm"
+                  value={shift.outgoing}
+                  onChange={e => onChangeStaff("outgoing", e.target.value)}
+                  style={{
+                    width: "auto",
+                    height: "30px",
+                    padding: "2px 10px",
+                    fontSize: "12.5px",
+                    fontWeight: 600,
+                    background: "var(--paper-0)",
+                  }}
+                >
+                  {staffSelectOptions.map(n => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+              ) : (
+                <strong>{shift.outgoing}</strong>
+              )}
+            </div>
+
+            <span className="muted-text">· transfers to</span>
+
+            <div style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+              {!data?.signedOff && onChangeStaff ? (
+                <select
+                  aria-label="Next shift lead"
+                  className="input input-sm"
+                  value={shift.incoming}
+                  onChange={e => onChangeStaff("incoming", e.target.value)}
+                  style={{
+                    width: "auto",
+                    height: "30px",
+                    padding: "2px 10px",
+                    fontSize: "12.5px",
+                    fontWeight: 600,
+                    background: "var(--paper-0)",
+                  }}
+                >
+                  {staffSelectOptions.map(n => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+              ) : (
+                <strong>{shift.incoming}</strong>
+              )}
+            </div>
+
+            <span className="muted-text" style={{ fontSize: "12px", marginLeft: "auto" }}>
+              Shift lead transfers automatically upon sign-off.
+            </span>
+          </div>
+        ) : (
+          <p className="muted-text">No active shift selected.</p>
+        )}
       </section>
     </div>
   );

@@ -1069,6 +1069,9 @@ export default function App() {
             <StaffRoster
               roster={roster}
               isOwner={isOwnerMode}
+              shift={shift}
+              data={data}
+              onChangeStaff={handleChangeStaff}
               onAddStaff={handleAddStaff}
               onUpdateStaff={handleUpdateStaff}
               onDeleteStaff={handleDeleteStaff}

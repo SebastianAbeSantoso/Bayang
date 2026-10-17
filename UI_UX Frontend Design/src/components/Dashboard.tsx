@@ -1,7 +1,7 @@
 import React from "react";
 import { ArrowRight, CircleCheck } from "lucide-react";
 import type { Shift, ShiftData } from "../data";
-import { CAFE, SHIFT_TYPE_LABEL, STAFF_NAMES, allChecks, bucketOf, categoryComplete, shiftStatus, signoffState } from "../data";
+import { CAFE, SHIFT_TYPE_LABEL, allChecks, bucketOf, categoryComplete, shiftStatus, signoffState } from "../data";
 import ShiftSelector from "./ShiftSelector";
 import { PageHeader, StatusDot, Tag } from "./ui";
 
@@ -35,45 +35,14 @@ export default function Dashboard({
   const count = (b: string) => checks.filter(x => bucketOf(x.check) === b).length;
   const answered = (["equipment", "stock", "cleaning", "cash", "customer"] as const).filter(c => categoryComplete(data.report, c, data.checklist)).length;
   const upcoming = shift.phase === "upcoming" && !data.signedIn && !data.submitted;
-  const staffOptions = Array.from(new Set([...STAFF_NAMES, shift.outgoing, shift.incoming]));
 
   return (
     <div className="dashboard">
       <PageHeader title="Dashboard" subtitle={`${CAFE.name} · ${CAFE.branch}`} />
 
-      <div className="dash-shift" style={{ flexWrap: "wrap", gap: "10px" }}>
+      <div className="dash-shift">
         <span className="field-label">Shift</span>
         <ShiftSelector value={shiftId} db={db} onChange={onSelectShift} />
-        <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", flexWrap: "wrap", fontSize: "13px" }}>
-          <span className="muted-text">Lead on duty:</span>
-          {!data.signedOff ? (
-            <select
-              aria-label="Current shift lead"
-              className="input input-sm"
-              value={shift.outgoing}
-              onChange={e => onChangeStaff("outgoing", e.target.value)}
-              style={{ width: "auto", height: "28px", padding: "2px 8px", fontSize: "12.5px", fontWeight: 600 }}
-            >
-              {staffOptions.map(n => <option key={n} value={n}>{n}</option>)}
-            </select>
-          ) : (
-            <strong>{shift.outgoing}</strong>
-          )}
-          <span className="muted-text">· transfers to</span>
-          {!data.signedOff ? (
-            <select
-              aria-label="Next shift lead"
-              className="input input-sm"
-              value={shift.incoming}
-              onChange={e => onChangeStaff("incoming", e.target.value)}
-              style={{ width: "auto", height: "28px", padding: "2px 8px", fontSize: "12.5px", fontWeight: 600 }}
-            >
-              {staffOptions.map(n => <option key={n} value={n}>{n}</option>)}
-            </select>
-          ) : (
-            <strong>{shift.incoming}</strong>
-          )}
-        </div>
       </div>
 
       {justSubmitted && data.submitted && (
