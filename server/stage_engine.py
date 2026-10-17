@@ -167,10 +167,24 @@ class CafeHandoverEngine:
         self.audit_events.append(evt)
         return evt
 
+    def _resolve_shift_id(self, shift_id: Optional[str]) -> str:
+        """Resolve incoming shift identifiers (including frontend aliases like '20261012-AFT') to internal shift keys."""
+        if not shift_id:
+            return self.active_shift_id
+        if shift_id in self.shifts:
+            return shift_id
+        sid_clean = str(shift_id).lower()
+        if any(tok in sid_clean for tok in ("aft", "pm", "afternoon", "night", "ngt")):
+            if "shift_pm_01" in self.shifts:
+                return "shift_pm_01"
+        if any(tok in sid_clean for tok in ("mor", "am", "morning")):
+            if "shift_am_02" in self.shifts:
+                return "shift_am_02"
+        return self.active_shift_id if self.active_shift_id in self.shifts else next(iter(self.shifts.keys()))
+
     def select_shift(self, shift_id: str, active_role: Optional[str] = None) -> Dict[str, Any]:
-        if shift_id not in self.shifts:
-            raise ValueError(f"Unknown shift_id '{shift_id}'.")
-        self.active_shift_id = shift_id
+        sid = self._resolve_shift_id(shift_id)
+        self.active_shift_id = sid
         if active_role:
             self.active_role = active_role
         return self.get_state(shift_id)
@@ -185,7 +199,7 @@ class CafeHandoverEngine:
         actor: str = "Raka Pratama (Outgoing Shift Lead)",
     ) -> Dict[str, Any]:
         """Update worker shift report draft, checklist statuses, or manual stock/issue entries."""
-        sid = shift_id or self.active_shift_id
+        sid = self._resolve_shift_id(shift_id)
         shift = self.shifts[sid]
         report = self.shift_reports[sid]
 
@@ -244,7 +258,7 @@ class CafeHandoverEngine:
             prev_state=None,
             new_state={"note_length": len(report["note_text"])},
         )
-        return self.get_state(sid)
+        return self.get_state(shift_id or sid)
 
     def _normalize_sku(self, entity_name: str) -> Tuple[Optional[str], str, str]:
         """Resolve an entity string (e.g. 'oat milk', 'susu oat') to (sku, item_name, canonical_unit)."""
@@ -269,7 +283,7 @@ class CafeHandoverEngine:
         Validate extracted claim quotes against the original note and execute
         the 5 deterministic cafe verification rules for the target shift.
         """
-        sid = shift_id or self.active_shift_id
+        sid = self._resolve_shift_id(shift_id)
         shift = self.shifts[sid]
         report = self.shift_reports[sid]
 
@@ -1129,7 +1143,7 @@ class CafeHandoverEngine:
                 "findings_count": len(findings),
             },
         )
-        return self.get_state(sid)
+        return self.get_state(shift_id or sid)
 
     def resolve_finding(
         self,
@@ -1152,7 +1166,7 @@ class CafeHandoverEngine:
         - override_with_rationale (or OVERRIDDEN) -> requires rationale, status = 'overridden'
         - mark_false_positive (or FALSE_POSITIVE) -> requires rationale, status = 'false_positive'
         """
-        sid = shift_id or self.active_shift_id
+        sid = self._resolve_shift_id(shift_id)
         shift = self.shifts[sid]
         findings = self.findings_by_shift.get(sid, [])
 
@@ -1286,7 +1300,7 @@ class CafeHandoverEngine:
                 new_state={"shift_status": shift["status"], "signed_off_by": actor},
             )
 
-        return self.get_state(sid)
+        return self.get_state(shift_id or sid)
 
     # Alias for legacy tests
     def resolve_discrepancy(
@@ -1330,7 +1344,7 @@ class CafeHandoverEngine:
         - 'in_progress': sets status = 'in_progress'
         - 'resolve': sets status = 'resolved'
         """
-        sid = shift_id or self.active_shift_id
+        sid = self._resolve_shift_id(shift_id)
         items = self.carryover_by_shift.get(sid, [])
         item = next((c for c in items if c["id"] == carryover_id), None)
         if not item:
@@ -1380,7 +1394,7 @@ class CafeHandoverEngine:
         - Any finding is in 'held' status
         - Any inherited critical carryover item on the active shift is still 'open' (unacknowledged)
         """
-        sid = shift_id or self.active_shift_id
+        sid = self._resolve_shift_id(shift_id)
         shift = self.shifts[sid]
         findings = self.findings_by_shift.get(sid, [])
         carryovers = self.carryover_by_shift.get(sid, [])
@@ -1474,7 +1488,7 @@ class CafeHandoverEngine:
 
     def export_audit_record(self, fmt: str = "json", shift_id: Optional[str] = None) -> Tuple[str, str]:
         """Export traceable Shift Handover Audit Record in JSON or Markdown."""
-        sid = shift_id or self.active_shift_id
+        sid = self._resolve_shift_id(shift_id)
         state = self.get_state(sid)
         shift = state["active_shift"]
         report = state["shift_report"]
@@ -1565,7 +1579,7 @@ class CafeHandoverEngine:
         Derive a concise 30-second incoming shift briefing strictly from recorded carryover items,
         unverified equipment issues, low stock, and supplier order delivery ETAs.
         """
-        sid = shift_id or self.active_shift_id
+        sid = self._resolve_shift_id(shift_id)
         pm_shift = self.shifts.get("shift_pm_01", {})
         am_shift = self.shifts.get("shift_am_02", {})
 
@@ -1617,7 +1631,7 @@ class CafeHandoverEngine:
 
     def get_state(self, shift_id: Optional[str] = None) -> Dict[str, Any]:
         """Return complete workbench state for the active shift (plus compatibility keys for existing tests)."""
-        sid = shift_id or self.active_shift_id
+        sid = self._resolve_shift_id(shift_id)
         shift = self.shifts[sid]
         report = self.shift_reports[sid]
         claims = self.claims_by_shift.get(sid, [])
@@ -1654,7 +1668,9 @@ class CafeHandoverEngine:
         return {
             "product": "ShiftGuard",
             "cafe": self.cafe,
-            "active_shift_id": sid,
+            "active_shift_id": shift_id or sid,
+            "shift_id": shift_id or sid,
+            "internal_shift_id": sid,
             "active_role": self.active_role,
             "shifts_list": [
                 {

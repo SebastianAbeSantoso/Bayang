@@ -361,10 +361,11 @@ class BayangHandler(BaseHTTPRequestHandler):
             if route == "/api/handover/run":
                 mode = payload.get("mode", "seeded")
                 shift_id = payload.get("shift_id") or HANDOVER_INSTANCE.active_shift_id
+                resolved_sid = HANDOVER_INSTANCE._resolve_shift_id(shift_id)
                 notes_override = payload.get("shift_notes")
                 if notes_override is None and "note_text" in payload:
                     notes_override = payload.get("note_text")
-                current_report = HANDOVER_INSTANCE.shift_reports.get(shift_id, {})
+                current_report = HANDOVER_INSTANCE.shift_reports.get(resolved_sid, {})
                 notes_to_use = (
                     notes_override
                     if (isinstance(notes_override, str) and notes_override.strip())
@@ -373,7 +374,7 @@ class BayangHandler(BaseHTTPRequestHandler):
                 claims, meta = MODEL_CLIENT.extract_handover_claims(
                     raw_shift_notes=notes_to_use,
                     mode=mode,
-                    shift_id=shift_id,
+                    shift_id=resolved_sid,
                 )
                 actor = payload.get("actor") or HANDOVER_INSTANCE.active_role
                 state = HANDOVER_INSTANCE.run_reconciliation(

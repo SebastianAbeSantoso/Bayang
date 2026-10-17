@@ -170,6 +170,16 @@ class TestDeterministicReconciliation(unittest.TestCase):
         self.assertIn("RULE_02_CASH_VARIANCE", rule_ids_id)
         self.assertIn("RULE_03_STOCK_MOVEMENTS", rule_ids_id)
 
+    def test_frontend_shift_id_aliases(self):
+        """Verify frontend shift IDs (e.g. 20261012-AFT) resolve seamlessly without KeyError."""
+        state = self.engine.get_state("20261012-AFT")
+        self.assertEqual(state["active_shift_id"], "20261012-AFT")
+        self.assertEqual(state["internal_shift_id"], "shift_pm_01")
+
+        rec_state = self.engine.run_reconciliation([], shift_id="20261012-AFT")
+        self.assertIn("findings", rec_state)
+        self.assertEqual(rec_state["active_shift_id"], "20261012-AFT")
+
 
 if __name__ == "__main__":
     unittest.main()

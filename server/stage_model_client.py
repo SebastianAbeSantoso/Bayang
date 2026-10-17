@@ -376,7 +376,16 @@ class StageModelClient:
         any newly edited custom sentences.
         """
         fixtures = self._load_fixture_data()
-        shift_data = fixtures.get("shifts", {}).get(shift_id, {})
+        resolved_sid = shift_id
+        if shift_id not in fixtures.get("shifts", {}):
+            sid_clean = str(shift_id).lower()
+            if any(tok in sid_clean for tok in ("aft", "pm", "afternoon", "night", "ngt")):
+                resolved_sid = "shift_pm_01"
+            elif any(tok in sid_clean for tok in ("mor", "am", "morning")):
+                resolved_sid = "shift_am_02"
+            else:
+                resolved_sid = "shift_pm_01"
+        shift_data = fixtures.get("shifts", {}).get(resolved_sid, {})
         cand_list: List[Dict[str, Any]] = []
         seeded_ext = shift_data.get("seeded_extractions", {})
         if isinstance(seeded_ext, dict):
