@@ -275,7 +275,7 @@ export default function WorkerReport({
                     title="Change or replace active shift lead (e.g. shift swap or sick cover)"
                   >
                     {staffOptions.map(name => (
-                      <option key={name} value={name}>{name} (shift lead)</option>
+                      <option key={name} value={name}>{name}</option>
                     ))}
                     <option value="__custom__">+ Replace staff (cover)…</option>
                   </select>
@@ -309,7 +309,7 @@ export default function WorkerReport({
                     </button>
                   </span>
                 ) : (
-                  <span>{shift.outgoing} (shift lead)</span>
+                  <span>{shift.outgoing}</span>
                 )}
               </dd>
             </div>
@@ -571,7 +571,7 @@ export default function WorkerReport({
                                   <span className="field-label">Assign follow-up (optional)</span>
                                   <select className="input" disabled={readOnly} value={e.owner} onChange={ev => setEntry(i, { owner: ev.target.value })}>
                                     <option value="">Not assigned yet</option>
-                                    {STAFF.map(st => <option key={st}>{st}</option>)}
+                                    {STAFF_NAMES.map(st => <option key={st}>{st}</option>)}
                                   </select>
                                 </label>
                               </div>

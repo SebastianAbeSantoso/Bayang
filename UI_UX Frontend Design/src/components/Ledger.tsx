@@ -81,7 +81,6 @@ export default function Ledger({ shift, data, locked, selectedId, onSelect, onAc
   const actorOptions = Array.from(new Set([
     shift.outgoing,
     shift.incoming,
-    `${SUPERVISOR} (Supervisor)`,
     ...STAFF_NAMES,
   ]));
 
@@ -464,8 +463,8 @@ function FindingDrawer({ shift, finding, data, locked, onClose, onAction, onOpen
   const openChecks = finding.checks.filter(c => c.workflow !== "resolved");
   const [checkId, setCheckId] = useState(openChecks.find(c => c.severity === "critical")?.id ?? openChecks[0]?.id ?? finding.checks[0]?.id ?? "");
   const [rationale, setRationale] = useState("");
-  const [actor, setActor] = useState("Kevin (Supervisor)");
-  const [owner, setOwner] = useState(STAFF[2]);
+  const [actor, setActor] = useState("Kevin");
+  const [owner, setOwner] = useState(STAFF_NAMES[2]);
   const [target, setTarget] = useState(`Next shift (${shift.incoming})`);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => { if (!finding.checks.some(c => c.id === checkId)) setCheckId(openChecks[0]?.id ?? finding.checks[0]?.id ?? ""); }, [finding]); // eslint-disable-line
@@ -488,10 +487,9 @@ function FindingDrawer({ shift, finding, data, locked, onClose, onAction, onOpen
   };
 
   const actorOptions = Array.from(new Set([
-    "Kevin (Supervisor)",
-    `${shift.outgoing} (Outgoing Lead)`,
-    `${shift.incoming} (Incoming Lead)`,
-    ...STAFF,
+    shift.outgoing,
+    shift.incoming,
+    ...STAFF_NAMES,
   ]));
 
   return (
@@ -623,7 +621,7 @@ function FindingDrawer({ shift, finding, data, locked, onClose, onAction, onOpen
             <label className="field">
               <span className="field-label">Owner</span>
               <select className="input" value={owner} onChange={e => setOwner(e.target.value)}>
-                {STAFF.map(s => <option key={s}>{s}</option>)}
+                {STAFF_NAMES.map(s => <option key={s}>{s}</option>)}
               </select>
             </label>
             <label className="field">
