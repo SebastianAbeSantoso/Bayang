@@ -66,6 +66,7 @@ interface Props {
   onToggleEndHour: (reached: boolean) => void;
   onChangeStaff: (which: "outgoing" | "incoming", newName: string) => void;
   onSubmit: () => void;
+  onUnlockReport?: () => void;
   onOpenLedger: (findingId?: string) => void;
 }
 
@@ -80,6 +81,7 @@ export default function WorkerReport({
   onToggleEndHour,
   onChangeStaff,
   onSubmit,
+  onUnlockReport,
   onOpenLedger,
 }: Props) {
   const r = data.report;
@@ -153,7 +155,7 @@ export default function WorkerReport({
         cash: { status: "balanced" as const, details: "Count Rp 1.180.000 matches POS." },
         customer: { status: "none" as const, details: "", destination: "" },
       },
-      tasksUpdate: (tasks: ChecklistItem[]) => tasks.map(t => t.id === "CHK-02" ? { ...t, done: false, notDone: true, reason: "Antrian rame jam 18-20" } : { ...t, done: true, notDone: false }),
+      tasksUpdate: (tasks: ChecklistItem[]) => tasks.map(t => t.id === "CHK-1" ? { ...t, done: false, notDone: true, reason: "Antrian rame jam 18-20" } : { ...t, done: true, notDone: false }),
     },
     {
       id: "preset_2",
@@ -217,6 +219,7 @@ export default function WorkerReport({
   const applyPreset = (presetId: string) => {
     const preset = DEMO_PRESETS.find(p => p.id === presetId);
     if (!preset) return;
+    if (!endHourReached) onToggleEndHour(true);
     onReport({
       ...preset.report,
       notes: [preset.note],
@@ -466,6 +469,16 @@ export default function WorkerReport({
           </ul>
           <div className="row-gap">
             <button type="button" className="btn btn-primary" onClick={() => onOpenLedger()}>Open handover ledger</button>
+            {!locked && onUnlockReport && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={onUnlockReport}
+                title="Unlock report form to edit answers, load presets, or re-run Gemma reconciliation"
+              >
+                Edit / Re-run Shift Report
+              </button>
+            )}
             <span className="muted-text">{results.filter(x => bucketOf(x.check)).length} check{results.length === 1 ? "" : "s"} still open</span>
           </div>
         </section>

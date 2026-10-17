@@ -771,7 +771,7 @@ export function buildEmptyDb(): Record<string, ShiftData> {
       signedOff: false,
       acknowledged: false,
       signedIn: false,
-      endHourReached: false,
+      endHourReached: s.phase === "current",
       gemmaTelemetry: {
         model: "google/gemma-3-27b-it",
         mode: "standby",
@@ -809,16 +809,50 @@ export function buildInitialDb(): Record<string, ShiftData> {
       };
     else {
       const records = recordsFor(s);
-      db[s.id] = {
-        report: EMPTY_REPORT,
-        submitted: false,
-        checklist: checklistFor(false),
+      const seededReport: ReportState = {
+        equipment: {
+          status: "attention",
+          entries: [
+            {
+              issue: "Machine malfunction",
+              item: EQUIPMENT_ITEMS[0],
+              details: "Grinder jammed for 20 minutes around 17:00",
+              owner: "",
+            },
+          ],
+        },
+        stock: {
+          ok: false,
+          low: true,
+          waste: true,
+          lowItems: ["Ice"],
+          wasteItem: "House Blend beans",
+          wasteQty: "200",
+          wasteUnit: "g",
+          wasteDetails: "Purged jammed burrs",
+        },
+        cleaning: { status: "incomplete", details: "Steam wand deep clean skipped due to peak rush." },
+        cash: { status: "balanced", details: "Count Rp 1.180.000 matches POS." },
+        customer: { status: "none", details: "", destination: "" },
+        notes: [
+          "Tadi grinder macet 20 menit pas jam 17, buang beans 200g house blend, es batu abis dari jam 18, gak sempet deep clean steam wand kanan karena antrian rame",
+        ],
+      };
+      const seededChecklist = checklistFor(true).map(t =>
+        t.id === "CHK-1" ? { ...t, done: false, notDone: true, reason: "Antrian rame jam 18-20" } : t
+      );
+      const baseShiftData: ShiftData = {
+        report: seededReport,
+        submitted: true,
+        submittedAt: "21:52",
+        checklist: seededChecklist,
         findings: [],
         records,
         schedules: schedulesFor(s),
         signedOff: false,
         acknowledged: false,
-        signedIn: false,
+        signedIn: true,
+        signedInAt: "16:02",
         endHourReached: true,
         gemmaTelemetry: {
           model: "google/gemma-3-27b-it",
@@ -875,6 +909,13 @@ export function buildInitialDb(): Record<string, ShiftData> {
           { id: "A-AFT-3", shiftId: s.id, date: s.date, time: "21:40:05", actor: s.outgoing, actorKind: "human", type: "record", action: "Closing stock sheet photographed", sourceRef: `SS-20261012-AFT`, explanation: "Manual count uploaded." },
           { id: "A-AFT-4", shiftId: s.id, date: s.date, time: "21:48:30", actor: "POS import", actorKind: "system", type: "record", action: "POS export imported", sourceRef: "POS-20261012-AFT", explanation: "83 espresso drinks, 2 voids/comps." },
         ],
+      };
+      const rec = reconcile(s, baseShiftData);
+      db[s.id] = {
+        ...baseShiftData,
+        findings: rec.findings,
+        checklist: rec.checklist,
+        audit: [...baseShiftData.audit, ...rec.events],
       };
     }
   }

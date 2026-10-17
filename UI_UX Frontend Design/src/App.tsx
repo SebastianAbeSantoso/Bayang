@@ -39,7 +39,21 @@ export default function App() {
 
   const handleSwitchDataPreset = (preset: "empty" | "seeded") => {
     setDataPreset(preset);
-    setDb(preset === "empty" ? buildEmptyDb() : buildInitialDb());
+    setSelectedFinding(null);
+    setSelectedRecordId(null);
+    setJustSubmitted(false);
+    setDb(prev => {
+      const next = preset === "empty" ? buildEmptyDb() : buildInitialDb();
+      if (!showLoginScreen && prev[shiftId]?.signedIn) {
+        next[shiftId] = {
+          ...next[shiftId],
+          signedIn: true,
+          signedInAt: prev[shiftId].signedInAt || "16:02",
+          outgoingLead: prev[shiftId].outgoingLead,
+        };
+      }
+      return next;
+    });
   };
 
   const rawShift = shiftById(shiftId);
@@ -612,12 +626,34 @@ export default function App() {
           ...d.report.notes.map(n => ev({ actor: shift.outgoing, actorKind: "human", type: "note", action: "Original worker note recorded", explanation: `“${n}”` })),
         ];
         const r = reconcile(shift, { ...d, audit: [] });
+        const fallbackClaims = r.findings
+          .filter(f => f.quote)
+          .map((f, idx) => ({
+            claim_id: `CLM-${String(idx + 1).padStart(2, "0")}`,
+            claim_type: f.category,
+            entity: f.title.split(":")[0] || f.category,
+            action: "reported",
+            verbatim_quote: f.quote || f.title,
+            quote_valid: true,
+          }));
         return {
           ...d,
           submitted: true,
           submittedAt: time.slice(0, 5),
           findings: [...manualOrScheduleFindings, ...r.findings],
           checklist: r.checklist,
+          gemmaTelemetry: {
+            model: "google/gemma-3-27b-it",
+            mode: "seeded_demo_snapshot",
+            latencyMs: 24,
+            extractedClaimsCount: fallbackClaims.length,
+            promptTokens: 640,
+            completionTokens: 310,
+            totalTokens: 950,
+            estimatedCostUsd: 0.000157,
+            tokensPerSec: 347.5,
+            claims: fallbackClaims,
+          },
           audit: [...d.audit, ...pre, ...r.events],
         };
       });
@@ -1070,6 +1106,7 @@ export default function App() {
               onToggleEndHour={handleToggleEndHour}
               onChangeStaff={handleChangeStaff}
               onSubmit={submit}
+              onUnlockReport={() => update(d => ({ ...d, submitted: false }))}
               onOpenLedger={fid => {
                 if (fid) setSelectedFinding(fid);
                 setTab("ledger");
