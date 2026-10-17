@@ -169,6 +169,25 @@ export const RECURRENCE_LABEL: Record<ScheduleRecurrence, string> = {
   monthly: "Monthly recurring",
 };
 
+export interface ShiftRosterEntry {
+  id: string;
+  name: string;
+  role: "shift_lead" | "floor_staff" | "owner";
+  station: string;
+  status: "on_duty" | "left_early" | "replaced" | "added_mid_shift";
+  note: string;
+  updatedAt: string;
+  updatedBy: string;
+}
+
+export interface ShiftRosterLogEntry {
+  id: string;
+  time: string;
+  actor: string;
+  action: string;
+  detail: string;
+}
+
 export interface ShiftData {
   report: ReportState;
   submitted: boolean;
@@ -177,6 +196,8 @@ export interface ShiftData {
   findings: Finding[];
   records: SourceRecord[];
   schedules: OperationalScheduleItem[];
+  shiftRoster?: ShiftRosterEntry[];
+  shiftRosterLog?: ShiftRosterLogEntry[];
   audit: AuditEvent[];
   signedOff: boolean;
   signedOffAt?: string;
@@ -754,6 +775,14 @@ function historical(shift: Shift): ShiftData {
     { id: `${shift.id}-4`, shiftId: shift.id, date: shift.date, time: `${base.signedOffAt}:02`, actor: `${SUPERVISOR} (Supervisor)`, actorKind: "human", type: "signoff", action: "Shift transferred to next shift", explanation: "No blockers remained." },
     { id: `${shift.id}-5`, shiftId: shift.id, date: shift.date, time: `${base.acknowledgedAt}:40`, actor: shift.incoming, actorKind: "human", type: "acknowledged", action: "Incoming shift acknowledged", explanation: "Handover briefing received." },
   ];
+  base.shiftRoster = [
+    { id: `${shift.id}-SR-1`, name: shift.outgoing, role: "shift_lead", station: "Manager", status: "on_duty", note: "Completed shift as lead", updatedAt: shift.start, updatedBy: shift.outgoing },
+    { id: `${shift.id}-SR-2`, name: "Sari", role: "floor_staff", station: "Barista", status: "on_duty", note: "Full shift", updatedAt: shift.start, updatedBy: shift.outgoing },
+    { id: `${shift.id}-SR-3`, name: "Bima", role: "floor_staff", station: "Cashier", status: "on_duty", note: "Full shift", updatedAt: shift.start, updatedBy: shift.outgoing },
+  ];
+  base.shiftRosterLog = [
+    { id: `${shift.id}-SRL-1`, time: shift.start, actor: shift.outgoing, action: "Shift roster initialized", detail: `${shift.outgoing} (Manager), Sari (Barista), Bima (Cashier) on duty.` },
+  ];
   return base;
 }
 
@@ -767,6 +796,12 @@ export function buildEmptyDb(): Record<string, ShiftData> {
       findings: [],
       records: recordsFor(s),
       schedules: [],
+      shiftRoster: [
+        { id: `${s.id}-SR-1`, name: s.outgoing, role: "shift_lead", station: "Manager", status: "on_duty", note: "Scheduled shift lead", updatedAt: s.start, updatedBy: s.outgoing },
+        { id: `${s.id}-SR-2`, name: "Sari", role: "floor_staff", station: "Barista", status: "on_duty", note: "Scheduled on floor", updatedAt: s.start, updatedBy: s.outgoing },
+        { id: `${s.id}-SR-3`, name: "Bima", role: "floor_staff", station: "Cashier", status: "on_duty", note: "Scheduled on floor", updatedAt: s.start, updatedBy: s.outgoing },
+      ],
+      shiftRosterLog: [],
       audit: [],
       signedOff: false,
       acknowledged: false,
@@ -801,6 +836,12 @@ export function buildInitialDb(): Record<string, ShiftData> {
         findings: [],
         records: recordsFor(s),
         schedules: schedulesFor(s),
+        shiftRoster: [
+          { id: `${s.id}-SR-1`, name: s.outgoing, role: "shift_lead", station: "Manager", status: "on_duty", note: "Scheduled shift lead", updatedAt: s.start, updatedBy: s.outgoing },
+          { id: `${s.id}-SR-2`, name: "Nadia", role: "floor_staff", station: "Cold Bar", status: "on_duty", note: "Scheduled on floor", updatedAt: s.start, updatedBy: s.outgoing },
+          { id: `${s.id}-SR-3`, name: "Reza", role: "floor_staff", station: "Roastery Support", status: "on_duty", note: "Scheduled on floor", updatedAt: s.start, updatedBy: s.outgoing },
+        ],
+        shiftRosterLog: [],
         audit: [],
         signedOff: false,
         acknowledged: false,
@@ -849,6 +890,18 @@ export function buildInitialDb(): Record<string, ShiftData> {
         findings: [],
         records,
         schedules: schedulesFor(s),
+        shiftRoster: [
+          { id: "SR-AFT-1", name: s.outgoing, role: "shift_lead", station: "Manager", status: "on_duty", note: "Shift lead on duty since shift start", updatedAt: "16:02", updatedBy: s.outgoing },
+          { id: "SR-AFT-2", name: "Sari", role: "floor_staff", station: "Barista", status: "on_duty", note: "Espresso bar station", updatedAt: "16:02", updatedBy: s.outgoing },
+          { id: "SR-AFT-3", name: "Bima", role: "floor_staff", station: "Cashier", status: "left_early", note: "Left early at 19:30 (unwell) — covered by Reza", updatedAt: "19:30", updatedBy: s.outgoing },
+          { id: "SR-AFT-4", name: "Reza", role: "floor_staff", station: "Cashier (Cover)", status: "added_mid_shift", note: "Called in mid-shift to cover Bima on Cashier", updatedAt: "19:32", updatedBy: s.outgoing },
+          { id: "SR-AFT-5", name: "Nadia", role: "floor_staff", station: "Cold Bar", status: "on_duty", note: "Cold bar & customer pickup", updatedAt: "16:02", updatedBy: s.outgoing },
+        ],
+        shiftRosterLog: [
+          { id: "SRL-AFT-3", time: "19:32", actor: `${s.outgoing} (Shift Lead)`, action: "Added staff mid-shift", detail: "Reza added to Cashier (Cover) to replace Bima." },
+          { id: "SRL-AFT-2", time: "19:30", actor: `${s.outgoing} (Shift Lead)`, action: "Marked Left Early", detail: "Bima (Cashier) left early at 19:30 (unwell)." },
+          { id: "SRL-AFT-1", time: "16:02", actor: `${s.outgoing} (Shift Lead)`, action: "Shift roster initialized", detail: `${s.outgoing} (Manager), Sari (Barista), Bima (Cashier), Nadia (Cold Bar) signed in.` },
+        ],
         signedOff: false,
         acknowledged: false,
         signedIn: true,

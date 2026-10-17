@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { Check, ChevronLeft, ChevronRight, Clock, Edit3, KeyRound, Plus, ShieldCheck, Trash2, Users, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Clock, Edit3, KeyRound, Lock, Plus, ShieldCheck, Trash2, Users, X } from "lucide-react";
 import { Tag } from "./ui";
-import type { Shift, ShiftData } from "../data";
+import type { Shift, ShiftData, ShiftRosterEntry } from "../data";
 import { CAFE, SHIFT_TYPE_LABEL, STAFF_NAMES } from "../data";
 
 export interface StaffMember {
@@ -29,26 +29,49 @@ const ROLE_LABELS: Record<StaffMember["role"], string> = {
   floor_staff: "Staff in shift",
 };
 
+const SHIFT_STATUS_LABELS: Record<ShiftRosterEntry["status"], string> = {
+  on_duty: "On Duty",
+  left_early: "Left Early",
+  replaced: "Replaced / Covered",
+  added_mid_shift: "Added Mid-Shift",
+};
+
+const SHIFT_STATUS_TONE: Record<ShiftRosterEntry["status"], "success" | "warning" | "neutral" | "info"> = {
+  on_duty: "success",
+  left_early: "warning",
+  replaced: "neutral",
+  added_mid_shift: "info",
+};
+
 interface Props {
   roster: StaffMember[];
   isOwner?: boolean;
+  isShiftLead?: boolean;
+  activeActorName?: string;
   shift?: Shift;
   data?: ShiftData;
   onChangeStaff?: (which: "outgoing" | "incoming", newName: string) => void;
   onAddStaff?: (member: Omit<StaffMember, "id">) => void;
   onUpdateStaff?: (member: StaffMember) => void;
   onDeleteStaff?: (id: string) => void;
+  onAddShiftRosterMember?: (entry: Omit<ShiftRosterEntry, "id" | "updatedAt" | "updatedBy">) => void;
+  onUpdateShiftRosterMember?: (entryId: string, patch: { name: string; role: ShiftRosterEntry["role"]; station: string; status: ShiftRosterEntry["status"]; note: string }) => void;
+  onRemoveShiftRosterMember?: (entryId: string, reason?: string) => void;
 }
 
 export default function StaffRoster({
   roster,
   isOwner = false,
+  isShiftLead = true,
+  activeActorName,
   shift,
   data,
-  onChangeStaff,
   onAddStaff,
   onUpdateStaff,
   onDeleteStaff,
+  onAddShiftRosterMember,
+  onUpdateShiftRosterMember,
+  onRemoveShiftRosterMember,
 }: Props) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState("");
@@ -62,6 +85,22 @@ export default function StaffRoster({
   const [editRole, setEditRole] = useState<StaffMember["role"]>("shift_lead");
   const [editStation, setEditStation] = useState("");
   const [editPin, setEditPin] = useState("");
+
+  // Part 2: Current Shift Roster state (editable by Shift Lead or Owner)
+  const canEditCurrentShift = (isOwner || isShiftLead) && !data?.signedOff;
+  const [showAddShiftMember, setShowAddShiftMember] = useState(false);
+  const [srName, setSrName] = useState("");
+  const [srRole, setSrRole] = useState<ShiftRosterEntry["role"]>("floor_staff");
+  const [srStation, setSrStation] = useState("Barista");
+  const [srStatus, setSrStatus] = useState<ShiftRosterEntry["status"]>("added_mid_shift");
+  const [srNote, setSrNote] = useState("");
+
+  const [editingShiftEntryId, setEditingShiftEntryId] = useState<string | null>(null);
+  const [editSrName, setEditSrName] = useState("");
+  const [editSrRole, setEditSrRole] = useState<ShiftRosterEntry["role"]>("floor_staff");
+  const [editSrStation, setEditSrStation] = useState("");
+  const [editSrStatus, setEditSrStatus] = useState<ShiftRosterEntry["status"]>("on_duty");
+  const [editSrNote, setEditSrNote] = useState("");
 
   const PAGE_SIZE = 5;
   const [currentPage, setCurrentPage] = useState(1);
@@ -483,7 +522,7 @@ export default function StaffRoster({
         </div>
       </section>
 
-      {/* Part 2: Current Shift (Lead on duty: Dimas · transfers to Rina) */}
+      {/* Part 2: Current Shift Roster (Editable by Shift Lead or Owner with Timestamp Recording) */}
       <section
         className="card"
         style={{
@@ -494,104 +533,405 @@ export default function StaffRoster({
           borderRadius: "10px",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px", marginBottom: "14px" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: "12px", marginBottom: "16px" }}>
           <div>
             <span className="eyebrow" style={{ display: "inline-flex", alignItems: "center", gap: "5px", color: "var(--espresso-600)" }}>
               <Clock className="icon icon-xs" aria-hidden="true" />
-              Part 2 · Current Shift
+              Part 2 · Current Shift Roster
             </span>
             <h2 style={{ fontSize: "16px", fontWeight: 700, margin: "2px 0 0" }}>
-              {shift ? `${SHIFT_TYPE_LABEL[shift.type]} Shift (${shift.start}–${shift.end})` : "Current Shift"}
+              {shift ? `${SHIFT_TYPE_LABEL[shift.type]} Shift (${shift.start}–${shift.end}) — Staff Working This Shift` : "Current Shift Roster"}
             </h2>
             <p className="muted-text" style={{ fontSize: "12px", margin: "2px 0 0" }}>
-              {shift ? `${shift.dayShort} ${shift.dateLabel} · ${CAFE.name} (${CAFE.branch})` : "Active floor shift handover"}
+              {shift ? `${shift.dayShort} ${shift.dateLabel} · ${CAFE.name} (${CAFE.branch})` : "Active floor shift roster"} — Record early departures, replacements, or mid-shift covers with automatic timestamps.
             </p>
           </div>
 
-          {data && (
-            <Tag tone={data.signedOff ? "neutral" : data.submitted ? "info" : data.signedIn ? "success" : "warning"}>
-              {data.signedOff
-                ? `Transferred ${data.signedOffAt}`
-                : data.submitted
-                  ? `Report completed ${data.submittedAt}`
-                  : data.signedIn
-                    ? `Active · Signed in ${data.signedInAt || (shift ? shift.start : "")}`
-                    : "Shift in progress"}
-            </Tag>
-          )}
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+            <span
+              className="mono-small"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "5px",
+                padding: "4px 10px",
+                borderRadius: "6px",
+                background: canEditCurrentShift ? "var(--amber-50)" : "var(--paper-100)",
+                border: canEditCurrentShift ? "1px solid var(--amber-300)" : "1px solid var(--paper-300)",
+                color: canEditCurrentShift ? "var(--espresso-700)" : "var(--ink-500)",
+                fontSize: "11.5px",
+                fontWeight: 600,
+              }}
+            >
+              {canEditCurrentShift ? (
+                <>
+                  <ShieldCheck className="icon icon-xs" aria-hidden="true" />
+                  Edit Permission: {isOwner ? `Owner (${activeActorName || "Kevin"})` : `Shift Lead (${shift?.outgoing || activeActorName || "Dimas"})`}
+                </>
+              ) : (
+                <>
+                  <Lock className="icon icon-xs" aria-hidden="true" />
+                  Read-only (Shift Lead or Owner required to edit)
+                </>
+              )}
+            </span>
+
+            {canEditCurrentShift && onAddShiftRosterMember && (
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => {
+                  if (!showAddShiftMember && !srName) {
+                    const firstAvailable = staffSelectOptions.find(
+                      n => !(data?.shiftRoster || []).some(r => r.name === n && r.status === "on_duty")
+                    ) || staffSelectOptions[0] || "";
+                    setSrName(firstAvailable);
+                  }
+                  setShowAddShiftMember(v => !v);
+                }}
+              >
+                <Plus className="icon icon-xs" aria-hidden="true" />
+                {showAddShiftMember ? "Close" : "+ Add Staff to Shift"}
+              </button>
+            )}
+          </div>
         </div>
 
-        {shift ? (
-          <div
+        {/* Add Staff to Current Shift Form */}
+        {canEditCurrentShift && showAddShiftMember && onAddShiftRosterMember && (
+          <form
+            onSubmit={e => {
+              e.preventDefault();
+              const cleanName = srName.trim();
+              if (!cleanName) return;
+              onAddShiftRosterMember({
+                name: cleanName,
+                role: srRole,
+                station: srStation.trim() || (srRole === "shift_lead" ? "Manager" : "Barista"),
+                status: srStatus,
+                note: srNote.trim() || (srStatus === "added_mid_shift" ? "Added mid-shift as cover" : "Added to current shift roster"),
+              });
+              setSrNote("");
+              setShowAddShiftMember(false);
+            }}
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              flexWrap: "wrap",
-              padding: "14px 18px",
-              background: "var(--paper-50)",
-              border: "1px solid var(--paper-300)",
+              padding: "14px 16px",
+              marginBottom: "14px",
               borderRadius: "8px",
-              fontSize: "13px",
+              border: "1.5px solid var(--espresso-600)",
+              background: "var(--amber-50)",
             }}
           >
-            <div style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
-              <span className="muted-text" style={{ fontWeight: 500 }}>Lead on duty:</span>
-              {!data?.signedOff && onChangeStaff ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+              <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--ink-900)" }}>
+                Add Staff Member to Current Shift (Records Timestamp)
+              </span>
+              <button type="button" className="icon-btn" onClick={() => setShowAddShiftMember(false)} aria-label="Close">
+                <X className="icon icon-xs" aria-hidden="true" />
+              </button>
+            </div>
+            <div className="field-grid field-grid-2" style={{ gap: "10px", marginBottom: "10px" }}>
+              <label className="field">
+                <span className="field-label">Staff Member</span>
                 <select
-                  aria-label="Current shift lead on duty"
                   className="input input-sm"
-                  value={shift.outgoing}
-                  onChange={e => onChangeStaff("outgoing", e.target.value)}
-                  style={{
-                    width: "auto",
-                    height: "30px",
-                    padding: "2px 10px",
-                    fontSize: "12.5px",
-                    fontWeight: 600,
-                    background: "var(--paper-0)",
+                  value={srName}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setSrName(val);
+                    const matched = roster.find(m => m.name === val);
+                    if (matched) {
+                      setSrRole(matched.role);
+                      setSrStation(matched.station);
+                    }
                   }}
                 >
                   {staffSelectOptions.map(n => (
                     <option key={n} value={n}>{n}</option>
                   ))}
                 </select>
-              ) : (
-                <strong>{shift.outgoing}</strong>
-              )}
-            </div>
+              </label>
 
-            <span className="muted-text">· transfers to</span>
-
-            <div style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
-              {!data?.signedOff && onChangeStaff ? (
+              <label className="field">
+                <span className="field-label">Shift Role</span>
                 <select
-                  aria-label="Next shift lead"
                   className="input input-sm"
-                  value={shift.incoming}
-                  onChange={e => onChangeStaff("incoming", e.target.value)}
-                  style={{
-                    width: "auto",
-                    height: "30px",
-                    padding: "2px 10px",
-                    fontSize: "12.5px",
-                    fontWeight: 600,
-                    background: "var(--paper-0)",
+                  value={srRole}
+                  onChange={e => {
+                    const r = e.target.value as ShiftRosterEntry["role"];
+                    setSrRole(r);
+                    if (r === "shift_lead") setSrStation("Manager");
                   }}
                 >
-                  {staffSelectOptions.map(n => (
-                    <option key={n} value={n}>{n}</option>
-                  ))}
+                  <option value="floor_staff">Staff in shift</option>
+                  <option value="shift_lead">Shift Lead (Manager)</option>
                 </select>
-              ) : (
-                <strong>{shift.incoming}</strong>
-              )}
+              </label>
+
+              <label className="field">
+                <span className="field-label">Station</span>
+                <input
+                  className="input input-sm"
+                  value={srStation}
+                  onChange={e => setSrStation(e.target.value)}
+                  placeholder="e.g. Barista, Cashier, Cold Bar"
+                />
+              </label>
+
+              <label className="field">
+                <span className="field-label">Status</span>
+                <select
+                  className="input input-sm"
+                  value={srStatus}
+                  onChange={e => setSrStatus(e.target.value as ShiftRosterEntry["status"])}
+                >
+                  <option value="added_mid_shift">Added Mid-Shift (Cover)</option>
+                  <option value="on_duty">On Duty</option>
+                </select>
+              </label>
             </div>
 
-            <span className="muted-text" style={{ fontSize: "12px", marginLeft: "auto" }}>
-              Shift lead transfers automatically upon sign-off.
-            </span>
-          </div>
+            <label className="field" style={{ marginBottom: "10px" }}>
+              <span className="field-label">Reason / Handover Note (Recorded with Timestamp)</span>
+              <input
+                className="input input-sm"
+                value={srNote}
+                onChange={e => setSrNote(e.target.value)}
+                placeholder="e.g. Called in at 19:30 to cover Bima on Cashier"
+              />
+            </label>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+              <button type="button" className="btn btn-ghost btn-xs" onClick={() => setShowAddShiftMember(false)}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary btn-xs">
+                <Check className="icon icon-xs" aria-hidden="true" />
+                Add & Record Timestamp
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* Current Shift Staff Table */}
+        {shift && data ? (
+          <>
+            <div style={{ border: "1px solid var(--paper-300)", borderRadius: "8px", overflow: "hidden" }}>
+              <table className="table" style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "var(--paper-100)", borderBottom: "1px solid var(--paper-300)", textAlign: "left", fontSize: "11.5px", color: "var(--ink-600)" }}>
+                    <th style={{ padding: "10px 14px" }}>Name</th>
+                    <th style={{ padding: "10px 14px" }}>Role</th>
+                    <th style={{ padding: "10px 14px" }}>Station</th>
+                    <th style={{ padding: "10px 14px" }}>Shift Status</th>
+                    <th style={{ padding: "10px 14px" }}>Roster Note / Change Reason</th>
+                    <th style={{ padding: "10px 14px" }}>Timestamp</th>
+                    {canEditCurrentShift && <th style={{ padding: "10px 14px", textAlign: "right" }}>Actions</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(data.shiftRoster || []).map(entry => {
+                    const isEditingRow = canEditCurrentShift && editingShiftEntryId === entry.id;
+                    return (
+                      <tr
+                        key={entry.id}
+                        style={{
+                          borderBottom: "1px solid var(--paper-200)",
+                          fontSize: "12.5px",
+                          background: entry.status === "left_early" || entry.status === "replaced" ? "var(--paper-50)" : "var(--paper-0)",
+                        }}
+                      >
+                        <td style={{ padding: "10px 14px", fontWeight: 600 }}>
+                          {isEditingRow ? (
+                            <select
+                              className="input input-sm"
+                              value={editSrName}
+                              onChange={e => setEditSrName(e.target.value)}
+                              title="Select staff member or replacement"
+                            >
+                              {staffSelectOptions.map(n => (
+                                <option key={n} value={n}>{n}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span style={{ textDecoration: entry.status === "left_early" || entry.status === "replaced" ? "line-through" : "none", color: entry.status === "left_early" || entry.status === "replaced" ? "var(--ink-500)" : "var(--ink-900)" }}>
+                              {entry.name}
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ padding: "10px 14px" }}>
+                          {isEditingRow ? (
+                            <select
+                              className="input input-sm"
+                              value={editSrRole}
+                              onChange={e => setEditSrRole(e.target.value as ShiftRosterEntry["role"])}
+                            >
+                              <option value="shift_lead">Manager (Shift Lead)</option>
+                              <option value="floor_staff">Staff in shift</option>
+                            </select>
+                          ) : (
+                            <Tag tone={entry.role === "shift_lead" ? "info" : "neutral"}>
+                              {entry.role === "shift_lead" ? "Shift Lead" : "Staff in shift"}
+                            </Tag>
+                          )}
+                        </td>
+                        <td style={{ padding: "10px 14px" }}>
+                          {isEditingRow ? (
+                            <input
+                              className="input input-sm"
+                              value={editSrStation}
+                              onChange={e => setEditSrStation(e.target.value)}
+                            />
+                          ) : (
+                            entry.station
+                          )}
+                        </td>
+                        <td style={{ padding: "10px 14px" }}>
+                          {isEditingRow ? (
+                            <select
+                              className="input input-sm"
+                              value={editSrStatus}
+                              onChange={e => setEditSrStatus(e.target.value as ShiftRosterEntry["status"])}
+                            >
+                              <option value="on_duty">On Duty</option>
+                              <option value="left_early">Left Early</option>
+                              <option value="replaced">Replaced / Covered</option>
+                              <option value="added_mid_shift">Added Mid-Shift</option>
+                            </select>
+                          ) : (
+                            <Tag tone={SHIFT_STATUS_TONE[entry.status]}>
+                              {SHIFT_STATUS_LABELS[entry.status]}
+                            </Tag>
+                          )}
+                        </td>
+                        <td style={{ padding: "10px 14px", color: "var(--ink-700)" }}>
+                          {isEditingRow ? (
+                            <input
+                              className="input input-sm"
+                              value={editSrNote}
+                              onChange={e => setEditSrNote(e.target.value)}
+                              placeholder="e.g. Left early at 19:30, covered by Reza"
+                            />
+                          ) : (
+                            entry.note || "—"
+                          )}
+                        </td>
+                        <td style={{ padding: "10px 14px" }} className="mono-small">
+                          <div>{entry.updatedAt}</div>
+                          <div style={{ fontSize: "10.5px", color: "var(--ink-400)" }}>by {entry.updatedBy}</div>
+                        </td>
+                        {canEditCurrentShift && (
+                          <td style={{ padding: "10px 14px", textAlign: "right", whiteSpace: "nowrap" }}>
+                            {isEditingRow ? (
+                              <div style={{ display: "inline-flex", gap: "6px" }}>
+                                <button
+                                  type="button"
+                                  className="btn btn-primary btn-xs"
+                                  onClick={() => {
+                                    if (onUpdateShiftRosterMember) {
+                                      onUpdateShiftRosterMember(entry.id, {
+                                        name: editSrName,
+                                        role: editSrRole,
+                                        station: editSrStation.trim() || entry.station,
+                                        status: editSrStatus,
+                                        note: editSrNote.trim() || entry.note,
+                                      });
+                                    }
+                                    setEditingShiftEntryId(null);
+                                  }}
+                                >
+                                  <Check className="icon icon-xs" aria-hidden="true" />
+                                  Save
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-ghost btn-xs"
+                                  onClick={() => setEditingShiftEntryId(null)}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <div style={{ display: "inline-flex", gap: "6px" }}>
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary btn-xs"
+                                  onClick={() => {
+                                    setEditingShiftEntryId(entry.id);
+                                    setEditSrName(entry.name);
+                                    setEditSrRole(entry.role);
+                                    setEditSrStation(entry.station);
+                                    setEditSrStatus(entry.status);
+                                    setEditSrNote(entry.note);
+                                  }}
+                                  title="Change status (e.g. Left Early), replace staff, or change station with timestamp"
+                                >
+                                  <Edit3 className="icon icon-xs" aria-hidden="true" />
+                                  Change
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-ghost btn-xs"
+                                  onClick={() => onRemoveShiftRosterMember && onRemoveShiftRosterMember(entry.id)}
+                                  style={{ color: "var(--crimson-600)" }}
+                                  title="Remove from current shift roster (logs timestamp)"
+                                >
+                                  <Trash2 className="icon icon-xs" aria-hidden="true" />
+                                  Remove
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Timestamped Shift Roster Change Log */}
+            {(data.shiftRosterLog || []).length > 0 && (
+              <div
+                style={{
+                  marginTop: "14px",
+                  padding: "12px 14px",
+                  borderRadius: "8px",
+                  background: "var(--paper-50)",
+                  border: "1px solid var(--paper-200)",
+                }}
+              >
+                <div className="mono-label" style={{ marginBottom: "8px", color: "var(--ink-600)" }}>
+                  TIMESTAMPED CURRENT SHIFT ROSTER LOG ({data.shiftRosterLog!.length})
+                </div>
+                <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "6px" }}>
+                  {data.shiftRosterLog!.map(log => (
+                    <li
+                      key={log.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "baseline",
+                        gap: "8px",
+                        fontSize: "12px",
+                        color: "var(--ink-700)",
+                      }}
+                    >
+                      <span className="mono-small" style={{ fontWeight: 700, color: "var(--espresso-600)", flexShrink: 0 }}>
+                        [{log.time}]
+                      </span>
+                      <span style={{ fontWeight: 600, color: "var(--ink-900)", flexShrink: 0 }}>
+                        {log.action}
+                      </span>
+                      <span style={{ color: "var(--ink-700)" }}>— {log.detail}</span>
+                      <span className="muted-text" style={{ marginLeft: "auto", fontSize: "11px", flexShrink: 0 }}>
+                        by {log.actor}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </>
         ) : (
           <p className="muted-text">No active shift selected.</p>
         )}

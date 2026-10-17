@@ -32,6 +32,7 @@ interface Props {
     incomingLead: string;
     crew: string[];
     ownerMode?: boolean;
+    userRole?: "owner" | "shift_lead" | "floor_staff";
     openTab: "dashboard" | "report" | "briefing" | "ledger" | "roster";
   }) => void;
 }
@@ -123,7 +124,10 @@ export default function ShiftLogin({
     }
 
     setPinError("");
-    const resolvedLeadName = matchedMember ? matchedMember.name : (ownerMember?.name ?? "Store Owner");
+    const resolvedLeadName = matchedMember ? matchedMember.name : (ownerMember?.name ?? "Kevin");
+    const resolvedRole: "owner" | "shift_lead" | "floor_staff" = isOwner
+      ? "owner"
+      : (matchedMember?.role ?? "shift_lead");
 
     onStartShiftSession({
       shiftId: selectedShiftId,
@@ -131,7 +135,8 @@ export default function ShiftLogin({
       incomingLead: shift.incoming,
       crew: selectedCrew,
       ownerMode: isOwner,
-      openTab: isOwner ? "roster" : "report",
+      userRole: resolvedRole,
+      openTab: "dashboard",
     });
   };
 
@@ -156,6 +161,39 @@ export default function ShiftLogin({
             <span className="brand-name">ShiftGuard</span>
             <span className="brand-sub">{CAFE.name} · {CAFE.branch} · POS Terminal #01</span>
           </span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <button
+            type="button"
+            onClick={() =>
+              onStartShiftSession({
+                shiftId: selectedShiftId,
+                outgoingLead: shift.outgoing,
+                incomingLead: shift.incoming,
+                crew: selectedCrew,
+                ownerMode: false,
+                userRole: "shift_lead",
+                openTab: "dashboard",
+              })
+            }
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "5px 12px",
+              borderRadius: "6px",
+              border: "1px dashed var(--espresso-600)",
+              background: "var(--amber-50)",
+              color: "var(--espresso-700)",
+              fontSize: "11.5px",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+            title="Hackathon Judging Only (not in final production app): Bypass POS PIN login and jump straight to the Dashboard"
+          >
+            <ShieldCheck className="icon icon-xs" aria-hidden="true" />
+            [Judging Only] Skip Login → Dashboard
+          </button>
         </div>
       </header>
 
@@ -432,10 +470,10 @@ export default function ShiftLogin({
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
                 <span style={{ fontWeight: 600, color: "var(--espresso-700)", display: "flex", alignItems: "center", gap: "5px" }}>
                   <ShieldCheck className="icon icon-xs" aria-hidden="true" />
-                  Judge & Demo Shortcuts
+                  Judging-Only Controls (Not in Final Production App)
                 </span>
                 <span style={{ fontSize: "11px", color: "var(--ink-500)" }}>
-                  Instant Hackathon Testability
+                  Hackathon Evaluation Mode
                 </span>
               </div>
 
@@ -478,30 +516,44 @@ export default function ShiftLogin({
                 </div>
               )}
 
-              {/* 1-Click Quick Fill (sets PIN without exposing raw number in button) */}
+              {/* 1-Click Judging Bypass to Dashboard */}
               <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
-                <span style={{ color: "var(--ink-600)", minWidth: "75px" }}>Quick Sign-In:</span>
+                <span style={{ color: "var(--ink-600)", minWidth: "75px" }}>Judging Way:</span>
                 <button
                   type="button"
-                  onClick={() => {
-                    setLeadPin("1234");
-                    setPinError("");
-                  }}
+                  onClick={() =>
+                    onStartShiftSession({
+                      shiftId: selectedShiftId,
+                      outgoingLead: shift.outgoing,
+                      incomingLead: shift.incoming,
+                      crew: selectedCrew,
+                      ownerMode: false,
+                      userRole: "shift_lead",
+                      openTab: "dashboard",
+                    })
+                  }
                   className="btn btn-secondary btn-sm"
                   style={{ fontSize: "11px", padding: "3px 9px" }}
                 >
-                  Quick-Fill Manager (Dimas)
+                  Open Dashboard as Shift Lead ({shift.outgoing})
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setLeadPin("9999");
-                    setPinError("");
-                  }}
+                  onClick={() =>
+                    onStartShiftSession({
+                      shiftId: selectedShiftId,
+                      outgoingLead: "Kevin",
+                      incomingLead: shift.incoming,
+                      crew: selectedCrew,
+                      ownerMode: true,
+                      userRole: "owner",
+                      openTab: "dashboard",
+                    })
+                  }
                   className="btn btn-secondary btn-sm"
                   style={{ fontSize: "11px", padding: "3px 9px" }}
                 >
-                  Quick-Fill Owner (Kevin)
+                  Open Dashboard as Owner (Kevin)
                 </button>
               </div>
             </div>

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ArrowRight, ArrowRightLeft, ClipboardCheck, LayoutDashboard, Database, Download, ListChecks, LogIn, ScrollText, ShieldCheck, Users, X } from "lucide-react";
-import type { AuditEvent, ChecklistItem, Finding, OperationalScheduleItem, ReportState, ShiftData, SourceRecord } from "./data";
+import type { AuditEvent, ChecklistItem, Finding, OperationalScheduleItem, ReportState, ShiftData, ShiftRosterEntry, SourceRecord } from "./data";
 import {
   CAFE, CURRENT_SHIFT_ID, SHIFTS, SUPERVISOR, SHIFT_TYPE_LABEL, STAFF_NAMES, buildEmptyDb, buildInitialDb, categoryComplete, effectiveShift, makeEvent, reconcile, shiftById, signoffState, stampTime, bucketOf,
 } from "./data";
@@ -23,6 +23,8 @@ export default function App() {
   const [shiftId, setShiftId] = useState(CURRENT_SHIFT_ID);
   const [showLoginScreen, setShowLoginScreen] = useState(true);
   const [isOwnerMode, setIsOwnerMode] = useState(false);
+  const [activeUserRole, setActiveUserRole] = useState<"owner" | "shift_lead" | "floor_staff">("shift_lead");
+  const [activeUserName, setActiveUserName] = useState<string>("Dimas");
   const [roster, setRoster] = useState<StaffMember[]>(INITIAL_STAFF_ROSTER);
   const [tab, setTab] = useState<Tab>("dashboard");
   const [justSubmitted, setJustSubmitted] = useState(false);
@@ -90,12 +92,16 @@ export default function App() {
     incomingLead: string;
     crew: string[];
     ownerMode?: boolean;
+    userRole?: "owner" | "shift_lead" | "floor_staff";
     openTab: "dashboard" | "report" | "briefing" | "ledger" | "roster";
   }) => {
     const time = stampTime().slice(0, 5);
     const targetShift = shiftById(params.shiftId);
     const ownerActive = Boolean(params.ownerMode);
+    const resolvedRole = params.userRole ?? (ownerActive ? "owner" : "shift_lead");
     setIsOwnerMode(ownerActive);
+    setActiveUserRole(resolvedRole);
+    setActiveUserName(params.outgoingLead);
     setShiftId(params.shiftId);
     setSelectedFinding(null);
     setSelectedRecordId(null);
@@ -186,6 +192,132 @@ export default function App() {
     }));
   };
 
+  const handleAddShiftRosterMember = (entry: Omit<ShiftRosterEntry, "id" | "updatedAt" | "updatedBy">) => {
+    if (!isOwnerMode && activeUserRole !== "shift_lead") return;
+    const time = stampTime().slice(0, 5);
+    const actorLabel = isOwnerMode ? `${activeUserName || SUPERVISOR} (Owner)` : `${shift.outgoing} (Shift Lead)`;
+    update(d => {
+      const currentList = d.shiftRoster || [];
+      const newEntry: ShiftRosterEntry = {
+        ...entry,
+        id: `SR-${Date.now().toString(36).toUpperCase()}`,
+        updatedAt: time,
+        updatedBy: isOwnerMode ? (activeUserName || SUPERVISOR) : shift.outgoing,
+      };
+      const logEntry = {
+        id: `SRL-${Date.now().toString(36).toUpperCase()}`,
+        time,
+        actor: actorLabel,
+        action: "Added to current shift",
+        detail: `${entry.name} (${entry.station}) — ${entry.note}`,
+      };
+      return {
+        ...d,
+        ...(entry.role === "shift_lead" && entry.status === "on_duty" ? { outgoingLead: entry.name } : {}),
+        shiftRoster: [...currentList, newEntry],
+        shiftRosterLog: [logEntry, ...(d.shiftRosterLog || [])],
+        audit: [
+          ...d.audit,
+          ev({
+            actor: actorLabel,
+            actorKind: "human",
+            type: "shift",
+            action: "Current shift roster: staff added",
+            explanation: `[${time}] ${entry.name} (${entry.station}) added to ${SHIFT_TYPE_LABEL[shift.type]} shift: ${entry.note}.`,
+          }),
+        ],
+      };
+    });
+  };
+
+  const handleUpdateShiftRosterMember = (
+    entryId: string,
+    patch: { name: string; role: ShiftRosterEntry["role"]; station: string; status: ShiftRosterEntry["status"]; note: string }
+  ) => {
+    if (!isOwnerMode && activeUserRole !== "shift_lead") return;
+    const time = stampTime().slice(0, 5);
+    const actorLabel = isOwnerMode ? `${activeUserName || SUPERVISOR} (Owner)` : `${shift.outgoing} (Shift Lead)`;
+    update(d => {
+      const currentList = d.shiftRoster || [];
+      const prevEntry = currentList.find(x => x.id === entryId);
+      const updatedList = currentList.map(x =>
+        x.id === entryId
+          ? {
+              ...x,
+              ...patch,
+              updatedAt: time,
+              updatedBy: isOwnerMode ? (activeUserName || SUPERVISOR) : shift.outgoing,
+            }
+          : x
+      );
+      const actionLabel =
+        patch.status === "left_early"
+          ? "Marked Left Early"
+          : patch.status === "replaced" || (prevEntry && prevEntry.name !== patch.name)
+            ? "Staff Replaced / Changed"
+            : "Current Shift Roster Updated";
+      const detailText =
+        prevEntry && prevEntry.name !== patch.name
+          ? `${prevEntry.name} replaced by ${patch.name} (${patch.station}) — ${patch.note}`
+          : `${patch.name} (${patch.station}) · ${patch.status.replace(/_/g, " ")} — ${patch.note}`;
+      const logEntry = {
+        id: `SRL-${Date.now().toString(36).toUpperCase()}`,
+        time,
+        actor: actorLabel,
+        action: actionLabel,
+        detail: detailText,
+      };
+      return {
+        ...d,
+        ...(patch.role === "shift_lead" && patch.status === "on_duty" ? { outgoingLead: patch.name } : {}),
+        shiftRoster: updatedList,
+        shiftRosterLog: [logEntry, ...(d.shiftRosterLog || [])],
+        audit: [
+          ...d.audit,
+          ev({
+            actor: actorLabel,
+            actorKind: "human",
+            type: "shift",
+            action: `Current shift roster: ${actionLabel}`,
+            explanation: `[${time}] ${detailText}`,
+          }),
+        ],
+      };
+    });
+  };
+
+  const handleRemoveShiftRosterMember = (entryId: string) => {
+    if (!isOwnerMode && activeUserRole !== "shift_lead") return;
+    const time = stampTime().slice(0, 5);
+    const actorLabel = isOwnerMode ? `${activeUserName || SUPERVISOR} (Owner)` : `${shift.outgoing} (Shift Lead)`;
+    update(d => {
+      const currentList = d.shiftRoster || [];
+      const removed = currentList.find(x => x.id === entryId);
+      const logEntry = {
+        id: `SRL-${Date.now().toString(36).toUpperCase()}`,
+        time,
+        actor: actorLabel,
+        action: "Removed from current shift",
+        detail: `${removed ? `${removed.name} (${removed.station})` : entryId} removed from active shift roster.`,
+      };
+      return {
+        ...d,
+        shiftRoster: currentList.filter(x => x.id !== entryId),
+        shiftRosterLog: [logEntry, ...(d.shiftRosterLog || [])],
+        audit: [
+          ...d.audit,
+          ev({
+            actor: actorLabel,
+            actorKind: "human",
+            type: "shift",
+            action: "Current shift roster: staff removed",
+            explanation: `[${time}] ${removed ? `${removed.name} (${removed.station})` : entryId} removed from ${SHIFT_TYPE_LABEL[shift.type]} shift.`,
+          }),
+        ],
+      };
+    });
+  };
+
   const handleSignIn = (staffName: string) => {
     const time = stampTime().slice(0, 5);
     update(d => ({
@@ -213,9 +345,29 @@ export default function App() {
   const handleChangeStaff = (which: "outgoing" | "incoming", newName: string) => {
     const prevName = which === "outgoing" ? shift.outgoing : shift.incoming;
     if (!newName || newName === prevName) return;
+    const time = stampTime().slice(0, 5);
     update(d => ({
       ...d,
       ...(which === "outgoing" ? { outgoingLead: newName } : { incomingLead: newName }),
+      ...(which === "outgoing" && d.shiftRoster
+        ? {
+            shiftRoster: d.shiftRoster.map(r =>
+              r.role === "shift_lead"
+                ? { ...r, name: newName, note: `Replaced ${prevName} as shift lead`, updatedAt: time, updatedBy: newName }
+                : r
+            ),
+            shiftRosterLog: [
+              {
+                id: `SRL-${Date.now().toString(36).toUpperCase()}`,
+                time,
+                actor: `${newName} (Shift Lead)`,
+                action: "Shift Lead Replaced",
+                detail: `${prevName} replaced by ${newName} as active shift lead.`,
+              },
+              ...(d.shiftRosterLog || []),
+            ],
+          }
+        : {}),
       audit: [
         ...d.audit,
         ev({
@@ -936,16 +1088,22 @@ export default function App() {
             </span>
           </button>
 
-          {/* Topbar Workspace Data State Switcher */}
+          {/* Judging-Only Controls Bar (Not in Final Production App) */}
           <div
             style={{
               display: "inline-flex",
+              alignItems: "center",
+              gap: "4px",
               borderRadius: "6px",
-              border: "1px solid var(--paper-300)",
+              border: "1px dashed var(--paper-400)",
               background: "var(--paper-100)",
-              padding: "2px",
+              padding: "2px 6px",
             }}
+            title="Hackathon Judging Controls (not present in the final store tablet production app)"
           >
+            <span style={{ fontSize: "10.5px", fontWeight: 700, color: "var(--espresso-700)", textTransform: "uppercase", letterSpacing: "0.04em", paddingRight: "4px" }}>
+              Judging Only:
+            </span>
             <button
               type="button"
               onClick={() => handleSwitchDataPreset("empty")}
@@ -978,6 +1136,28 @@ export default function App() {
             >
               Seeded Demo
             </button>
+            <span style={{ color: "var(--paper-400)", fontSize: "11px" }}>|</span>
+            <button
+              type="button"
+              onClick={() => setShowLoginScreen(true)}
+              title="Judging-only shortcut (not in final production app): Return to POS Tablet Login screen or switch staff role"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+                padding: "2px 8px",
+                borderRadius: "4px",
+                fontSize: "11px",
+                fontWeight: 600,
+                background: "var(--paper-0)",
+                color: "var(--espresso-700)",
+                border: "1px solid var(--paper-300)",
+                cursor: "pointer",
+              }}
+            >
+              <LogIn className="icon icon-xs" aria-hidden="true" />
+              Switch Staff / Login
+            </button>
           </div>
         </div>
 
@@ -1004,16 +1184,6 @@ export default function App() {
           <span className="mono-small" style={{ color: "var(--ink-600)", background: "var(--paper-100)", border: "1px solid var(--paper-300)", padding: "4px 10px", borderRadius: "6px" }}>
             {SHIFT_TYPE_LABEL[shift.type]} Shift ({shift.start}–{shift.end}) · Lead: <strong>{shift.outgoing}</strong>
           </span>
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() => setShowLoginScreen(true)}
-            title="Return to POS Tablet Staff Login & Start Shift screen"
-            style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}
-          >
-            <LogIn className="icon icon-sm" aria-hidden="true" />
-            Switch Staff / Start Shift
-          </button>
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowExport(true)}>
             <Download className="icon icon-sm" aria-hidden="true" />Export
           </button>
@@ -1173,12 +1343,17 @@ export default function App() {
             <StaffRoster
               roster={roster}
               isOwner={isOwnerMode}
+              isShiftLead={activeUserRole === "shift_lead"}
+              activeActorName={activeUserName}
               shift={shift}
               data={data}
               onChangeStaff={handleChangeStaff}
               onAddStaff={handleAddStaff}
               onUpdateStaff={handleUpdateStaff}
               onDeleteStaff={handleDeleteStaff}
+              onAddShiftRosterMember={handleAddShiftRosterMember}
+              onUpdateShiftRosterMember={handleUpdateShiftRosterMember}
+              onRemoveShiftRosterMember={handleRemoveShiftRosterMember}
             />
           )}
         </main>
