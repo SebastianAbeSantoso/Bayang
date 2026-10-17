@@ -134,6 +134,72 @@ export default function Records({
   const [recFieldsDraft, setRecFieldsDraft] = useState<Array<[string, string]>>([]);
   const [recLocationDraft, setRecLocationDraft] = useState<string>("");
 
+  // Small quick schedule form state
+  const [quickName, setQuickName] = useState("");
+  const [quickCadence, setQuickCadence] = useState<ScheduleRecurrence>("one_time");
+
+  const handleQuickAddSchedule = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = quickName.trim();
+    if (!trimmed) return;
+
+    const lower = trimmed.toLowerCase();
+    const isDelivery =
+      lower.includes("delivery") ||
+      lower.includes("po-") ||
+      lower.includes("ice") ||
+      lower.includes("milk") ||
+      lower.includes("bean") ||
+      lower.includes("syrup") ||
+      lower.includes("bag");
+    const isHygiene =
+      lower.includes("hygiene") ||
+      lower.includes("clean") ||
+      lower.includes("sanitiz") ||
+      lower.includes("chiller") ||
+      lower.includes("wand");
+
+    const category: ScheduleCategory = isDelivery
+      ? "delivery"
+      : isHygiene
+        ? "hygiene"
+        : quickCadence === "monthly"
+          ? "maintenance"
+          : "inventory";
+
+    const schedulesList = data.schedules ?? [];
+    const refCode = isDelivery
+      ? `PO-${4482 + schedulesList.length}`
+      : `SCH-${101 + schedulesList.length}`;
+
+    const whenLabelMap: Record<ScheduleRecurrence, string> = {
+      one_time: "One-time scheduled",
+      daily: "Daily · Every shift",
+      weekly_fri: "Weekly · Every Friday",
+      weekly_mon: "Weekly · Every Monday",
+      every_shift: "Every shift handover",
+      monthly: "Monthly recurring",
+    };
+
+    const newSched: OperationalScheduleItem = {
+      id: refCode,
+      category,
+      title: trimmed,
+      whenLabel: whenLabelMap[quickCadence] || "Scheduled",
+      recurrence: quickCadence,
+      vendorOrArea: isDelivery ? "Supplier Delivery" : isHygiene ? "Espresso Bar & Station" : "Store Operations",
+      referenceCode: refCode,
+      instructions: "Assigned for verification on shift handover.",
+      owner: shift.incoming,
+      placement: isHygiene ? "needs_attention" : "coming_up",
+      severity: "review",
+      status: "scheduled",
+    };
+
+    onSaveSchedule(newSched, true);
+    setQuickName("");
+  };
+
   useEffect(() => {
     if (initialRecordId) {
       const matched = resolveRecord(data.records, initialRecordId);
@@ -381,18 +447,80 @@ export default function Records({
                 Items added or edited here automatically sync to the <strong>Incoming Briefing</strong> (under <em>Coming up</em> or <em>Needs attention</em>) and can be escalated into the <strong>Handover Ledger</strong>.
               </p>
             </div>
-            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => openNewScheduleModal(0)}>
-                + Weekly Truck Pickup
+          </div>
+
+          {/* Small Schedule Form: Name, Schedule (one time/weekly/monthly/daily), and Action */}
+          <form
+            onSubmit={handleQuickAddSchedule}
+            style={{
+              display: "flex",
+              alignItems: "flex-end",
+              gap: "10px",
+              background: "var(--paper-50)",
+              border: "1px solid var(--paper-300)",
+              borderRadius: "10px",
+              padding: "12px 14px",
+              marginBottom: "14px",
+              flexWrap: "wrap",
+            }}
+          >
+            <div style={{ flex: "2 1 260px", minWidth: "180px" }}>
+              <label className="field-label" style={{ display: "block", marginBottom: "4px", fontSize: "12px" }}>
+                Name
+              </label>
+              <input
+                type="text"
+                className="input input-sm"
+                placeholder="e.g. Delivery: Tube ice, 5 bags · PO-4481"
+                value={quickName}
+                onChange={e => setQuickName(e.target.value)}
+                style={{ width: "100%", background: "var(--paper-0)" }}
+              />
+            </div>
+
+            <div style={{ flex: "1 1 140px", minWidth: "120px" }}>
+              <label className="field-label" style={{ display: "block", marginBottom: "4px", fontSize: "12px" }}>
+                Schedule
+              </label>
+              <select
+                className="input input-sm"
+                value={quickCadence}
+                onChange={e => setQuickCadence(e.target.value as ScheduleRecurrence)}
+                style={{ width: "100%", background: "var(--paper-0)" }}
+              >
+                <option value="one_time">One time</option>
+                <option value="daily">Daily</option>
+                <option value="weekly_fri">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+
+            <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: "6px" }}>
+              <button
+                type="submit"
+                className="btn btn-primary btn-sm"
+                disabled={!quickName.trim()}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  minHeight: "34px",
+                }}
+              >
+                <Plus className="icon icon-xs" aria-hidden="true" />
+                Schedule Item
               </button>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => openNewScheduleModal(1)}>
-                + Supplier Delivery (PO)
-              </button>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => openNewScheduleModal(2)}>
-                + Hygiene Check
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => openNewScheduleModal(0)}
+                title="Open detailed schedule builder"
+                style={{ fontSize: "12px" }}
+              >
+                More options…
               </button>
             </div>
-          </div>
+          </form>
 
           {schedules.length === 0 ? (
             <p className="muted-text">No scheduled deliveries or operational checks yet.</p>

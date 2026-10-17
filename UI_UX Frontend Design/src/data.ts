@@ -129,7 +129,7 @@ export interface ReportState {
 }
 
 export type ScheduleCategory = "delivery" | "hygiene" | "maintenance" | "inventory" | "custom";
-export type ScheduleRecurrence = "one_time" | "every_shift" | "daily" | "weekly_fri" | "weekly_mon";
+export type ScheduleRecurrence = "one_time" | "every_shift" | "daily" | "weekly_fri" | "weekly_mon" | "monthly";
 
 export interface OperationalScheduleItem {
   id: string;
@@ -166,6 +166,7 @@ export const RECURRENCE_LABEL: Record<ScheduleRecurrence, string> = {
   daily: "Daily recurring",
   weekly_fri: "Every week on Friday",
   weekly_mon: "Every week on Monday",
+  monthly: "Monthly recurring",
 };
 
 export interface ShiftData {

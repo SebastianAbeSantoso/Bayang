@@ -152,6 +152,71 @@ export default function Briefing({
   const attentionSchedules = schedules.filter(s => s.placement === "needs_attention" || s.status === "issue_raised");
   const comingUpSchedules = schedules.filter(s => s.placement === "coming_up" && s.status !== "issue_raised");
 
+  // Small quick schedule form state
+  const [quickSchedName, setQuickSchedName] = useState("");
+  const [quickSchedCadence, setQuickSchedCadence] = useState<ScheduleRecurrence>("one_time");
+
+  const handleQuickAddSchedule = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = quickSchedName.trim();
+    if (!trimmed) return;
+
+    const lower = trimmed.toLowerCase();
+    const isDelivery =
+      lower.includes("delivery") ||
+      lower.includes("po-") ||
+      lower.includes("ice") ||
+      lower.includes("milk") ||
+      lower.includes("bean") ||
+      lower.includes("syrup") ||
+      lower.includes("bag");
+    const isHygiene =
+      lower.includes("hygiene") ||
+      lower.includes("clean") ||
+      lower.includes("sanitiz") ||
+      lower.includes("chiller") ||
+      lower.includes("wand");
+
+    const category: ScheduleCategory = isDelivery
+      ? "delivery"
+      : isHygiene
+        ? "hygiene"
+        : quickSchedCadence === "monthly"
+          ? "maintenance"
+          : "inventory";
+
+    const refCode = isDelivery
+      ? `PO-${4482 + schedules.length}`
+      : `SCH-${101 + schedules.length}`;
+
+    const whenLabelMap: Record<ScheduleRecurrence, string> = {
+      one_time: "One-time scheduled",
+      daily: "Daily · Every shift",
+      weekly_fri: "Weekly · Every Friday",
+      weekly_mon: "Weekly · Every Monday",
+      every_shift: "Every shift handover",
+      monthly: "Monthly recurring",
+    };
+
+    const newSchedItem: OperationalScheduleItem = {
+      id: refCode,
+      category,
+      title: trimmed,
+      whenLabel: whenLabelMap[quickSchedCadence] || "Scheduled",
+      recurrence: quickSchedCadence,
+      vendorOrArea: isDelivery ? "Supplier Delivery" : isHygiene ? "Espresso Bar & Station" : "Store Operations",
+      referenceCode: refCode,
+      instructions: "Assigned for verification on shift handover.",
+      owner: shift.incoming,
+      placement: isHygiene ? "needs_attention" : "coming_up",
+      severity: "review",
+      status: "scheduled",
+    };
+
+    onSaveSchedule(newSchedItem, true);
+    setQuickSchedName("");
+  };
+
   const comingUp = open.filter(x => x.check.owner && (x.check.target === "Technician visit" || x.finding.category === "customer"));
   const carried = all.filter(x => x.check.owner);
 
@@ -1143,16 +1208,80 @@ export default function Briefing({
               Scheduled supplier deliveries (PO-4481), recurring weekly ingredient truck pickups, and technician visits — click any item to edit, complete, or flag an issue
             </span>
           </div>
-          <button
-            type="button"
-            className="btn btn-secondary btn-xs"
-            onClick={() => openQuickAddModal("coming_up")}
-            style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontSize: "12px" }}
-          >
-            <Plus className="icon icon-xs" aria-hidden="true" />
-            + Add Delivery / Recurring Schedule
-          </button>
         </div>
+
+        {/* Small Schedule Form: Name, Schedule (one time/weekly/monthly/daily), and Action */}
+        <form
+          onSubmit={handleQuickAddSchedule}
+          style={{
+            display: "flex",
+            alignItems: "flex-end",
+            gap: "10px",
+            background: "var(--paper-50)",
+            border: "1px solid var(--paper-300)",
+            borderRadius: "10px",
+            padding: "12px 14px",
+            marginBottom: "14px",
+            flexWrap: "wrap",
+          }}
+        >
+          <div style={{ flex: "2 1 260px", minWidth: "180px" }}>
+            <label className="field-label" style={{ display: "block", marginBottom: "4px", fontSize: "12px" }}>
+              Name
+            </label>
+            <input
+              type="text"
+              className="input input-sm"
+              placeholder="e.g. Delivery: Tube ice, 5 bags · Weekly truck pickup…"
+              value={quickSchedName}
+              onChange={e => setQuickSchedName(e.target.value)}
+              style={{ width: "100%", background: "var(--paper-0)" }}
+            />
+          </div>
+
+          <div style={{ flex: "1 1 140px", minWidth: "120px" }}>
+            <label className="field-label" style={{ display: "block", marginBottom: "4px", fontSize: "12px" }}>
+              Schedule
+            </label>
+            <select
+              className="input input-sm"
+              value={quickSchedCadence}
+              onChange={e => setQuickSchedCadence(e.target.value as ScheduleRecurrence)}
+              style={{ width: "100%", background: "var(--paper-0)" }}
+            >
+              <option value="one_time">One time</option>
+              <option value="daily">Daily</option>
+              <option value="weekly_fri">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
+
+          <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: "6px" }}>
+            <button
+              type="submit"
+              className="btn btn-primary btn-sm"
+              disabled={!quickSchedName.trim()}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                minHeight: "34px",
+              }}
+            >
+              <Plus className="icon icon-xs" aria-hidden="true" />
+              Schedule Item
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => openQuickAddModal("coming_up")}
+              title="Open full schedule modal"
+              style={{ fontSize: "12px" }}
+            >
+              More options…
+            </button>
+          </div>
+        </form>
 
         {comingUpSchedules.length + (data.submitted ? comingUp.length : 0) === 0 ? (
           <p className="muted-text">No scheduled deliveries or visits.</p>
@@ -1340,67 +1469,6 @@ export default function Briefing({
               Add a supplier delivery (like Tube ice PO-4481), a weekly Friday ingredient truck pickup, or an operational hygiene check directly to the briefing and operational records.
             </p>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", marginBottom: "14px" }}>
-              <span style={{ fontSize: "11.5px", color: "var(--ink-500)", fontWeight: 600 }}>Quick presets:</span>
-              <button
-                type="button"
-                className="btn btn-ghost btn-xs"
-                style={{ border: "1px solid var(--paper-400)", borderRadius: "999px", padding: "2px 10px", fontSize: "11.5px" }}
-                onClick={() =>
-                  setNewSched({
-                    ...newSched,
-                    id: `SCH-FRI-${10 + schedules.length}`,
-                    category: "weekly_pickup",
-                    title: "Weekly ingredient truck pickup & cold-room storage",
-                    whenLabel: "Every Friday, 08:00 (Weekly recurring schedule)",
-                    recurrence: "weekly_fri",
-                    vendorOrArea: "Central Roastery & Cold-Chain Truck · Loading Bay",
-                    notes: "Pick up weekly syrups, oat milk cases & house blend beans from Friday truck and store in cold room.",
-                  })
-                }
-              >
-                <Truck className="icon icon-xs" aria-hidden="true" /> Weekly Friday Truck Pickup
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost btn-xs"
-                style={{ border: "1px solid var(--paper-400)", borderRadius: "999px", padding: "2px 10px", fontSize: "11.5px" }}
-                onClick={() =>
-                  setNewSched({
-                    ...newSched,
-                    id: `PO-${4485 + schedules.length}`,
-                    category: "delivery",
-                    title: "Delivery: Fresh Oat Milk (24 cartons) & Espresso Beans (10kg)",
-                    whenLabel: "Wed 14 Oct, 09:30 (stated by supplier)",
-                    recurrence: "once",
-                    vendorOrArea: "Oatside & Common Ground Roastery",
-                    notes: "Verify delivery note against PO and check cold-chain temperature upon arrival.",
-                  })
-                }
-              >
-                <CalendarClock className="icon icon-xs" aria-hidden="true" /> Supplier Delivery (PO)
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost btn-xs"
-                style={{ border: "1px solid var(--paper-400)", borderRadius: "999px", padding: "2px 10px", fontSize: "11.5px" }}
-                onClick={() =>
-                  setNewSched({
-                    ...newSched,
-                    id: `SCH-HYG-${10 + schedules.length}`,
-                    category: "hygiene_check",
-                    title: "Operational hygiene checking: Milk chiller, steam wand & sanitizer audit",
-                    whenLabel: "Every shift start (07:00 / 15:00)",
-                    recurrence: "every_shift",
-                    vendorOrArea: "Espresso Bar & Cold Storage",
-                    notes: "Check chiller temperature (≤ 4°C), sanitizer strip (200 ppm), and ice scoop caddy sanitation.",
-                  })
-                }
-              >
-                <ShieldCheck className="icon icon-xs" aria-hidden="true" /> Operational Hygiene Check
-              </button>
-            </div>
-
             <div className="field-grid field-grid-3" style={{ gap: "10px", marginBottom: "10px" }}>
               <label className="field">
                 <span className="field-label">Code / PO #</span>
@@ -1430,12 +1498,11 @@ export default function Briefing({
                   value={newSched.recurrence}
                   onChange={e => setNewSched({ ...newSched, recurrence: e.target.value as ScheduleRecurrence })}
                 >
-                  <option value="once">One-time / Specific Date</option>
-                  <option value="every_shift">Every Shift</option>
+                  <option value="one_time">One time</option>
                   <option value="daily">Daily</option>
-                  <option value="weekly_mon">Every Monday (Weekly)</option>
-                  <option value="weekly_wed">Every Wednesday (Weekly)</option>
-                  <option value="weekly_fri">Every Friday (Weekly)</option>
+                  <option value="weekly_fri">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="every_shift">Every Shift</option>
                 </select>
               </label>
             </div>
