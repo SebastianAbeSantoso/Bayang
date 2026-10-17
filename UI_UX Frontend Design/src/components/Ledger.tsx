@@ -32,16 +32,16 @@ const toneOf = (f: Finding) => {
 interface Props {
   shift: Shift;
   data: ShiftData;
-  role: Role;
   locked: string | null;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
-  onAction: (findingId: string, checkId: string, action: CheckAction, payload: { rationale: string; owner?: string; target?: string }) => void;
+  onAction: (findingId: string, checkId: string, action: CheckAction, payload: { rationale: string; owner?: string; target?: string; actor?: string }) => void;
   onBulkInfo: (ids: Array<[string, string]>) => void;
   onGoReport: () => void;
+  onOpenRecord?: (recordId: string) => void;
 }
 
-export default function Ledger({ shift, data, role, locked, selectedId, onSelect, onAction, onBulkInfo, onGoReport }: Props) {
+export default function Ledger({ shift, data, locked, selectedId, onSelect, onAction, onBulkInfo, onGoReport, onOpenRecord }: Props) {
   const [filter, setFilter] = useState<Filter>("all");
   const checks = data.findings.flatMap(f => f.checks.map(c => ({ f, c })));
   const count = (b: Bucket) => checks.filter(x => bucketOf(x.c) === b).length;
@@ -55,8 +55,8 @@ export default function Ledger({ shift, data, role, locked, selectedId, onSelect
       <>
         <PageHeader title="Handover ledger" subtitle="Worker claims checked against the shift records." />
         <EmptyState
-          title="No report submitted yet"
-          body={shift.phase === "upcoming" ? "This shift has not started." : `Findings appear here once ${shift.outgoing} submits the shift report.`}
+          title="No report completed yet"
+          body={shift.phase === "upcoming" ? "This shift has not started." : `Findings appear here once ${shift.outgoing} completes the shift report.`}
           action={shift.phase !== "upcoming" ? <button type="button" className="btn btn-primary" onClick={onGoReport}>Go to shift report</button> : undefined}
         />
       </>
@@ -134,35 +134,47 @@ export default function Ledger({ shift, data, role, locked, selectedId, onSelect
       </div>
 
       {selected && (
-        <FindingDrawer key={selected.id} shift={shift} finding={selected} data={data} role={role} locked={locked} onClose={() => onSelect(null)} onAction={onAction} />
+        <FindingDrawer key={selected.id} shift={shift} finding={selected} data={data} locked={locked} onClose={() => onSelect(null)} onAction={onAction} onOpenRecord={onOpenRecord} />
       )}
     </div>
   );
 }
 
-function FindingDrawer({ shift, finding, data, role, locked, onClose, onAction }: {
-  shift: Shift; finding: Finding; data: ShiftData; role: Role; locked: string | null; onClose: () => void; onAction: Props["onAction"];
+function FindingDrawer({ shift, finding, data, locked, onClose, onAction, onOpenRecord }: {
+  shift: Shift; finding: Finding; data: ShiftData; locked: string | null; onClose: () => void; onAction: Props["onAction"]; onOpenRecord?: (id: string) => void;
 }) {
   const openChecks = finding.checks.filter(c => c.workflow !== "resolved");
-  const [checkId, setCheckId] = useState(openChecks.find(c => c.severity === "critical")?.id ?? openChecks[0]?.id ?? "");
+  const [checkId, setCheckId] = useState(openChecks.find(c => c.severity === "critical")?.id ?? openChecks[0]?.id ?? finding.checks[0]?.id ?? "");
   const [rationale, setRationale] = useState("");
+  const [actor, setActor] = useState("Kevin (Supervisor)");
   const [owner, setOwner] = useState(STAFF[2]);
   const [target, setTarget] = useState(`Next shift (${shift.incoming})`);
   const [error, setError] = useState<string | null>(null);
-  useEffect(() => { if (!openChecks.some(c => c.id === checkId)) setCheckId(openChecks[0]?.id ?? ""); }, [finding]); // eslint-disable-line
+  useEffect(() => { if (!finding.checks.some(c => c.id === checkId)) setCheckId(openChecks[0]?.id ?? finding.checks[0]?.id ?? ""); }, [finding]); // eslint-disable-line
   const check: Check | undefined = finding.checks.find(c => c.id === checkId);
   const history = data.audit.filter(e => e.findingId === finding.id);
   const records = data.records.filter(r => finding.recordIds.includes(r.id));
 
   const act = (a: CheckAction) => {
     if (!check) return;
-    if ((a === "override" || a === "false_positive") && role !== "supervisor") { setError("Only the supervisor can record an override or false positive. Switch role to Supervisor."); return; }
     if ((a === "override" || a === "false_positive") && rationale.trim().length < 10) { setError("Write a justification of at least 10 characters."); return; }
     if (a === "carry" && !owner) { setError("Choose who owns the follow-up."); return; }
     setError(null);
-    onAction(finding.id, check.id, a, { rationale: rationale.trim(), owner: a === "carry" ? owner : undefined, target: a === "carry" ? target : undefined });
+    onAction(finding.id, check.id, a, {
+      rationale: rationale.trim(),
+      owner: a === "carry" ? owner : undefined,
+      target: a === "carry" ? target : undefined,
+      actor,
+    });
     setRationale("");
   };
+
+  const actorOptions = Array.from(new Set([
+    "Kevin (Supervisor)",
+    `${shift.outgoing} (Outgoing Lead)`,
+    `${shift.incoming} (Incoming Lead)`,
+    ...STAFF,
+  ]));
 
   return (
     <aside className="drawer" aria-label="Finding detail">
@@ -183,7 +195,7 @@ function FindingDrawer({ shift, finding, data, role, locked, onClose, onAction }
         <ul className="drawer-checks">
           {finding.checks.map(c => (
             <li key={c.id} className={`drawer-check ${c.id === checkId ? "is-active" : ""}`}>
-              <button type="button" className="drawer-check-btn" onClick={() => setCheckId(c.id)} disabled={c.workflow === "resolved"}>
+              <button type="button" className="drawer-check-btn" onClick={() => setCheckId(c.id)}>
                 <span className="drawer-check-title">{c.title}<span className="mono-label">{c.ruleCode}</span></span>
                 <dl className="dims">
                   <div><dt>Evidence</dt><dd><EvidenceTag value={c.evidence} /></dd></div>
@@ -194,7 +206,14 @@ function FindingDrawer({ shift, finding, data, role, locked, onClose, onAction }
                 {c.obligation && <span className="drawer-check-meta">Follow-up: {c.obligation}</span>}
                 {c.owner && <span className="drawer-check-meta">Owner: {c.owner}{c.target ? ` · ${c.target}` : ""}</span>}
                 {c.workflow !== "resolved" && c.requiredAction && <span className="drawer-check-meta">Required: {c.requiredAction}</span>}
-                {c.resolution && c.workflow === "resolved" && <span className="drawer-check-meta">Closed as: {{ resolved: "Resolved", override: "Override", false_positive: "False positive", auto: "Auto-resolved by rule", assigned: "Follow-up assigned" }[c.resolution]}</span>}
+                {c.solvedBy && (
+                  <span className="drawer-check-meta" style={{ color: "#166534", fontWeight: 600 }}>
+                    ✓ Solved by {c.solvedBy}{c.solvedAt ? ` at ${c.solvedAt}` : ""}: {c.solvedWhat || c.title} — via “{c.solvedWith}”
+                  </span>
+                )}
+                {c.resolution && c.workflow === "resolved" && !c.solvedBy && (
+                  <span className="drawer-check-meta">Closed as: {{ resolved: "Resolved", override: "Override", false_positive: "False positive", auto: "Auto-resolved by rule", assigned: "Follow-up assigned" }[c.resolution]}</span>
+                )}
               </button>
             </li>
           ))}
@@ -207,14 +226,30 @@ function FindingDrawer({ shift, finding, data, role, locked, onClose, onAction }
         <p className="body-text muted-text">Unknown: {finding.unknowns}</p>
       </section>
 
-      {records.length > 0 && (
+      {(records.length > 0 || finding.recordIds.length > 0) && (
         <section className="drawer-section">
           <p className="section-label">Records used</p>
           <ul className="ref-list">
-            {records.map(r => (
-              <li key={r.id} className="ref-item">
-                <span className="mono">{r.id}</span>
+            {records.length > 0 ? records.map(r => (
+              <li
+                key={r.id}
+                className="ref-item"
+                style={{ cursor: onOpenRecord ? "pointer" : "default" }}
+                onClick={() => onOpenRecord?.(r.id)}
+                title="Click to inspect this record in Operational Records"
+              >
+                <span className="mono" style={{ textDecoration: onOpenRecord ? "underline" : "none" }}>{r.id} ↗</span>
                 <span>{r.name} · {r.entries} {r.entries === 1 ? "entry" : "entries"} · {r.coverage}</span>
+              </li>
+            )) : finding.recordIds.map(rid => (
+              <li
+                key={rid}
+                className="ref-item"
+                style={{ cursor: onOpenRecord ? "pointer" : "default" }}
+                onClick={() => onOpenRecord?.(rid)}
+              >
+                <span className="mono" style={{ textDecoration: onOpenRecord ? "underline" : "none" }}>{rid} ↗</span>
+                <span>Inspect source in Operational Records</span>
               </li>
             ))}
           </ul>
@@ -257,8 +292,14 @@ function FindingDrawer({ shift, finding, data, role, locked, onClose, onAction }
         <section className="drawer-section drawer-actions">
           <p className="section-label">Decide on: {check.title}</p>
           <label className="field">
-            <span className="field-label">Note or justification</span>
-            <textarea className="input textarea" rows={2} value={rationale} onChange={e => setRationale(e.target.value)} placeholder="Required for override or false positive" />
+            <span className="field-label">Actioned / Solved by</span>
+            <select className="input" value={actor} onChange={e => setActor(e.target.value)}>
+              {actorOptions.map(s => <option key={s}>{s}</option>)}
+            </select>
+          </label>
+          <label className="field">
+            <span className="field-label">What it is solved with / Justification</span>
+            <textarea className="input textarea" rows={2} value={rationale} onChange={e => setRationale(e.target.value)} placeholder="Describe how this was solved or why it is overridden…" />
           </label>
           <div className="field-grid">
             <label className="field">
@@ -282,7 +323,7 @@ function FindingDrawer({ shift, finding, data, role, locked, onClose, onAction }
             <button type="button" className="btn btn-ghost" onClick={() => act("override")}>Override</button>
             <button type="button" className="btn btn-ghost" onClick={() => act("false_positive")}>False positive</button>
           </div>
-          <p className="hint">Override and false positive need a written justification and the supervisor role. Evidence stays “{EVIDENCE_LABEL[check.evidence]}” either way.</p>
+          <p className="hint">Override and false positive require a written justification. Evidence stays “{EVIDENCE_LABEL[check.evidence]}” either way.</p>
           {error && <p className="field-error" role="alert">{error}</p>}
         </section>
       )}

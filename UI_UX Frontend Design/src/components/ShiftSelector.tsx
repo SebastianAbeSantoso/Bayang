@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Search } from "lucide-react";
 import type { ShiftData } from "../data";
-import { SHIFTS, SHIFT_TYPE_LABEL, shiftLabel, shiftStatus } from "../data";
+import { SHIFTS, SHIFT_TYPE_LABEL, effectiveShift, shiftLabel, shiftStatus } from "../data";
 import { StatusDot } from "./ui";
 
 export default function ShiftSelector({ value, db, onChange }: { value: string; db: Record<string, ShiftData>; onChange: (id: string) => void }) {
@@ -9,7 +9,7 @@ export default function ShiftSelector({ value, db, onChange }: { value: string; 
   const [query, setQuery] = useState("");
   const ref = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const selected = SHIFTS.find(s => s.id === value)!;
+  const selected = effectiveShift(SHIFTS.find(s => s.id === value)!, db[value]);
   const selStatus = shiftStatus(selected, db[value]);
 
   useEffect(() => {
@@ -24,7 +24,7 @@ export default function ShiftSelector({ value, db, onChange }: { value: string; 
 
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const hits = SHIFTS.filter(s => {
+    const hits = SHIFTS.map(s => effectiveShift(s, db[s.id])).filter(s => {
       if (!q) return true;
       const hay = [s.dayName, s.dayShort, s.dateLabel, s.date, SHIFT_TYPE_LABEL[s.type], s.outgoing, s.incoming, s.start, s.end, shiftStatus(s, db[s.id]).label].join(" ").toLowerCase();
       return q.split(/\s+/).every(t => hay.includes(t));
@@ -81,7 +81,7 @@ export default function ShiftSelector({ value, db, onChange }: { value: string; 
                       >
                         <span className="shift-option-main">
                           <span className="shift-option-name">{SHIFT_TYPE_LABEL[s.type]} · {s.start}–{s.end}</span>
-                          <span className="shift-option-meta">Lead: {s.outgoing}</span>
+                          <span className="shift-option-meta">Lead: {s.outgoing} → {s.incoming}</span>
                         </span>
                         <span className="shift-option-status"><StatusDot tone={st.tone} />{st.label}</span>
                         {active ? <Check className="icon icon-sm" aria-hidden="true" /> : <span className="icon icon-sm" />}

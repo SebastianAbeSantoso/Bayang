@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowRightLeft, ClipboardCheck, LayoutDashboard, Database, Download, ListChecks, ScrollText, X, Sparkles, RefreshCw, Cpu, Lock, KeyRound, Users, ShieldCheck } from "lucide-react";
-import type { AuditEvent, ChecklistItem, Finding, ReportState, Role, ShiftData } from "./data";
+import { ArrowRight, ArrowRightLeft, ClipboardCheck, LayoutDashboard, Database, Download, ListChecks, ScrollText, X } from "lucide-react";
+import type { AuditEvent, ChecklistItem, Finding, ReportState, ShiftData } from "./data";
 import {
-  CAFE, CURRENT_SHIFT_ID, SUPERVISOR, SHIFT_TYPE_LABEL, buildInitialDb, categoryComplete, makeEvent, reconcile, shiftById, signoffState, stampTime, bucketOf,
+  CAFE, CURRENT_SHIFT_ID, SHIFTS, SUPERVISOR, SHIFT_TYPE_LABEL, STAFF_NAMES, buildInitialDb, categoryComplete, effectiveShift, makeEvent, reconcile, shiftById, signoffState, stampTime, bucketOf,
 } from "./data";
 import Dashboard from "./components/Dashboard";
 import WorkerReport from "./components/WorkerReport";
@@ -10,97 +10,105 @@ import Ledger, { type CheckAction } from "./components/Ledger";
 import Records from "./components/Records";
 import AuditLog from "./components/AuditLog";
 import Briefing from "./components/Briefing";
-import StaffPinModal, { type StaffMember } from "./components/StaffPinModal";
 import { Tag } from "./components/ui";
-import { api, type BackendState, type SystemStatus } from "./api";
+import { api, type SystemStatus } from "./api";
 
 type Tab = "dashboard" | "report" | "ledger" | "briefing" | "records" | "audit";
-
-const ROLE_LABEL: Record<Role, string> = { outgoing: "Outgoing lead", incoming: "Incoming lead", supervisor: "Supervisor" };
-
-const INITIAL_STAFF_ROSTER: StaffMember[] = [
-  {
-    id: "STF-01",
-    name: "Dimas",
-    fullName: "Dimas Raditya",
-    role: "outgoing",
-    roleTitle: "Outgoing Shift Lead",
-    pin: "1234",
-    phone: "+62 812-3456-7890",
-    active: true,
-    avatarColor: "#c89d7c",
-  },
-  {
-    id: "STF-02",
-    name: "Rina",
-    fullName: "Rina Melati",
-    role: "incoming",
-    roleTitle: "Incoming Shift Lead",
-    pin: "5678",
-    phone: "+62 813-9876-5432",
-    active: true,
-    avatarColor: "#0284c7",
-  },
-  {
-    id: "STF-03",
-    name: "Kevin",
-    fullName: "Kevin Santoso",
-    role: "supervisor",
-    roleTitle: "Store Supervisor",
-    pin: "9900",
-    phone: "+62 811-2233-4455",
-    active: true,
-    avatarColor: "#7c3aed",
-  },
-];
 
 export default function App() {
   const [db, setDb] = useState<Record<string, ShiftData>>(buildInitialDb);
   const [shiftId, setShiftId] = useState(CURRENT_SHIFT_ID);
   const [tab, setTab] = useState<Tab>("dashboard");
   const [justSubmitted, setJustSubmitted] = useState(false);
-  const [role, setRole] = useState<Role>("outgoing");
-  const [staffRoster, setStaffRoster] = useState<StaffMember[]>(INITIAL_STAFF_ROSTER);
-  const [activeStaff, setActiveStaff] = useState<StaffMember>(INITIAL_STAFF_ROSTER[0]);
-  const [showStaffModal, setShowStaffModal] = useState(false);
-  const [authToast, setAuthToast] = useState<string | null>(null);
   const [selectedFinding, setSelectedFinding] = useState<string | null>(null);
-  const [showSignoff, setShowSignoff] = useState(false);
+  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [transferActor, setTransferActor] = useState<string>("");
   const [showExport, setShowExport] = useState(false);
   const [gemmaMode, setGemmaMode] = useState<"live" | "seeded">("live");
   const [isReconciling, setIsReconciling] = useState(false);
-  const [syncMessage, setSyncMessage] = useState<string | null>(null);
-  const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
+  const [, setSystemStatus] = useState<SystemStatus | null>(null);
 
-  const shift = shiftById(shiftId);
+  const rawShift = shiftById(shiftId);
   const data = db[shiftId];
+  const shift = effectiveShift(rawShift, data);
   const so = signoffState(data);
-  const locked = shift.phase === "upcoming" ? "This shift has not started yet." : data.signedOff ? `Signed off at ${data.signedOffAt}. This shift is read-only.` : null;
+  const locked = data.signedOff ? `Shift transferred at ${data.signedOffAt}. This shift is read-only.` : null;
   const allEvents = useMemo(() => Object.values(db).flatMap(d => d.audit), [db]);
+
+  const idx = SHIFTS.findIndex(s => s.id === shiftId);
+  const nextShiftObj = idx > 0 ? effectiveShift(SHIFTS[idx - 1], db[SHIFTS[idx - 1].id]) : null;
 
   const update = (fn: (d: ShiftData) => ShiftData) => setDb(prev => ({ ...prev, [shiftId]: fn(prev[shiftId]) }));
   const ev = (e: Omit<AuditEvent, "id" | "shiftId" | "date" | "time">) => makeEvent(shift, e);
-  const me = role === "supervisor" ? `${SUPERVISOR} (Supervisor)` : role === "outgoing" ? shift.outgoing : shift.incoming;
 
   useEffect(() => {
     api.getStatus().then(setSystemStatus).catch(() => {});
   }, []);
 
-  const switchShift = (id: string) => { setShiftId(id); setSelectedFinding(null); setJustSubmitted(false); };
+  const switchShift = (id: string) => {
+    setShiftId(id);
+    setSelectedFinding(null);
+    setSelectedRecordId(null);
+    setJustSubmitted(false);
+  };
 
   const setReport = (report: ReportState) => update(d => ({ ...d, report }));
-  const setTasks = (ids: string[], patch: Partial<ChecklistItem>) => update(d => ({ ...d, checklist: d.checklist.map(t => (ids.includes(t.id) ? { ...t, ...patch } : t)) }));
+  const setTasks = (ids: string[], patch: Partial<ChecklistItem>) =>
+    update(d => ({ ...d, checklist: d.checklist.map(t => (ids.includes(t.id) ? { ...t, ...patch } : t)) }));
+
+  const handleSignIn = (staffName: string) => {
+    const time = stampTime().slice(0, 5);
+    update(d => ({
+      ...d,
+      signedIn: true,
+      signedInAt: time,
+      outgoingLead: staffName,
+      audit: [
+        ...d.audit,
+        ev({
+          actor: staffName,
+          actorKind: "human",
+          type: "shift",
+          action: "Signed in to shift",
+          explanation: `${staffName} signed in on POS tablet for ${SHIFT_TYPE_LABEL[shift.type]} shift (${shift.start}–${shift.end}).`,
+        }),
+      ],
+    }));
+  };
+
+  const handleToggleEndHour = (reached: boolean) => {
+    update(d => ({ ...d, endHourReached: reached }));
+  };
+
+  const handleChangeStaff = (which: "outgoing" | "incoming", newName: string) => {
+    const prevName = which === "outgoing" ? shift.outgoing : shift.incoming;
+    if (!newName || newName === prevName) return;
+    update(d => ({
+      ...d,
+      ...(which === "outgoing" ? { outgoingLead: newName } : { incomingLead: newName }),
+      audit: [
+        ...d.audit,
+        ev({
+          actor: newName,
+          actorKind: "human",
+          type: "shift",
+          action: which === "outgoing" ? "Reporting shift lead replaced" : "Incoming shift lead replaced",
+          explanation: `${prevName} replaced by ${newName} (${which === "outgoing" ? "active shift lead" : "incoming shift lead"}).`,
+        }),
+      ],
+    }));
+  };
 
   const submit = async () => {
     setIsReconciling(true);
-    setSyncMessage("Google Gemma 3-27B-IT extracting claims on AMD Token Factory...");
     try {
       const notes = data.report.notes.join("\n");
       const res = await api.runReconciliation({
         shift_id: shiftId,
         shift_notes: notes,
         mode: gemmaMode,
-        actor: me,
+        actor: shift.outgoing,
       });
 
       update(d => {
@@ -168,10 +176,17 @@ export default function App() {
           audit: [
             ...d.audit,
             ev({
-              actor: "Claim Extractor (Google Gemma 3-27B-IT · AMD)",
+              actor: shift.outgoing,
+              actorKind: "human",
+              type: "report",
+              action: "Shift report completed",
+              explanation: `Completed at end hour (${shift.end}) by ${shift.outgoing}.`,
+            }),
+            ev({
+              actor: "Gemma 3-27B-IT · TokenFactory",
               actorKind: "system",
               type: "claim",
-              action: `Extracted ${res.claims.length} claims on AMD Token Factory (${res.reconciliation_meta.latency_ms}ms)`,
+              action: `Extracted ${res.claims.length} claims (${res.reconciliation_meta.latency_ms}ms)`,
               explanation: `Mode: ${res.reconciliation_meta.mode}. Exact quote spans verified by Anti-Hallucination Gate.`,
             }),
           ],
@@ -182,7 +197,7 @@ export default function App() {
       update(d => {
         const time = stampTime();
         const pre: AuditEvent[] = [
-          { ...ev({ actor: shift.outgoing, actorKind: "human", type: "report", action: "Shift report submitted", explanation: `All 5 categories answered. ${d.report.notes.length} note(s).` }), time },
+          { ...ev({ actor: shift.outgoing, actorKind: "human", type: "report", action: "Shift report completed", explanation: `All 5 categories answered. ${d.report.notes.length} note(s).` }), time },
           ...d.report.notes.map(n => ev({ actor: shift.outgoing, actorKind: "human", type: "note", action: "Original worker note recorded", explanation: `“${n}”` })),
         ];
         const r = reconcile(shift, { ...d, audit: [] });
@@ -190,17 +205,17 @@ export default function App() {
       });
     } finally {
       setIsReconciling(false);
-      setSyncMessage(null);
+      setJustSubmitted(true);
     }
   };
 
-  const act = (findingId: string, checkId: string, action: CheckAction, p: { rationale: string; owner?: string; target?: string }) => {
-    // Optimistic backend call
+  const act = (findingId: string, checkId: string, action: CheckAction, p: { rationale: string; owner?: string; target?: string; actor?: string }) => {
+    const actorName = p.actor || `${SUPERVISOR} (Supervisor)`;
     api.resolveFinding({
       finding_id: findingId,
       action: action === "carry" ? "carry_forward" : action === "resolve" ? "mark_accounted_for" : action === "override" ? "override_with_rationale" : "mark_false_positive",
       rationale: p.rationale,
-      actor: me,
+      actor: actorName,
       owner_role: p.owner,
       due_time: p.target,
       shift_id: shiftId,
@@ -209,6 +224,7 @@ export default function App() {
     update(d => {
       let linkedTask: string | undefined;
       let title = "";
+      const solvedAt = stampTime().slice(0, 5);
       const findings = d.findings.map(f => f.id !== findingId ? f : {
         ...f,
         checks: f.checks.map(c => {
@@ -216,22 +232,116 @@ export default function App() {
           linkedTask = c.linkedTaskId;
           title = c.title;
           if (action === "carry") return { ...c, workflow: "awaiting_ack" as const, owner: p.owner, target: p.target };
-          return { ...c, workflow: "resolved" as const, resolution: action === "resolve" ? "resolved" as const : action };
+          return {
+            ...c,
+            workflow: "resolved" as const,
+            resolution: action === "resolve" ? "resolved" as const : action,
+            solvedBy: actorName,
+            solvedWhat: c.title,
+            solvedWith: p.rationale || "Verified and resolved in Handover Ledger",
+            solvedAt,
+          };
         }),
       });
-      const checklist: ChecklistItem[] = linkedTask && (action === "carry" || action === "resolve") ? d.checklist.map(t => (t.id === linkedTask ? { ...t, done: true, notDone: false } : t)) : d.checklist;
+      const checklist: ChecklistItem[] = linkedTask && (action === "carry" || action === "resolve")
+        ? d.checklist.map(t => (t.id === linkedTask ? { ...t, done: true, notDone: false, solvedBy: actorName, solvedWhat: t.label, solvedWith: p.rationale || "Follow-up assigned/resolved", solvedAt } : t))
+        : d.checklist;
       const type = action === "carry" ? "carried" : action === "resolve" ? "resolved" : action;
       const label = { carry: "Issue carried forward", resolve: "Finding resolved", override: "Override recorded with rationale", false_positive: "Marked false positive with rationale" }[action];
-      const events = [ev({ actor: me, actorKind: "human", type, action: label, findingId, explanation: `${title}${p.owner ? ` → ${p.owner} (${p.target})` : ""}${p.rationale ? `. “${p.rationale}”` : ""}` })];
-      if (linkedTask && checklist !== d.checklist) events.push(ev({ actor: me, actorKind: "human", type: "task", action: "Task completed", findingId, explanation: `${linkedTask}: follow-up recorded.` }));
+      const events = [ev({ actor: actorName, actorKind: "human", type, action: label, findingId, explanation: `${title}${p.owner ? ` → ${p.owner} (${p.target})` : ""}${p.rationale ? `. “${p.rationale}”` : ""}` })];
+      if (linkedTask && checklist !== d.checklist) events.push(ev({ actor: actorName, actorKind: "human", type: "task", action: "Task completed", findingId, explanation: `${linkedTask}: follow-up recorded.` }));
       return { ...d, findings, checklist, audit: [...d.audit, ...events] };
+    });
+  };
+
+  const handleSolveCheckFromBriefing = (findingId: string, checkId: string, payload: { solvedBy: string; solvedWhat: string; solvedWith: string }) => {
+    api.resolveFinding({
+      finding_id: findingId,
+      action: "mark_accounted_for",
+      rationale: `${payload.solvedWhat} — Solved with: ${payload.solvedWith}`,
+      actor: payload.solvedBy,
+      shift_id: shiftId,
+    }).catch(() => {});
+
+    update(d => {
+      const solvedAt = stampTime().slice(0, 5);
+      let linkedTaskId: string | undefined;
+      const findings = d.findings.map(f => f.id !== findingId ? f : {
+        ...f,
+        checks: f.checks.map(c => {
+          if (c.id !== checkId) return c;
+          linkedTaskId = c.linkedTaskId;
+          return {
+            ...c,
+            workflow: "resolved" as const,
+            resolution: "resolved" as const,
+            solvedBy: payload.solvedBy,
+            solvedWhat: payload.solvedWhat,
+            solvedWith: payload.solvedWith,
+            solvedAt,
+          };
+        }),
+      });
+      const checklist = linkedTaskId
+        ? d.checklist.map(t => (t.id === linkedTaskId ? { ...t, done: true, notDone: false, solvedBy: payload.solvedBy, solvedWhat: payload.solvedWhat, solvedWith: payload.solvedWith, solvedAt } : t))
+        : d.checklist;
+      return {
+        ...d,
+        findings,
+        checklist,
+        audit: [
+          ...d.audit,
+          ev({
+            actor: payload.solvedBy,
+            actorKind: "human",
+            type: "resolved",
+            action: "Solved from Incoming Briefing",
+            findingId,
+            explanation: `${payload.solvedWhat} · Solved with: “${payload.solvedWith}”.`,
+          }),
+        ],
+      };
+    });
+  };
+
+  const handleSolveTaskFromBriefing = (taskId: string, payload: { solvedBy: string; solvedWhat: string; solvedWith: string }) => {
+    update(d => {
+      const solvedAt = stampTime().slice(0, 5);
+      const checklist = d.checklist.map(t =>
+        t.id === taskId
+          ? { ...t, done: true, notDone: false, solvedBy: payload.solvedBy, solvedWhat: payload.solvedWhat, solvedWith: payload.solvedWith, solvedAt }
+          : t
+      );
+      const findings = d.findings.map(f => ({
+        ...f,
+        checks: f.checks.map(c =>
+          c.linkedTaskId === taskId
+            ? { ...c, workflow: "resolved" as const, resolution: "resolved" as const, solvedBy: payload.solvedBy, solvedWhat: payload.solvedWhat, solvedWith: payload.solvedWith, solvedAt }
+            : c
+        ),
+      }));
+      return {
+        ...d,
+        checklist,
+        findings,
+        audit: [
+          ...d.audit,
+          ev({
+            actor: payload.solvedBy,
+            actorKind: "human",
+            type: "task",
+            action: "Closing task solved in Briefing",
+            explanation: `${taskId}: ${payload.solvedWhat} · Solved with: “${payload.solvedWith}”.`,
+          }),
+        ],
+      };
     });
   };
 
   const bulkInfo = (ids: Array<[string, string]>) => update(d => ({
     ...d,
     findings: d.findings.map(f => ({ ...f, checks: f.checks.map(c => (ids.some(([fi, ci]) => fi === f.id && ci === c.id) && bucketOf(c) === "info" && !c.obligation ? { ...c, workflow: "resolved" as const, resolution: "resolved" as const } : c)) })),
-    audit: [...d.audit, ...ids.map(([fi, ci]) => ev({ actor: me, actorKind: "human", type: "resolved", action: "Finding resolved", findingId: fi, explanation: `${ci}: routine informational item (bulk).` }))],
+    audit: [...d.audit, ...ids.map(([fi, ci]) => ev({ actor: shift.outgoing, actorKind: "human", type: "resolved", action: "Finding resolved", findingId: fi, explanation: `${ci}: routine informational item (bulk).` }))],
   }));
 
   const acknowledge = () => update(d => ({
@@ -239,21 +349,38 @@ export default function App() {
     acknowledged: true,
     acknowledgedAt: stampTime().slice(0, 5),
     findings: d.findings.map(f => ({ ...f, checks: f.checks.map(c => (c.workflow === "awaiting_ack" ? { ...c, workflow: "carried_forward" as const } : c)) })),
-    audit: [...d.audit, ev({ actor: shift.incoming, actorKind: "human", type: "acknowledged", action: "Incoming shift acknowledged", explanation: "Briefing received. Open items keep their owners and are not resolved by this." })],
+    audit: [...d.audit, ev({ actor: shift.incoming, actorKind: "human", type: "acknowledged", action: "Incoming shift acknowledged", explanation: `${shift.incoming} received the handover briefing and started the incoming shift.` })],
   }));
 
-  const signOff = () => {
+  const transferShift = () => {
+    const actor = transferActor || `${shift.outgoing} → ${shift.incoming}`;
     api.resolveFinding({
       finding_id: "",
       action: "mark_accounted_for",
-      rationale: "Shift sign-off completed by supervisor.",
-      actor: `${SUPERVISOR} (Supervisor)`,
+      rationale: `Shift transferred to next shift (${shift.incoming}).`,
+      actor,
       shift_id: shiftId,
       sign_off_shift: true,
     }).catch(() => {});
 
-    update(d => ({ ...d, signedOff: true, signedOffAt: stampTime().slice(0, 5), audit: [...d.audit, ev({ actor: `${SUPERVISOR} (Supervisor)`, actorKind: "human", type: "signoff", action: "Shift sign-off completed", explanation: "No critical blockers or mandatory tasks remained." })] }));
-    setShowSignoff(false);
+    const time = stampTime().slice(0, 5);
+    update(d => ({
+      ...d,
+      signedOff: true,
+      signedOffAt: time,
+      audit: [
+        ...d.audit,
+        ev({
+          actor,
+          actorKind: "human",
+          type: "signoff",
+          action: `Shift transferred to next shift (${shift.incoming})`,
+          explanation: "All critical blockers resolved; tablet handed over to incoming shift lead.",
+        }),
+      ],
+    }));
+    setShowTransfer(false);
+    setTab("briefing");
   };
 
   const reportDone = ["equipment", "stock", "cleaning", "cash", "customer"].filter(c => categoryComplete(data.report, c as "equipment", data.checklist)).length;
@@ -261,7 +388,7 @@ export default function App() {
 
   const NAV: Array<{ id: Tab; label: string; Icon: typeof ListChecks; meta?: string }> = [
     { id: "dashboard", label: "Dashboard", Icon: LayoutDashboard },
-    { id: "report", label: "Finish your shift", Icon: ClipboardCheck, meta: data.submitted ? "Sent" : shift.phase === "upcoming" ? "" : `${reportDone}/5` },
+    { id: "report", label: "Finish your shift", Icon: ClipboardCheck, meta: data.submitted ? "Done" : `${reportDone}/5` },
     { id: "ledger", label: "Handover ledger", Icon: ListChecks, meta: data.submitted ? String(openChecks) : "" },
     { id: "briefing", label: "Incoming briefing", Icon: ArrowRightLeft, meta: data.acknowledged ? "Ack" : "" },
     { id: "records", label: "Operational records", Icon: Database, meta: String(data.records.length || "") },
@@ -275,7 +402,14 @@ export default function App() {
   };
 
   const signTone = so.status === "signed_off" ? "success" : so.status === "ready" ? "success" : so.status === "blocked" ? "danger" : "neutral";
-  const signLabel = shift.phase === "upcoming" ? "Not started" : { signed_off: "Signed off", ready: "Ready", blocked: "Blocked", not_submitted: "Report pending", not_started: "Not started" }[so.status];
+  const signLabel = { signed_off: "Transferred", ready: "Ready", blocked: "Blocked", not_submitted: "Report pending", not_started: "Not started" }[so.status];
+
+  const transferActorOptions = Array.from(new Set([
+    `${shift.outgoing} (Outgoing Lead)`,
+    `${SUPERVISOR} (Supervisor)`,
+    `${shift.incoming} (Incoming Lead)`,
+    ...STAFF_NAMES,
+  ]));
 
   return (
     <div className="app-shell">
@@ -288,105 +422,52 @@ export default function App() {
           </span>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", background: "var(--paper-200)", padding: "4px 12px", borderRadius: "20px", border: "1px solid var(--paper-400)" }}>
-          <span style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", fontWeight: 600, color: "var(--espresso-600)" }}>
-            ⚡ Gemma 3-27B-IT <span style={{ color: "var(--ink-500)", fontWeight: 400 }}>· AMD Token Factory</span>
+        <button
+          type="button"
+          onClick={() => setGemmaMode(m => m === "live" ? "seeded" : "live")}
+          title="Click to toggle between Live TokenFactory API and Recorded Run"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "7px",
+            background: "var(--paper-200)",
+            padding: "4px 12px",
+            borderRadius: "20px",
+            border: "1px solid var(--paper-400)",
+            fontSize: "12px",
+            fontWeight: 500,
+            color: "var(--espresso-600)",
+            cursor: "pointer",
+          }}
+        >
+          <span
+            style={{
+              width: "7px",
+              height: "7px",
+              borderRadius: "50%",
+              background: isReconciling ? "var(--amber-600)" : gemmaMode === "live" ? "#16a34a" : "var(--ink-400)",
+              display: "inline-block",
+            }}
+          />
+          <span>
+            Gemma 3-27B-IT {gemmaMode === "live" ? "Live via TokenFactory" : "Recorded via TokenFactory"}
+            {isReconciling
+              ? " · reconciling…"
+              : data.gemmaTelemetry?.latencyMs
+                ? ` · ${data.gemmaTelemetry.latencyMs}ms`
+                : ""}
           </span>
-          <button
-            type="button"
-            className="btn btn-ghost btn-xs"
-            style={{ fontSize: "11px", padding: "1px 6px", height: "auto", border: "1px solid var(--paper-500)", borderRadius: "10px" }}
-            onClick={() => setGemmaMode(m => m === "live" ? "seeded" : "live")}
-            title="Toggle between live AMD Token Factory API and verified recorded run"
-          >
-            {gemmaMode === "live" ? "● Live AMD API" : "○ Recorded Run"}
-          </button>
-          {data.gemmaTelemetry?.latencyMs ? (
-            <span className="mono-small" style={{ color: "var(--ink-700)" }}>
-              {data.gemmaTelemetry.latencyMs}ms
-            </span>
-          ) : null}
-        </div>
+        </button>
 
         <div className="topbar-right" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          {/* In-Store PIN Terminal Switcher */}
-          <button
-            type="button"
-            className="btn btn-outline btn-sm"
-            onClick={() => setShowStaffModal(true)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              fontSize: "12px",
-              height: "32px",
-              padding: "0 10px",
-              background: "var(--paper-100)",
-              border: "1px solid var(--paper-400)",
-              borderRadius: "8px",
-              cursor: "pointer",
-            }}
-            title="Open in-store 4-digit PIN authentication terminal or manage staff roster"
-          >
-            <Lock size={13} style={{ color: "var(--amber-700)" }} />
-            <span style={{ fontWeight: 600 }}>{activeStaff.name}</span>
-            <span style={{ fontSize: "10px", background: "var(--paper-300)", padding: "1px 5px", borderRadius: "6px", color: "var(--ink-600)" }}>
-              PIN: {activeStaff.pin}
-            </span>
-          </button>
-
-          <label className="inline-field">
-            <span className="sr-only">Viewing as</span>
-            <select
-              className="input input-sm"
-              value={role}
-              onChange={e => {
-                const r = e.target.value as Role;
-                setRole(r);
-                const matched = staffRoster.find(s => s.role === r);
-                if (matched) setActiveStaff(matched);
-              }}
-            >
-              {(Object.keys(ROLE_LABEL) as Role[]).map(r => (
-                <option key={r} value={r}>
-                  {ROLE_LABEL[r]} · {r === "supervisor" ? SUPERVISOR : r === "outgoing" ? shift.outgoing : shift.incoming}
-                </option>
-              ))}
-            </select>
-          </label>
+          <span className="mono-small" style={{ color: "var(--ink-600)", background: "var(--paper-100)", border: "1px solid var(--paper-300)", padding: "4px 10px", borderRadius: "6px" }}>
+            {SHIFT_TYPE_LABEL[shift.type]} Shift ({shift.start}–{shift.end}) · Lead: <strong>{shift.outgoing}</strong>
+          </span>
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowExport(true)}>
             <Download className="icon icon-sm" aria-hidden="true" />Export
           </button>
         </div>
       </header>
-
-      {authToast && (
-        <div
-          style={{
-            background: "#dcfce7",
-            borderBottom: "1px solid #86efac",
-            padding: "6px 16px",
-            fontSize: "12px",
-            textAlign: "center",
-            color: "#166534",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "8px",
-            fontWeight: 600,
-          }}
-        >
-          <ShieldCheck size={14} style={{ color: "#16a34a" }} />
-          {authToast}
-        </div>
-      )}
-
-      {isReconciling && (
-        <div style={{ background: "var(--amber-100)", borderBottom: "1px solid var(--amber-300)", padding: "8px 16px", fontSize: "12.5px", textAlign: "center", color: "var(--amber-900)", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-          <span style={{ display: "inline-block", width: "12px", height: "12px", border: "2px solid var(--amber-600)", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
-          {syncMessage || "Reconciling shift with Google Gemma on AMD Instinct GPUs..."}
-        </div>
-      )}
 
       <div className="body-grid">
         <nav className="sidebar" aria-label="Workbench">
@@ -401,13 +482,13 @@ export default function App() {
             ))}
           </div>
 
-          <section className="signoff" aria-label="Outgoing sign-off">
+          <section className="signoff" aria-label="Shift transfer">
             <div className="signoff-head">
-              <span className="section-label">Outgoing sign-off</span>
+              <span className="section-label">Shift transfer</span>
               <Tag tone={signTone}>{signLabel}</Tag>
             </div>
             <ol className="signoff-steps">
-              <li className={data.submitted ? "is-done" : ""}>Report {data.submitted ? `submitted ${data.submittedAt}` : "not submitted"}</li>
+              <li className={data.submitted ? "is-done" : ""}>Report {data.submitted ? `completed ${data.submittedAt}` : "not completed"}</li>
               <li className={data.submitted && so.blockers.length === 0 ? "is-done" : so.blockers.length ? "is-blocked" : ""}>
                 {so.blockers.length} critical blocker{so.blockers.length === 1 ? "" : "s"}
               </li>
@@ -415,44 +496,135 @@ export default function App() {
                 {so.tasks.length} mandatory task{so.tasks.length === 1 ? "" : "s"} incomplete
               </li>
             </ol>
-            {!data.signedOff && shift.phase !== "upcoming" && !so.ready && (
+            {!data.signedOff && !so.ready && (
               <button type="button" className="link-btn" onClick={goBlockers}>{data.submitted ? "View blocking items" : "Go to shift report"}</button>
             )}
-            <button type="button" className="btn btn-success btn-block" disabled={!so.ready || data.signedOff} onClick={() => setShowSignoff(true)}>
-              {data.signedOff ? `Signed off ${data.signedOffAt}` : "Sign off shift"}
+            <button
+              type="button"
+              className="btn btn-success btn-block"
+              disabled={!so.ready || data.signedOff}
+              onClick={() => {
+                setTransferActor(`${shift.outgoing} (Outgoing Lead)`);
+                setShowTransfer(true);
+              }}
+            >
+              {data.signedOff ? `Transferred ${data.signedOffAt}` : "Transfer shift to next"}
             </button>
+            {data.signedOff && nextShiftObj && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-block"
+                style={{ marginTop: "6px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px", fontSize: "12px" }}
+                onClick={() => {
+                  switchShift(nextShiftObj.id);
+                  setTab("report");
+                }}
+              >
+                Open {SHIFT_TYPE_LABEL[nextShiftObj.type]} Shift ({nextShiftObj.outgoing})
+                <ArrowRight className="icon icon-sm" aria-hidden="true" />
+              </button>
+            )}
           </section>
         </nav>
 
         <main className={`main ${tab === "ledger" && selectedFinding ? "main-flush" : ""}`}>
           {tab === "dashboard" && (
-            <Dashboard shift={shift} shiftId={shiftId} db={db} justSubmitted={justSubmitted} onSelectShift={switchShift} onNavigate={t => { setJustSubmitted(false); setTab(t); }} />
+            <Dashboard
+              shift={shift}
+              shiftId={shiftId}
+              db={db}
+              justSubmitted={justSubmitted}
+              onSelectShift={switchShift}
+              onNavigate={t => { setJustSubmitted(false); setTab(t); }}
+              onChangeStaff={handleChangeStaff}
+              onRequestTransfer={() => {
+                setTransferActor(`${shift.outgoing} (Outgoing Lead)`);
+                setShowTransfer(true);
+              }}
+            />
           )}
           {tab === "report" && (
-            <WorkerReport shift={shift} data={data} locked={locked} onReport={setReport} onSetTasks={setTasks} onSubmit={() => { submit(); setJustSubmitted(true); setTab("dashboard"); }} onOpenLedger={() => setTab("ledger")} />
+            <WorkerReport
+              shift={shift}
+              data={data}
+              locked={locked}
+              isReconciling={isReconciling}
+              onReport={setReport}
+              onSetTasks={setTasks}
+              onSignIn={handleSignIn}
+              onToggleEndHour={handleToggleEndHour}
+              onChangeStaff={handleChangeStaff}
+              onSubmit={submit}
+              onOpenLedger={fid => {
+                if (fid) setSelectedFinding(fid);
+                setTab("ledger");
+              }}
+            />
           )}
           {tab === "ledger" && (
-            <Ledger shift={shift} data={data} role={role} locked={locked} selectedId={selectedFinding} onSelect={setSelectedFinding} onAction={act} onBulkInfo={bulkInfo} onGoReport={() => setTab("report")} />
+            <Ledger
+              shift={shift}
+              data={data}
+              locked={locked}
+              selectedId={selectedFinding}
+              onSelect={setSelectedFinding}
+              onAction={act}
+              onBulkInfo={bulkInfo}
+              onGoReport={() => setTab("report")}
+              onOpenRecord={rid => {
+                setSelectedRecordId(rid);
+                setTab("records");
+              }}
+            />
           )}
-          {tab === "briefing" && <Briefing shift={shift} data={data} locked={locked && !data.signedOff ? locked : null} onStart={acknowledge} />}
-          {tab === "records" && <Records key={shiftId} data={data} />}
+          {tab === "briefing" && (
+            <Briefing
+              shift={shift}
+              data={data}
+              locked={null}
+              onStart={acknowledge}
+              onChangeStaff={handleChangeStaff}
+              onOpenFinding={fid => {
+                setSelectedFinding(fid);
+                setTab("ledger");
+              }}
+              onOpenRecord={rid => {
+                setSelectedRecordId(rid);
+                setTab("records");
+              }}
+              onOpenReport={() => setTab("report")}
+              onSolveCheck={handleSolveCheckFromBriefing}
+              onSolveTask={handleSolveTaskFromBriefing}
+            />
+          )}
+          {tab === "records" && <Records key={shiftId} data={data} initialRecordId={selectedRecordId} />}
           {tab === "audit" && <AuditLog events={allEvents} currentShiftId={shiftId} />}
         </main>
       </div>
 
-      {showSignoff && (
+      {showTransfer && (
         <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="so-title">
           <div className="modal-dialog">
             <div className="modal-header">
-              <h3 id="so-title" className="modal-title">Sign off {SHIFT_TYPE_LABEL[shift.type].toLowerCase()} shift?</h3>
-              <button type="button" className="icon-btn" aria-label="Close" onClick={() => setShowSignoff(false)}><X className="icon" aria-hidden="true" /></button>
+              <h3 id="so-title" className="modal-title">Transfer {SHIFT_TYPE_LABEL[shift.type].toLowerCase()} shift to next shift ({shift.incoming})?</h3>
+              <button type="button" className="icon-btn" aria-label="Close" onClick={() => setShowTransfer(false)}><X className="icon" aria-hidden="true" /></button>
             </div>
             <p className="modal-sub">
-              No critical blockers or mandatory tasks remain. {data.findings.flatMap(f => f.checks).filter(c => c.workflow !== "resolved").length} item(s) stay open with owners and carry into the next shift. The shift becomes read-only.
+              No critical blockers or mandatory tasks remain. {data.findings.flatMap(f => f.checks).filter(c => c.workflow !== "resolved").length} item(s) carry into {shift.incoming}’s incoming briefing. The {SHIFT_TYPE_LABEL[shift.type].toLowerCase()} shift report becomes read-only and the POS tablet transitions to the incoming briefing.
             </p>
+            <label className="field" style={{ marginBottom: "14px" }}>
+              <span className="field-label">Transferred / Authorized by</span>
+              <select className="input" value={transferActor} onChange={e => setTransferActor(e.target.value)}>
+                {transferActorOptions.map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            </label>
             <div className="modal-footer">
-              <button type="button" className="btn btn-ghost" onClick={() => setShowSignoff(false)}>Cancel</button>
-              <button type="button" className="btn btn-success" onClick={signOff}>Sign off as {SUPERVISOR}</button>
+              <button type="button" className="btn btn-ghost" onClick={() => setShowTransfer(false)}>Cancel</button>
+              <button type="button" className="btn btn-success" onClick={transferShift}>
+                Transfer shift to {shift.incoming}
+              </button>
             </div>
           </div>
         </div>
@@ -472,25 +644,6 @@ export default function App() {
             </div>
           </div>
         </div>
-      )}
-
-      {showStaffModal && (
-        <StaffPinModal
-          currentRole={role}
-          staffList={staffRoster}
-          onSelectStaff={staff => {
-            setRole(staff.role);
-            setActiveStaff(staff);
-            setAuthToast(`Staff terminal authenticated: ${staff.fullName} (${staff.roleTitle}) via PIN.`);
-            setTimeout(() => setAuthToast(null), 3500);
-          }}
-          onAddStaff={newStaff => {
-            setStaffRoster(prev => [...prev, newStaff]);
-            setAuthToast(`Staff member ${newStaff.fullName} provisioned with PIN ${newStaff.pin}.`);
-            setTimeout(() => setAuthToast(null), 3500);
-          }}
-          onClose={() => setShowStaffModal(false)}
-        />
       )}
     </div>
   );

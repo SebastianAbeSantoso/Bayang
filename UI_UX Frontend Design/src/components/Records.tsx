@@ -1,13 +1,38 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
-import type { Availability, RecordGroup, ShiftData } from "../data";
+import type { Availability, RecordGroup, ShiftData, SourceRecord } from "../data";
 import { AVAILABILITY_LABEL, GROUP_LABEL } from "../data";
 import { AvailabilityTag, EmptyState, PageHeader } from "./ui";
 
-export default function Records({ data }: { data: ShiftData }) {
+function resolveRecord(records: SourceRecord[], rawId: string | null | undefined): SourceRecord | undefined {
+  if (!rawId) return undefined;
+  const direct = records.find(r => r.id === rawId);
+  if (direct) return direct;
+  const up = rawId.toUpperCase();
+  const byRow = records.find(r => r.rows.some(row => Object.values(row).some(v => v.toUpperCase().includes(up))));
+  if (byRow) return byRow;
+  if (up.startsWith("ORD-") || up.startsWith("POS-")) return records.find(r => r.id.startsWith("POS-"));
+  if (up.startsWith("MAC-") || up.startsWith("MC-")) return records.find(r => r.id.startsWith("MC-"));
+  if (up.startsWith("IB-") || up.startsWith("INC-")) return records.find(r => r.id.startsWith("IB-"));
+  if (up.startsWith("INV-")) return records.find(r => r.id.startsWith("INV-"));
+  if (up.startsWith("SS-")) return records.find(r => r.id.startsWith("SS-"));
+  if (up.startsWith("PO-")) return records.find(r => r.id.startsWith("PO-"));
+  if (up.startsWith("CASH-")) return records.find(r => r.id.startsWith("CASH-"));
+  return undefined;
+}
+
+export default function Records({ data, initialRecordId }: { data: ShiftData; initialRecordId?: string | null }) {
   const [group, setGroup] = useState<RecordGroup | "all">("all");
   const [avail, setAvail] = useState<Availability | "all">("all");
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(() => resolveRecord(data.records, initialRecordId)?.id ?? null);
+
+  useEffect(() => {
+    if (initialRecordId) {
+      const matched = resolveRecord(data.records, initialRecordId);
+      if (matched) setOpenId(matched.id);
+    }
+  }, [initialRecordId, data.records]);
+
   const rec = data.records.find(r => r.id === openId);
 
   if (data.records.length === 0)

@@ -41,6 +41,10 @@ export interface ChecklistItem {
   reason?: string;
   group: "cleaning" | "equipment" | "prep";
   conditional?: boolean;
+  solvedBy?: string;
+  solvedWhat?: string;
+  solvedWith?: string;
+  solvedAt?: string;
 }
 
 export interface Check {
@@ -57,6 +61,10 @@ export interface Check {
   target?: string;
   resolution?: Resolution;
   linkedTaskId?: string;
+  solvedBy?: string;
+  solvedWhat?: string;
+  solvedWith?: string;
+  solvedAt?: string;
 }
 
 export interface Finding {
@@ -132,6 +140,11 @@ export interface ShiftData {
   signedOffAt?: string;
   acknowledged: boolean;
   acknowledgedAt?: string;
+  signedIn?: boolean;
+  signedInAt?: string;
+  endHourReached?: boolean;
+  outgoingLead?: string;
+  incomingLead?: string;
   incomingBriefing?: {
     headline: string;
     narrative: string;
@@ -157,7 +170,8 @@ const SHIFT_TIMES: Record<ShiftType, [string, string]> = {
 const LEADS: Record<ShiftType, string> = { morning: "Sarah", afternoon: "Dimas", night: "Rina" };
 const NEXT: Record<ShiftType, ShiftType> = { morning: "afternoon", afternoon: "night", night: "morning" };
 
-export const STAFF = ["Sarah (Morning Lead)", "Dimas (Afternoon Lead)", "Rina (Night Lead)", "Kevin (Supervisor)", "BaristaPro Service (Technician)"];
+export const STAFF = ["Sarah (Morning Lead)", "Dimas (Afternoon Lead)", "Rina (Night Lead)", "Kevin (Supervisor)", "Ayu (Barista Cover)", "Budi (Shift Cover)", "BaristaPro Service (Technician)"];
+export const STAFF_NAMES = ["Dimas", "Rina", "Sarah", "Kevin", "Ayu", "Budi"];
 
 const DAYS = [
   { date: "2026-10-12", dayName: "Monday", dayShort: "Mon", dateLabel: "12 October", short: "20261012" },
@@ -188,6 +202,11 @@ export const SHIFTS: Shift[] = DAYS.flatMap(d =>
 );
 
 export const shiftById = (id: string) => SHIFTS.find(s => s.id === id)!;
+export const effectiveShift = (s: Shift, d?: ShiftData): Shift => ({
+  ...s,
+  outgoing: d?.outgoingLead || s.outgoing,
+  incoming: d?.incomingLead || s.incoming,
+});
 export const shiftLabel = (s: Shift) => `${s.dayShort}, ${s.dateLabel.split(" ")[0]} ${s.dateLabel.split(" ")[1].slice(0, 3)} · ${SHIFT_TYPE_LABEL[s.type]} · ${s.start}–${s.end}`;
 export const shiftShort = (s: Shift) => `${s.dayShort} ${s.dateLabel.split(" ")[0]} ${s.dateLabel.split(" ")[1].slice(0, 3)} · ${SHIFT_TYPE_LABEL[s.type]}`;
 
@@ -596,6 +615,9 @@ function historical(shift: Shift): ShiftData {
     audit: [],
     signedOff: true,
     acknowledged: true,
+    signedIn: true,
+    signedInAt: `${shift.start}:00`,
+    endHourReached: true,
   };
   const pos = records[0];
   const mc = records[3];
@@ -614,7 +636,7 @@ function historical(shift: Shift): ShiftData {
     { id: `${shift.id}-1`, shiftId: shift.id, date: shift.date, time: `${shift.start}:00`, actor: shift.outgoing, actorKind: "human", type: "shift", action: "Shift started", explanation: `${SHIFT_TYPE_LABEL[shift.type]} shift opened.` },
     { id: `${shift.id}-2`, shiftId: shift.id, date: shift.date, time: `${t}:10`, actor: shift.outgoing, actorKind: "human", type: "report", action: "Shift report submitted", explanation: "All five categories reported normal." },
     { id: `${shift.id}-3`, shiftId: shift.id, date: shift.date, time: `${t}:31`, actor: "Rule engine", actorKind: "system", type: "rule", action: "Rule R-POS-001 evaluated", findingId: "FND-004", sourceRef: pos.id, explanation: "Machine cycles vs POS drinks within tolerance." },
-    { id: `${shift.id}-4`, shiftId: shift.id, date: shift.date, time: `${base.signedOffAt}:02`, actor: `${SUPERVISOR} (Supervisor)`, actorKind: "human", type: "signoff", action: "Shift sign-off completed", explanation: "No blockers remained." },
+    { id: `${shift.id}-4`, shiftId: shift.id, date: shift.date, time: `${base.signedOffAt}:02`, actor: `${SUPERVISOR} (Supervisor)`, actorKind: "human", type: "signoff", action: "Shift transferred to next shift", explanation: "No blockers remained." },
     { id: `${shift.id}-5`, shiftId: shift.id, date: shift.date, time: `${base.acknowledgedAt}:40`, actor: shift.incoming, actorKind: "human", type: "acknowledged", action: "Incoming shift acknowledged", explanation: "Handover briefing received." },
   ];
   return base;
@@ -625,13 +647,32 @@ export function buildInitialDb(): Record<string, ShiftData> {
   for (const s of SHIFTS) {
     if (s.phase === "past") db[s.id] = historical(s);
     else if (s.phase === "upcoming")
-      db[s.id] = { report: EMPTY_REPORT, submitted: false, checklist: checklistFor(false), findings: [], records: [], audit: [], signedOff: false, acknowledged: false };
+      db[s.id] = {
+        report: EMPTY_REPORT,
+        submitted: false,
+        checklist: checklistFor(false),
+        findings: [],
+        records: recordsFor(s),
+        audit: [],
+        signedOff: false,
+        acknowledged: false,
+        signedIn: false,
+        endHourReached: false,
+      };
     else {
       const records = recordsFor(s);
       db[s.id] = {
-        report: EMPTY_REPORT, submitted: false, checklist: checklistFor(false), findings: [], records, signedOff: false, acknowledged: false,
+        report: EMPTY_REPORT,
+        submitted: false,
+        checklist: checklistFor(false),
+        findings: [],
+        records,
+        signedOff: false,
+        acknowledged: false,
+        signedIn: false,
+        endHourReached: true,
         audit: [
-          { id: "A-AFT-1", shiftId: s.id, date: s.date, time: "16:02:11", actor: s.outgoing, actorKind: "human", type: "shift", action: "Shift started", explanation: "Afternoon shift opened by Dimas." },
+          { id: "A-AFT-1", shiftId: s.id, date: s.date, time: "16:02:11", actor: s.outgoing, actorKind: "human", type: "shift", action: "Shift opened", explanation: "Afternoon shift roster active." },
           { id: "A-AFT-2", shiftId: s.id, date: s.date, time: "18:15:40", actor: "Supplier import", actorKind: "system", type: "record", action: "Supplier order recorded", sourceRef: "PO-4481", explanation: "Arctic Ice Co. confirmed 5 bags for 13 Oct, 10:00." },
           { id: "A-AFT-3", shiftId: s.id, date: s.date, time: "21:40:05", actor: s.outgoing, actorKind: "human", type: "record", action: "Closing stock sheet photographed", sourceRef: `SS-20261012-AFT`, explanation: "Manual count uploaded." },
           { id: "A-AFT-4", shiftId: s.id, date: s.date, time: "21:48:30", actor: "POS import", actorKind: "system", type: "record", action: "POS export imported", sourceRef: "POS-20261012-AFT", explanation: "83 espresso drinks, 2 voids/comps." },
@@ -664,10 +705,10 @@ export function signoffState(d: ShiftData) {
 }
 
 export function shiftStatus(shift: Shift, d: ShiftData): { label: string; tone: "success" | "warning" | "danger" | "neutral" | "info" } {
-  if (shift.phase === "upcoming") return { label: "Not started", tone: "neutral" };
-  if (d.signedOff) return { label: "Signed off", tone: "success" };
+  if (d.signedOff) return { label: "Transferred", tone: "success" };
+  if (shift.phase === "upcoming" && !d.signedIn && !d.submitted) return { label: "Not started", tone: "neutral" };
   const s = signoffState(d);
-  if (!d.submitted) return { label: "In progress", tone: "info" };
+  if (!d.submitted) return { label: d.signedIn ? "Signed in · In progress" : "Awaiting sign-in", tone: d.signedIn ? "info" : "neutral" };
   if (s.status === "blocked") return { label: "Blocked", tone: "danger" };
-  return { label: "Awaiting handover", tone: "warning" };
+  return { label: "Ready to transfer", tone: "warning" };
 }

@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
-import { Banknote, Check, CircleCheck, Circle, Lock, MessageSquare, Package, Plus, Sparkles, Wrench, X } from "lucide-react";
+import { Banknote, Check, CircleCheck, Circle, Clock, Lock, LogIn, MessageSquare, Package, Plus, Sparkles, UserCheck, Wrench, X } from "lucide-react";
 import type { ChecklistItem, EquipmentEntry, ReportState, Shift, ShiftData } from "../data";
-import { CAFE, EQUIPMENT_ISSUES, EQUIPMENT_ITEMS, SHIFT_TYPE_LABEL, STAFF, STOCK_ITEMS, categoryComplete, allChecks, bucketOf, isEntryFilled } from "../data";
+import { CAFE, EQUIPMENT_ISSUES, EQUIPMENT_ITEMS, SHIFT_TYPE_LABEL, STAFF, STAFF_NAMES, STOCK_ITEMS, categoryComplete, allChecks, bucketOf, isEntryFilled } from "../data";
 import { SeverityTag, Tag } from "./ui";
 
 type CatId = "equipment" | "stock" | "cleaning" | "cash" | "customer";
@@ -59,20 +59,41 @@ interface Props {
   shift: Shift;
   data: ShiftData;
   locked: string | null;
+  isReconciling?: boolean;
   onReport: (r: ReportState) => void;
   onSetTasks: (ids: string[], patch: Partial<ChecklistItem>) => void;
+  onSignIn: (staffName: string) => void;
+  onToggleEndHour: (reached: boolean) => void;
+  onChangeStaff: (which: "outgoing" | "incoming", newName: string) => void;
   onSubmit: () => void;
-  onOpenLedger: () => void;
+  onOpenLedger: (findingId?: string) => void;
 }
 
-export default function WorkerReport({ shift, data, locked, onReport, onSetTasks, onSubmit, onOpenLedger }: Props) {
+export default function WorkerReport({
+  shift,
+  data,
+  locked,
+  isReconciling,
+  onReport,
+  onSetTasks,
+  onSignIn,
+  onToggleEndHour,
+  onChangeStaff,
+  onSubmit,
+  onOpenLedger,
+}: Props) {
   const r = data.report;
   const [noteDraft, setNoteDraft] = useState("");
   const [reviewing, setReviewing] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
   const [draftItem, setDraftItem] = useState<string | null>(null);
+  const [customStaffMode, setCustomStaffMode] = useState(false);
+  const [customStaffDraft, setCustomStaffDraft] = useState("");
   const cardRefs = useRef<Record<string, HTMLElement | null>>({});
-  const readOnly = !!locked || data.submitted;
+
+  const signedIn = !!data.signedIn || data.submitted;
+  const endHourReached = data.endHourReached ?? true;
+  const readOnly = !!locked || data.submitted || !signedIn;
 
   const done = CATS.filter(c => categoryComplete(r, c.id, data.checklist));
   const missing = CATS.filter(c => !done.includes(c));
@@ -93,10 +114,14 @@ export default function WorkerReport({ shift, data, locked, onReport, onSetTasks
   };
 
   const startReview = () => {
+    if (!signedIn) return;
     if (missing.length) { setShowErrors(true); jump(missing[0].id); return; }
+    if (!endHourReached) return;
     if (noteDraft.trim()) addNote();
     setReviewing(true);
   };
+
+  const staffOptions = Array.from(new Set([...STAFF_NAMES, shift.outgoing, shift.incoming]));
 
   const DEMO_PRESETS = [
     {
@@ -217,7 +242,74 @@ export default function WorkerReport({ shift, data, locked, onReport, onSetTasks
           <dl className="report-meta">
             <div><dt>Shift</dt><dd>{SHIFT_TYPE_LABEL[shift.type]} · {shift.start}–{shift.end}</dd></div>
             <div><dt>Date</dt><dd>{shift.dayShort}, {shift.dateLabel}</dd></div>
-            <div><dt>Reporting</dt><dd>{shift.outgoing} (shift lead)</dd></div>
+            <div>
+              <dt>Reporting</dt>
+              <dd style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                {!data.signedOff && !customStaffMode ? (
+                  <select
+                    aria-label="Reporting shift lead"
+                    className="input input-sm"
+                    value={shift.outgoing}
+                    onChange={e => {
+                      if (e.target.value === "__custom__") {
+                        setCustomStaffMode(true);
+                        setCustomStaffDraft("");
+                      } else {
+                        onChangeStaff("outgoing", e.target.value);
+                      }
+                    }}
+                    style={{
+                      fontSize: "13px",
+                      fontWeight: 600,
+                      padding: "2px 8px",
+                      height: "28px",
+                      width: "auto",
+                      background: "var(--paper-0)",
+                      border: "1px solid var(--paper-400)",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                    }}
+                    title="Change or replace active shift lead (e.g. shift swap or sick cover)"
+                  >
+                    {staffOptions.map(name => (
+                      <option key={name} value={name}>{name} (shift lead)</option>
+                    ))}
+                    <option value="__custom__">+ Replace staff (cover)…</option>
+                  </select>
+                ) : !data.signedOff && customStaffMode ? (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                    <input
+                      className="input input-sm"
+                      placeholder="Replacement name…"
+                      value={customStaffDraft}
+                      onChange={e => setCustomStaffDraft(e.target.value)}
+                      style={{ width: "135px", height: "28px", fontSize: "12.5px", padding: "2px 6px" }}
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-xs"
+                      onClick={() => {
+                        const trimmed = customStaffDraft.trim();
+                        if (trimmed) onChangeStaff("outgoing", trimmed);
+                        setCustomStaffMode(false);
+                      }}
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-xs"
+                      onClick={() => setCustomStaffMode(false)}
+                    >
+                      Cancel
+                    </button>
+                  </span>
+                ) : (
+                  <span>{shift.outgoing} (shift lead)</span>
+                )}
+              </dd>
+            </div>
           </dl>
           {!readOnly && (
             <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", justifyContent: "flex-end" }}>
@@ -257,14 +349,99 @@ export default function WorkerReport({ shift, data, locked, onReport, onSetTasks
         <div className="notice notice-neutral"><Lock className="icon icon-sm" aria-hidden="true" />{locked}</div>
       )}
 
+      {!locked && !data.submitted && !signedIn && (
+        <section
+          aria-label="Sign in to shift"
+          style={{
+            background: "var(--paper-100)",
+            border: "1px solid var(--amber-300)",
+            borderRadius: "10px",
+            padding: "16px 20px",
+            marginBottom: "18px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "16px",
+            flexWrap: "wrap",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", maxWidth: "620px" }}>
+            <LogIn className="icon" style={{ color: "var(--espresso-600)", marginTop: "2px", flexShrink: 0 }} aria-hidden="true" />
+            <div>
+              <p style={{ fontWeight: 600, fontSize: "14.5px", color: "var(--ink-900)", marginBottom: "4px" }}>
+                Sign in to {SHIFT_TYPE_LABEL[shift.type].toLowerCase()} shift ({shift.start}–{shift.end}) before filling your report
+              </p>
+              <p className="muted-text" style={{ fontSize: "13px", lineHeight: 1.45 }}>
+                Confirm or replace the shift lead on duty above ({shift.outgoing}). Once signed in, you can fill out the shift report at any time during the shift and complete it at the end hour ({shift.end}).
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => onSignIn(shift.outgoing)}
+            style={{ display: "inline-flex", alignItems: "center", gap: "6px", flexShrink: 0 }}
+          >
+            <UserCheck className="icon icon-sm" aria-hidden="true" />
+            Sign in to shift as {shift.outgoing}
+          </button>
+        </section>
+      )}
+
+      {!locked && !data.submitted && signedIn && (
+        <div
+          style={{
+            background: "var(--paper-100)",
+            border: "1px solid var(--paper-300)",
+            borderRadius: "8px",
+            padding: "10px 14px",
+            marginBottom: "16px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "12px",
+            flexWrap: "wrap",
+            fontSize: "12.5px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--ink-700)" }}>
+            <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#16a34a", display: "inline-block" }} />
+            <span>
+              Signed in to shift as <strong>{shift.outgoing}</strong>{data.signedInAt ? ` at ${data.signedInAt}` : ""} · Report can be filled anytime; completion unlocks at end hour ({shift.end}).
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <Clock className="icon icon-sm" style={{ color: "var(--ink-500)" }} aria-hidden="true" />
+            <span className="muted-text">Shift clock:</span>
+            <button
+              type="button"
+              className="btn btn-ghost btn-xs"
+              onClick={() => onToggleEndHour(!endHourReached)}
+              style={{
+                fontSize: "11.5px",
+                padding: "3px 10px",
+                borderRadius: "999px",
+                border: "1px solid var(--paper-400)",
+                background: endHourReached ? "#dcfce7" : "var(--amber-100)",
+                color: endHourReached ? "#166534" : "var(--amber-900)",
+                fontWeight: 600,
+              }}
+              title="Toggle between mid-shift filling and end-of-shift completion hour"
+            >
+              {endHourReached ? `● End hour reached (${shift.end})` : `◐ Mid-shift (Before ${shift.end})`}
+            </button>
+          </div>
+        </div>
+      )}
+
       {data.submitted && (
         <section className="submitted-panel" aria-label="Report submitted">
           <div className="submitted-head">
             <CircleCheck className="icon icon-lg text-success" aria-hidden="true" />
             <div>
-              <p className="submitted-title">Report submitted at {data.submittedAt}</p>
+              <p className="submitted-title">Report completed at {data.submittedAt} by {shift.outgoing}</p>
               <p className="submitted-sub">
-                Your entries are saved as written. Submitting does not resolve any issue or sign off the shift; the supervisor reviews the findings below.
+                Your entries are saved as written. Completing the report does not resolve open discrepancies or transfer the shift yet; review the findings in the handover ledger below.
               </p>
             </div>
           </div>
@@ -273,7 +450,13 @@ export default function WorkerReport({ shift, data, locked, onReport, onSetTasks
               const open = f.checks.filter(c => bucketOf(c));
               const top = open.find(c => c.severity === "critical") ?? open[0];
               return (
-                <li key={f.id} className="result-item">
+                <li
+                  key={f.id}
+                  className="result-item"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => onOpenLedger(f.id)}
+                  title="Click to inspect this finding in the Handover Ledger"
+                >
                   <span className="mono-label">{f.id}</span>
                   <span className="result-title">{f.title}</span>
                   {top ? <SeverityTag value={top.severity} /> : <Tag tone="success">No action needed</Tag>}
@@ -282,7 +465,7 @@ export default function WorkerReport({ shift, data, locked, onReport, onSetTasks
             })}
           </ul>
           <div className="row-gap">
-            <button type="button" className="btn btn-primary" onClick={onOpenLedger}>Open handover ledger</button>
+            <button type="button" className="btn btn-primary" onClick={() => onOpenLedger()}>Open handover ledger</button>
             <span className="muted-text">{results.filter(x => bucketOf(x.check)).length} check{results.length === 1 ? "" : "s"} still open</span>
           </div>
         </section>
@@ -634,17 +817,40 @@ export default function WorkerReport({ shift, data, locked, onReport, onSetTasks
       {!readOnly && (
         <div className="submit-bar">
           <div>
-            {missing.length === 0 ? (
-              <span className="submit-ready">All sections answered</span>
-            ) : (
+            {missing.length > 0 ? (
               <span className="submit-missing">
                 Still to answer: {missing.map((m, i) => (
                   <React.Fragment key={m.id}>{i > 0 && ", "}<button type="button" className="link-btn" onClick={() => jump(m.id)}>{m.title}</button></React.Fragment>
                 ))}
               </span>
+            ) : !endHourReached ? (
+              <span className="submit-missing" style={{ color: "var(--amber-900)" }}>
+                All sections filled · Shift completion unlocks at end hour ({shift.end})
+              </span>
+            ) : (
+              <span className="submit-ready">All sections answered · Ready to complete at {shift.end}</span>
             )}
           </div>
-          <button type="button" className="btn btn-primary" onClick={startReview}>Review and submit report</button>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            {!endHourReached && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => onToggleEndHour(true)}
+                title={`Reach shift end hour (${shift.end}) to allow completion`}
+              >
+                Reach end hour ({shift.end})
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={!endHourReached || !!isReconciling}
+              onClick={startReview}
+            >
+              {isReconciling ? "Reconciling via Gemma 3-27B-IT…" : endHourReached ? "Review and complete shift" : `Complete at ${shift.end}`}
+            </button>
+          </div>
         </div>
       )}
 
@@ -652,10 +858,14 @@ export default function WorkerReport({ shift, data, locked, onReport, onSetTasks
         <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="review-title">
           <div className="modal-dialog">
             <div className="modal-header">
-              <h3 id="review-title" className="modal-title">Review your report</h3>
+              <h3 id="review-title" className="modal-title">Review and complete shift report</h3>
               <button type="button" className="icon-btn" aria-label="Close" onClick={() => setReviewing(false)}><X className="icon" aria-hidden="true" /></button>
             </div>
             <ul className="review-list">
+              <li className="review-item">
+                <span className="review-cat">Reporting shift lead</span>
+                <span className="review-val">{shift.outgoing} ({SHIFT_TYPE_LABEL[shift.type]} · {shift.start}–{shift.end})</span>
+              </li>
               {summarize(r, data).map(s => (
                 <li key={s.id} className="review-item">
                   <span className="review-cat">{s.title}</span>
@@ -669,10 +879,10 @@ export default function WorkerReport({ shift, data, locked, onReport, onSetTasks
                 </li>
               )}
             </ul>
-            <p className="modal-sub">ShiftGuard will check your report against the shift records. Submitting does not close or sign off the shift.</p>
+            <p className="modal-sub">ShiftGuard will reconcile your report against the shift records. Completing the report prepares the handover ledger before transferring to the next shift ({shift.incoming}).</p>
             <div className="modal-footer">
               <button type="button" className="btn btn-ghost" onClick={() => setReviewing(false)}>Keep editing</button>
-              <button type="button" className="btn btn-primary" onClick={() => { setReviewing(false); onSubmit(); }}>Submit report</button>
+              <button type="button" className="btn btn-primary" onClick={() => { setReviewing(false); onSubmit(); }}>Complete shift report</button>
             </div>
           </div>
         </div>
