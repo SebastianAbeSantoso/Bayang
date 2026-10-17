@@ -4,9 +4,11 @@ import {
   ArrowRightLeft,
   CalendarClock,
   Check,
+  ChevronDown,
   Clock,
   Coffee,
   LogIn,
+  Search,
   ShieldCheck,
   Sparkles,
   Truck,
@@ -64,9 +66,18 @@ export default function ShiftLogin({
     ...roster.filter(m => m.role === "owner").map(m => m.pin),
   ]);
 
+  const initialLeadMember = roster.find(m => m.name.toLowerCase() === shift.outgoing.toLowerCase());
   const [leadName, setLeadName] = useState<string>(shift.outgoing);
-  const [leadPin, setLeadPin] = useState<string>(staffPins[shift.outgoing] ?? "1024");
+  const [leadSearchQuery, setLeadSearchQuery] = useState<string>(
+    initialLeadMember ? `${initialLeadMember.name} (${initialLeadMember.station})` : shift.outgoing
+  );
+  const [isLeadDropdownOpen, setIsLeadDropdownOpen] = useState(false);
+  const [leadPin, setLeadPin] = useState<string>("");
+  const [showPin, setShowPin] = useState(false);
   const [pinError, setPinError] = useState<string>("");
+
+  const activeMember = roster.find(m => m.name.toLowerCase() === leadName.toLowerCase());
+  const expectedPin = activeMember?.pin || staffPins[leadName] || "1024";
 
   const floorRosterLabels = roster
     .filter(m => m.role === "floor_staff")
@@ -78,25 +89,35 @@ export default function ShiftLogin({
 
   const [selectedCrew, setSelectedCrew] = useState<string[]>(crewOptions.slice(0, 2));
 
-  const leadNamesFromRoster = roster
-    .filter(m => m.role === "shift_lead" || m.role === "floor_staff")
-    .map(m => m.name);
-  const staffRoster = Array.from(new Set([...leadNamesFromRoster, ...STAFF_NAMES, shift.outgoing, shift.incoming]));
-
   const isOwnerPinEntered = leadPin.trim().length === 4 && ownerPins.has(leadPin.trim());
+
+  const filteredStaff = roster.filter(m => {
+    const q = leadSearchQuery.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      m.name.toLowerCase().includes(q) ||
+      m.station.toLowerCase().includes(q) ||
+      m.role.toLowerCase().includes(q) ||
+      m.pin.includes(q)
+    );
+  });
 
   const handleSelectShift = (newShiftId: string) => {
     setSelectedShiftId(newShiftId);
     const nextRaw = SHIFTS.find(s => s.id === newShiftId) ?? SHIFTS[1];
     const nextEff = effectiveShift(nextRaw, db[newShiftId]);
+    const nextMember = roster.find(m => m.name.toLowerCase() === nextEff.outgoing.toLowerCase());
     setLeadName(nextEff.outgoing);
-    setLeadPin(staffPins[nextEff.outgoing] ?? "1024");
+    setLeadSearchQuery(nextMember ? `${nextMember.name} (${nextMember.station})` : nextEff.outgoing);
+    setLeadPin("");
     setPinError("");
   };
 
-  const handleSelectLead = (name: string) => {
-    setLeadName(name);
-    setLeadPin(staffPins[name] ?? "1024");
+  const handleSelectLead = (member: StaffMember) => {
+    setLeadName(member.name);
+    setLeadSearchQuery(`${member.name} (${member.station})`);
+    setIsLeadDropdownOpen(false);
+    setLeadPin("");
     setPinError("");
   };
 
@@ -108,20 +129,30 @@ export default function ShiftLogin({
 
   const handleSignIn = () => {
     const cleanPin = leadPin.trim();
-    if (cleanPin.length < 4) {
-      setPinError("Enter a 4-digit PIN to sign in.");
+    if (!cleanPin) {
+      setPinError(`Please input ${leadName}’s 4-digit PIN (or enter 0000 for Owner Mode).`);
       return;
     }
+    if (cleanPin.length < 4) {
+      setPinError("PIN must be 4 digits.");
+      return;
+    }
+
+    const isOwner = ownerPins.has(cleanPin);
+    if (!isOwner && expectedPin && cleanPin !== expectedPin) {
+      setPinError(`Incorrect PIN for ${leadName}. Registered PIN is ${expectedPin} (or enter 0000 for Owner Mode).`);
+      return;
+    }
+
     setPinError("");
     const ownerMember = roster.find(m => m.role === "owner" && m.pin === cleanPin);
-    const enterOwnerMode = ownerPins.has(cleanPin);
     onStartShiftSession({
       shiftId: selectedShiftId,
-      outgoingLead: enterOwnerMode ? (ownerMember?.name ?? leadName) : leadName,
+      outgoingLead: isOwner ? (ownerMember?.name ?? leadName) : leadName,
       incomingLead: shift.incoming,
       crew: selectedCrew,
-      ownerMode: enterOwnerMode,
-      openTab: enterOwnerMode ? "roster" : "report",
+      ownerMode: isOwner,
+      openTab: isOwner ? "roster" : "report",
     });
   };
 
@@ -233,45 +264,153 @@ export default function ShiftLogin({
               </select>
             </div>
 
-            {/* Step 2: Shift Lead Signing In + PIN */}
-            <div style={{ marginBottom: "20px" }}>
-              <label className="field-label" style={{ display: "block", marginBottom: "8px" }}>
-                Shift Lead Signing In
-              </label>
-
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "14px" }}>
-                {staffRoster.map(name => {
-                  const active = leadName === name;
-                  return (
-                    <button
-                      key={name}
-                      type="button"
-                      onClick={() => handleSelectLead(name)}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        padding: "7px 14px",
-                        borderRadius: "999px",
-                        border: active ? "1.5px solid var(--espresso-600)" : "1px solid var(--paper-400)",
-                        background: active ? "var(--espresso-600)" : "var(--paper-0)",
-                        color: active ? "#fff" : "var(--ink-800)",
-                        fontSize: "13px",
-                        fontWeight: active ? 600 : 500,
-                        cursor: "pointer",
-                      }}
-                    >
-                      {active && <Check className="icon icon-xs" aria-hidden="true" />}
-                      {name}
-                    </button>
-                  );
-                })}
+            {/* Step 2: Searchable Shift Lead Box + PIN */}
+            <div style={{ marginBottom: "20px", position: "relative" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                <label className="field-label" htmlFor="shift-lead-search">
+                  Shift Lead Signing In
+                </label>
+                <span className="muted-text" style={{ fontSize: "11.5px" }}>
+                  Search or select from staff roster
+                </span>
               </div>
 
-              <label className="field" style={{ maxWidth: "260px" }}>
-                <span className="field-label">PIN</span>
+              {/* Searchable input */}
+              <div style={{ position: "relative", marginBottom: "14px" }}>
+                <Search
+                  className="icon icon-xs"
+                  style={{
+                    position: "absolute",
+                    left: "12px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "var(--ink-500)",
+                    pointerEvents: "none",
+                  }}
+                  aria-hidden="true"
+                />
                 <input
-                  type="password"
+                  id="shift-lead-search"
+                  type="text"
+                  className="input"
+                  value={leadSearchQuery}
+                  onChange={e => {
+                    setLeadSearchQuery(e.target.value);
+                    setIsLeadDropdownOpen(true);
+                  }}
+                  onFocus={() => setIsLeadDropdownOpen(true)}
+                  placeholder="Search or select shift lead (e.g. Dimas, Rina, Sarah)…"
+                  style={{ width: "100%", fontWeight: 600, paddingLeft: "36px", paddingRight: "36px" }}
+                  autoComplete="off"
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsLeadDropdownOpen(prev => !prev)}
+                  style={{
+                    position: "absolute",
+                    right: "8px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "transparent",
+                    border: "none",
+                    padding: "4px",
+                    cursor: "pointer",
+                    color: "var(--ink-600)",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                  aria-label="Toggle staff roster dropdown"
+                >
+                  <ChevronDown className="icon icon-xs" />
+                </button>
+
+                {isLeadDropdownOpen && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "calc(100% + 4px)",
+                      left: 0,
+                      right: 0,
+                      zIndex: 60,
+                      background: "var(--paper-0)",
+                      border: "1.5px solid var(--espresso-600)",
+                      borderRadius: "8px",
+                      boxShadow: "0 10px 25px rgba(28, 25, 23, 0.15)",
+                      maxHeight: "220px",
+                      overflowY: "auto",
+                      padding: "6px",
+                    }}
+                  >
+                    {filteredStaff.length === 0 ? (
+                      <div style={{ padding: "10px 12px", fontSize: "12.5px", color: "var(--ink-500)" }}>
+                        No staff found matching "{leadSearchQuery}"
+                      </div>
+                    ) : (
+                      filteredStaff.map(m => {
+                        const isSelected = leadName.toLowerCase() === m.name.toLowerCase();
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => handleSelectLead(m)}
+                            style={{
+                              width: "100%",
+                              textAlign: "left",
+                              padding: "8px 12px",
+                              borderRadius: "6px",
+                              border: "none",
+                              background: isSelected ? "var(--amber-50)" : "transparent",
+                              color: isSelected ? "var(--espresso-600)" : "var(--ink-900)",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              fontSize: "13px",
+                              fontWeight: isSelected ? 700 : 500,
+                              marginBottom: "2px",
+                            }}
+                          >
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              {isSelected ? (
+                                <Check className="icon icon-xs" style={{ color: "var(--espresso-600)" }} />
+                              ) : (
+                                <span style={{ width: "14px", display: "inline-block" }} />
+                              )}
+                              <span>
+                                {m.name} · <span style={{ color: "var(--ink-500)", fontWeight: 400 }}>{m.station}</span>
+                              </span>
+                            </div>
+                            <span className="mono-small" style={{ fontSize: "11px", color: "var(--espresso-600)" }}>
+                              PIN: {m.pin}
+                            </span>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* PIN input that requires actual entry */}
+              <label className="field" style={{ maxWidth: "340px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span className="field-label">PIN</span>
+                  {expectedPin && (
+                    <button
+                      type="button"
+                      className="link-btn"
+                      onClick={() => {
+                        setLeadPin(expectedPin);
+                        if (pinError) setPinError("");
+                      }}
+                      style={{ fontSize: "11px" }}
+                    >
+                      Fill {leadName}'s PIN ({expectedPin})
+                    </button>
+                  )}
+                </div>
+                <input
+                  type={showPin ? "text" : "password"}
                   inputMode="numeric"
                   className="input input-sm mono"
                   value={leadPin}
@@ -284,17 +423,35 @@ export default function ShiftLogin({
                     if (e.key === "Enter") handleSignIn();
                   }}
                   maxLength={4}
-                  placeholder="4-digit PIN (0000 for Owner)"
-                  style={{ letterSpacing: "0.25em", fontWeight: 700 }}
+                  placeholder={`Input 4-digit PIN for ${leadName}`}
+                  style={{ letterSpacing: "0.25em", fontWeight: 700, fontSize: "14px" }}
                 />
-                {isOwnerPinEntered ? (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "4px" }}>
+                  <button
+                    type="button"
+                    className="link-btn"
+                    onClick={() => setShowPin(v => !v)}
+                    style={{ fontSize: "11px", color: "var(--ink-500)" }}
+                  >
+                    {showPin ? "Hide numbers" : "Show numbers"}
+                  </button>
+                  <button
+                    type="button"
+                    className="link-btn"
+                    onClick={() => {
+                      setLeadPin("0000");
+                      if (pinError) setPinError("");
+                    }}
+                    style={{ fontSize: "11px", color: "var(--espresso-600)" }}
+                  >
+                    Use Owner PIN (0000)
+                  </button>
+                </div>
+
+                {isOwnerPinEntered && (
                   <span style={{ color: "var(--espresso-600)", fontSize: "11.5px", fontWeight: 600, marginTop: "4px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
                     <ShieldCheck className="icon icon-xs" aria-hidden="true" />
-                    Owner PIN detected — signs into Owner Mode (Staff Roster tab)
-                  </span>
-                ) : (
-                  <span className="muted-text" style={{ fontSize: "11px", marginTop: "4px", display: "block" }}>
-                    Enter 0000 for Owner Mode (Staff Roster management)
+                    Owner PIN recognized — will unlock Staff Roster management
                   </span>
                 )}
                 {pinError && (
