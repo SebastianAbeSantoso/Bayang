@@ -49,7 +49,16 @@ export default function ShiftLogin({
   const shiftData = db[selectedShiftId];
   const shift: Shift = effectiveShift(rawShift, shiftData);
 
+  const staffPins: Record<string, string> = {
+    Rina: "1024",
+    Sarah: "2048",
+    Dimas: "3012",
+    Bima: "4096",
+    Sari: "5120",
+  };
   const [leadName, setLeadName] = useState<string>(shift.outgoing);
+  const [leadPin, setLeadPin] = useState<string>(staffPins[shift.outgoing] ?? "1024");
+  const [pinError, setPinError] = useState<string>("");
   const [selectedCrew, setSelectedCrew] = useState<string[]>(["Sari (Barista)", "Bima (Cashier)"]);
 
   const staffRoster = Array.from(new Set([...STAFF_NAMES, shift.outgoing, shift.incoming]));
@@ -65,12 +74,35 @@ export default function ShiftLogin({
     const nextRaw = SHIFTS.find(s => s.id === newShiftId) ?? SHIFTS[1];
     const nextEff = effectiveShift(nextRaw, db[newShiftId]);
     setLeadName(nextEff.outgoing);
+    setLeadPin(staffPins[nextEff.outgoing] ?? "1024");
+    setPinError("");
+  };
+
+  const handleSelectLead = (name: string) => {
+    setLeadName(name);
+    setLeadPin(staffPins[name] ?? "1024");
+    setPinError("");
   };
 
   const toggleCrew = (member: string) => {
     setSelectedCrew(prev =>
       prev.includes(member) ? prev.filter(m => m !== member) : [...prev, member]
     );
+  };
+
+  const handleSignIn = () => {
+    if (leadPin.trim().length < 4) {
+      setPinError("Enter your 4-digit Shift Lead PIN to sign in.");
+      return;
+    }
+    setPinError("");
+    onStartShiftSession({
+      shiftId: selectedShiftId,
+      outgoingLead: leadName,
+      incomingLead: shift.incoming,
+      crew: selectedCrew,
+      openTab: "report",
+    });
   };
 
   const activeSchedules = shiftData.schedules || [];
@@ -181,20 +213,20 @@ export default function ShiftLogin({
               </select>
             </div>
 
-            {/* Step 2: Shift Lead Signing In */}
+            {/* Step 2: Shift Lead Signing In + PIN */}
             <div style={{ marginBottom: "20px" }}>
               <label className="field-label" style={{ display: "block", marginBottom: "8px" }}>
                 Shift Lead Signing In
               </label>
 
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "14px" }}>
                 {staffRoster.map(name => {
                   const active = leadName === name;
                   return (
                     <button
                       key={name}
                       type="button"
-                      onClick={() => setLeadName(name)}
+                      onClick={() => handleSelectLead(name)}
                       style={{
                         display: "inline-flex",
                         alignItems: "center",
@@ -215,6 +247,28 @@ export default function ShiftLogin({
                   );
                 })}
               </div>
+
+              <label className="field" style={{ maxWidth: "240px" }}>
+                <span className="field-label">Shift Lead PIN ({leadName})</span>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  className="input input-sm mono"
+                  value={leadPin}
+                  onChange={e => {
+                    setLeadPin(e.target.value.replace(/\D/g, "").slice(0, 4));
+                    if (pinError) setPinError("");
+                  }}
+                  maxLength={4}
+                  placeholder="4-digit PIN"
+                  style={{ letterSpacing: "0.25em", fontWeight: 700 }}
+                />
+                {pinError && (
+                  <span style={{ color: "var(--crimson-600)", fontSize: "11.5px", marginTop: "4px", display: "block" }}>
+                    {pinError}
+                  </span>
+                )}
+              </label>
             </div>
 
             {/* Step 3: Staff in shift */}
@@ -248,72 +302,26 @@ export default function ShiftLogin({
               </div>
             </div>
 
-            {/* Primary CTA: Sign In & Start Shift */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() =>
-                  onStartShiftSession({
-                    shiftId: selectedShiftId,
-                    outgoingLead: leadName,
-                    incomingLead: shift.incoming,
-                    crew: selectedCrew,
-                    openTab: "report",
-                  })
-                }
-                style={{
-                  width: "100%",
-                  padding: "12px 18px",
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "8px",
-                }}
-              >
-                <LogIn className="icon icon-sm" aria-hidden="true" />
-                Sign In & Start {SHIFT_TYPE_LABEL[shift.type]} Shift as {leadName} ({shift.start}–{shift.end})
-                <ArrowRight className="icon icon-sm" aria-hidden="true" />
-              </button>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() =>
-                    onStartShiftSession({
-                      shiftId: selectedShiftId,
-                      outgoingLead: leadName,
-                      incomingLead: shift.incoming,
-                      crew: selectedCrew,
-                      openTab: "briefing",
-                    })
-                  }
-                  style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
-                >
-                  <ArrowRightLeft className="icon icon-xs" aria-hidden="true" />
-                  Sign In & View Incoming Briefing
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  onClick={() =>
-                    onStartShiftSession({
-                      shiftId: selectedShiftId,
-                      outgoingLead: leadName,
-                      incomingLead: shift.incoming,
-                      crew: selectedCrew,
-                      openTab: "dashboard",
-                    })
-                  }
-                  style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px", border: "1px solid var(--paper-300)" }}
-                >
-                  Open Shift Dashboard ({SUPERVISOR} / Lead)
-                </button>
-              </div>
-            </div>
+            {/* Single Primary CTA: Sign In & Start Shift */}
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleSignIn}
+              style={{
+                width: "100%",
+                padding: "12px 18px",
+                fontSize: "14px",
+                fontWeight: 600,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+              }}
+            >
+              <LogIn className="icon icon-sm" aria-hidden="true" />
+              Sign In & Start {SHIFT_TYPE_LABEL[shift.type]} Shift as {leadName} ({shift.start}–{shift.end})
+              <ArrowRight className="icon icon-sm" aria-hidden="true" />
+            </button>
           </section>
 
           {/* Right Column: Shift Start Operational Preview */}
