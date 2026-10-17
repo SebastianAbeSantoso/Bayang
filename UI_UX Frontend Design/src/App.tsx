@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowRight, ArrowRightLeft, ClipboardCheck, LayoutDashboard, Database, Download, ListChecks, ScrollText, X } from "lucide-react";
+import { ArrowRight, ArrowRightLeft, ClipboardCheck, LayoutDashboard, Database, Download, ListChecks, LogIn, ScrollText, X } from "lucide-react";
 import type { AuditEvent, ChecklistItem, Finding, OperationalScheduleItem, ReportState, ShiftData, SourceRecord } from "./data";
 import {
   CAFE, CURRENT_SHIFT_ID, SHIFTS, SUPERVISOR, SHIFT_TYPE_LABEL, STAFF_NAMES, buildInitialDb, categoryComplete, effectiveShift, makeEvent, reconcile, shiftById, signoffState, stampTime, bucketOf,
@@ -10,6 +10,7 @@ import Ledger, { type CheckAction, type NewFindingInput } from "./components/Led
 import Records from "./components/Records";
 import AuditLog from "./components/AuditLog";
 import Briefing from "./components/Briefing";
+import ShiftLogin from "./components/ShiftLogin";
 import { Tag } from "./components/ui";
 import { api, type SystemStatus } from "./api";
 
@@ -18,6 +19,7 @@ type Tab = "dashboard" | "report" | "ledger" | "briefing" | "records" | "audit";
 export default function App() {
   const [db, setDb] = useState<Record<string, ShiftData>>(buildInitialDb);
   const [shiftId, setShiftId] = useState(CURRENT_SHIFT_ID);
+  const [showLoginScreen, setShowLoginScreen] = useState(true);
   const [tab, setTab] = useState<Tab>("dashboard");
   const [justSubmitted, setJustSubmitted] = useState(false);
   const [selectedFinding, setSelectedFinding] = useState<string | null>(null);
@@ -56,6 +58,44 @@ export default function App() {
   const setReport = (report: ReportState) => update(d => ({ ...d, report }));
   const setTasks = (ids: string[], patch: Partial<ChecklistItem>) =>
     update(d => ({ ...d, checklist: d.checklist.map(t => (ids.includes(t.id) ? { ...t, ...patch } : t)) }));
+
+  const handleStartShiftSession = (params: {
+    shiftId: string;
+    outgoingLead: string;
+    incomingLead: string;
+    crew: string[];
+    openTab: "dashboard" | "report" | "briefing" | "ledger";
+  }) => {
+    const time = stampTime().slice(0, 5);
+    const targetShift = shiftById(params.shiftId);
+    setShiftId(params.shiftId);
+    setSelectedFinding(null);
+    setSelectedRecordId(null);
+    setJustSubmitted(false);
+    setDb(prev => {
+      const curr = prev[params.shiftId];
+      const startEv = makeEvent(targetShift, {
+        actor: params.outgoingLead,
+        actorKind: "human",
+        type: "shift",
+        action: "Signed in & started shift",
+        explanation: `${params.outgoingLead} signed in on POS tablet to start ${SHIFT_TYPE_LABEL[targetShift.type]} shift (${targetShift.start}–${targetShift.end}). Handover recipient: ${params.incomingLead}${params.crew.length ? ` · Floor crew: ${params.crew.join(", ")}` : ""}.`,
+      });
+      return {
+        ...prev,
+        [params.shiftId]: {
+          ...curr,
+          signedIn: true,
+          signedInAt: curr.signedInAt || time,
+          outgoingLead: params.outgoingLead,
+          incomingLead: params.incomingLead,
+          audit: [startEv, ...curr.audit],
+        },
+      };
+    });
+    setTab(params.openTab);
+    setShowLoginScreen(false);
+  };
 
   const handleSignIn = (staffName: string) => {
     const time = stampTime().slice(0, 5);
@@ -708,6 +748,18 @@ export default function App() {
     ...STAFF_NAMES,
   ]));
 
+  if (showLoginScreen) {
+    return (
+      <ShiftLogin
+        shiftId={shiftId}
+        db={db}
+        gemmaMode={gemmaMode}
+        onToggleGemmaMode={() => setGemmaMode(m => (m === "live" ? "seeded" : "live"))}
+        onStartShiftSession={handleStartShiftSession}
+      />
+    );
+  }
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -760,6 +812,16 @@ export default function App() {
           <span className="mono-small" style={{ color: "var(--ink-600)", background: "var(--paper-100)", border: "1px solid var(--paper-300)", padding: "4px 10px", borderRadius: "6px" }}>
             {SHIFT_TYPE_LABEL[shift.type]} Shift ({shift.start}–{shift.end}) · Lead: <strong>{shift.outgoing}</strong>
           </span>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => setShowLoginScreen(true)}
+            title="Return to POS Tablet Staff Login & Start Shift screen"
+            style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}
+          >
+            <LogIn className="icon icon-sm" aria-hidden="true" />
+            Switch Staff / Start Shift
+          </button>
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowExport(true)}>
             <Download className="icon icon-sm" aria-hidden="true" />Export
           </button>
@@ -814,10 +876,10 @@ export default function App() {
                 style={{ marginTop: "6px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px", fontSize: "12px" }}
                 onClick={() => {
                   switchShift(nextShiftObj.id);
-                  setTab("report");
+                  setShowLoginScreen(true);
                 }}
               >
-                Open {SHIFT_TYPE_LABEL[nextShiftObj.type]} Shift ({nextShiftObj.outgoing})
+                Start {SHIFT_TYPE_LABEL[nextShiftObj.type]} Shift Login ({nextShiftObj.outgoing})
                 <ArrowRight className="icon icon-sm" aria-hidden="true" />
               </button>
             )}
