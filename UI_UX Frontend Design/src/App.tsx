@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowRightLeft, ClipboardCheck, LayoutDashboard, Database, Download, ListChecks, ScrollText, X, Sparkles, RefreshCw, Cpu } from "lucide-react";
+import { ArrowRightLeft, ClipboardCheck, LayoutDashboard, Database, Download, ListChecks, ScrollText, X, Sparkles, RefreshCw, Cpu, Lock, KeyRound, Users, ShieldCheck } from "lucide-react";
 import type { AuditEvent, ChecklistItem, Finding, ReportState, Role, ShiftData } from "./data";
 import {
   CAFE, CURRENT_SHIFT_ID, SUPERVISOR, SHIFT_TYPE_LABEL, buildInitialDb, categoryComplete, makeEvent, reconcile, shiftById, signoffState, stampTime, bucketOf,
@@ -10,6 +10,7 @@ import Ledger, { type CheckAction } from "./components/Ledger";
 import Records from "./components/Records";
 import AuditLog from "./components/AuditLog";
 import Briefing from "./components/Briefing";
+import StaffPinModal, { type StaffMember } from "./components/StaffPinModal";
 import { Tag } from "./components/ui";
 import { api, type BackendState, type SystemStatus } from "./api";
 
@@ -17,12 +18,52 @@ type Tab = "dashboard" | "report" | "ledger" | "briefing" | "records" | "audit";
 
 const ROLE_LABEL: Record<Role, string> = { outgoing: "Outgoing lead", incoming: "Incoming lead", supervisor: "Supervisor" };
 
+const INITIAL_STAFF_ROSTER: StaffMember[] = [
+  {
+    id: "STF-01",
+    name: "Dimas",
+    fullName: "Dimas Raditya",
+    role: "outgoing",
+    roleTitle: "Outgoing Shift Lead",
+    pin: "1234",
+    phone: "+62 812-3456-7890",
+    active: true,
+    avatarColor: "#c89d7c",
+  },
+  {
+    id: "STF-02",
+    name: "Rina",
+    fullName: "Rina Melati",
+    role: "incoming",
+    roleTitle: "Incoming Shift Lead",
+    pin: "5678",
+    phone: "+62 813-9876-5432",
+    active: true,
+    avatarColor: "#0284c7",
+  },
+  {
+    id: "STF-03",
+    name: "Kevin",
+    fullName: "Kevin Santoso",
+    role: "supervisor",
+    roleTitle: "Store Supervisor",
+    pin: "9900",
+    phone: "+62 811-2233-4455",
+    active: true,
+    avatarColor: "#7c3aed",
+  },
+];
+
 export default function App() {
   const [db, setDb] = useState<Record<string, ShiftData>>(buildInitialDb);
   const [shiftId, setShiftId] = useState(CURRENT_SHIFT_ID);
   const [tab, setTab] = useState<Tab>("dashboard");
   const [justSubmitted, setJustSubmitted] = useState(false);
   const [role, setRole] = useState<Role>("outgoing");
+  const [staffRoster, setStaffRoster] = useState<StaffMember[]>(INITIAL_STAFF_ROSTER);
+  const [activeStaff, setActiveStaff] = useState<StaffMember>(INITIAL_STAFF_ROSTER[0]);
+  const [showStaffModal, setShowStaffModal] = useState(false);
+  const [authToast, setAuthToast] = useState<string | null>(null);
   const [selectedFinding, setSelectedFinding] = useState<string | null>(null);
   const [showSignoff, setShowSignoff] = useState(false);
   const [showExport, setShowExport] = useState(false);
@@ -267,12 +308,49 @@ export default function App() {
           ) : null}
         </div>
 
-        <div className="topbar-right">
+        <div className="topbar-right" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          {/* In-Store PIN Terminal Switcher */}
+          <button
+            type="button"
+            className="btn btn-outline btn-sm"
+            onClick={() => setShowStaffModal(true)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              fontSize: "12px",
+              height: "32px",
+              padding: "0 10px",
+              background: "var(--paper-100)",
+              border: "1px solid var(--paper-400)",
+              borderRadius: "8px",
+              cursor: "pointer",
+            }}
+            title="Open in-store 4-digit PIN authentication terminal or manage staff roster"
+          >
+            <Lock size={13} style={{ color: "var(--amber-700)" }} />
+            <span style={{ fontWeight: 600 }}>{activeStaff.name}</span>
+            <span style={{ fontSize: "10px", background: "var(--paper-300)", padding: "1px 5px", borderRadius: "6px", color: "var(--ink-600)" }}>
+              PIN: {activeStaff.pin}
+            </span>
+          </button>
+
           <label className="inline-field">
             <span className="sr-only">Viewing as</span>
-            <select className="input input-sm" value={role} onChange={e => setRole(e.target.value as Role)}>
+            <select
+              className="input input-sm"
+              value={role}
+              onChange={e => {
+                const r = e.target.value as Role;
+                setRole(r);
+                const matched = staffRoster.find(s => s.role === r);
+                if (matched) setActiveStaff(matched);
+              }}
+            >
               {(Object.keys(ROLE_LABEL) as Role[]).map(r => (
-                <option key={r} value={r}>{ROLE_LABEL[r]} · {r === "supervisor" ? SUPERVISOR : r === "outgoing" ? shift.outgoing : shift.incoming}</option>
+                <option key={r} value={r}>
+                  {ROLE_LABEL[r]} · {r === "supervisor" ? SUPERVISOR : r === "outgoing" ? shift.outgoing : shift.incoming}
+                </option>
               ))}
             </select>
           </label>
@@ -281,6 +359,27 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      {authToast && (
+        <div
+          style={{
+            background: "#dcfce7",
+            borderBottom: "1px solid #86efac",
+            padding: "6px 16px",
+            fontSize: "12px",
+            textAlign: "center",
+            color: "#166534",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "8px",
+            fontWeight: 600,
+          }}
+        >
+          <ShieldCheck size={14} style={{ color: "#16a34a" }} />
+          {authToast}
+        </div>
+      )}
 
       {isReconciling && (
         <div style={{ background: "var(--amber-100)", borderBottom: "1px solid var(--amber-300)", padding: "8px 16px", fontSize: "12.5px", textAlign: "center", color: "var(--amber-900)", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
@@ -373,6 +472,25 @@ export default function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {showStaffModal && (
+        <StaffPinModal
+          currentRole={role}
+          staffList={staffRoster}
+          onSelectStaff={staff => {
+            setRole(staff.role);
+            setActiveStaff(staff);
+            setAuthToast(`Staff terminal authenticated: ${staff.fullName} (${staff.roleTitle}) via PIN.`);
+            setTimeout(() => setAuthToast(null), 3500);
+          }}
+          onAddStaff={newStaff => {
+            setStaffRoster(prev => [...prev, newStaff]);
+            setAuthToast(`Staff member ${newStaff.fullName} provisioned with PIN ${newStaff.pin}.`);
+            setTimeout(() => setAuthToast(null), 3500);
+          }}
+          onClose={() => setShowStaffModal(false)}
+        />
       )}
     </div>
   );
