@@ -55,6 +55,17 @@ export default function ShiftLogin({
   const shiftData = db[selectedShiftId];
   const shift: Shift = effectiveShift(rawShift, shiftData);
 
+  const staffPins: Record<string, string> = {};
+  for (const m of roster) {
+    staffPins[m.name] = m.pin;
+  }
+
+  const ownerPins = new Set([
+    "0000",
+    "9999",
+    ...roster.filter(m => m.role === "owner").map(m => m.pin),
+  ]);
+
   // Default selection for shift lead signing in is the current shift's usual manager
   const initialLeadMember = roster.find(m => m.name.toLowerCase() === rawShift.outgoing.toLowerCase());
   const [leadName, setLeadName] = useState<string>(rawShift.outgoing);
@@ -62,6 +73,8 @@ export default function ShiftLogin({
     initialLeadMember ? `${initialLeadMember.name} (${initialLeadMember.station})` : `${rawShift.outgoing} (Manager)`
   );
   const [isLeadDropdownOpen, setIsLeadDropdownOpen] = useState(false);
+  const [leadPin, setLeadPin] = useState<string>("");
+  const [pinError, setPinError] = useState<string>("");
 
   const floorRosterLabels = roster
     .filter(m => m.role === "floor_staff")
@@ -91,12 +104,16 @@ export default function ShiftLogin({
     setLeadName(nextRaw.outgoing);
     setLeadSearchQuery(nextMember ? `${nextMember.name} (${nextMember.station})` : `${nextRaw.outgoing} (Manager)`);
     setIsLeadDropdownOpen(false);
+    setLeadPin("");
+    setPinError("");
   };
 
   const handleSelectLead = (member: StaffMember) => {
     setLeadName(member.name);
     setLeadSearchQuery(`${member.name} (${member.station})`);
     setIsLeadDropdownOpen(false);
+    setLeadPin("");
+    setPinError("");
   };
 
   const toggleCrew = (member: string) => {
@@ -106,12 +123,34 @@ export default function ShiftLogin({
   };
 
   const handleSignIn = () => {
+    const cleanPin = leadPin.trim();
+    if (!cleanPin) {
+      setPinError("Enter 4-digit PIN.");
+      return;
+    }
+    if (cleanPin.length < 4) {
+      setPinError("PIN must be 4 digits.");
+      return;
+    }
+
+    const isOwner = ownerPins.has(cleanPin);
+    const activeMember = roster.find(m => m.name.toLowerCase() === leadName.toLowerCase());
+    const expectedPin = activeMember?.pin || staffPins[leadName];
+
+    if (!isOwner && expectedPin && cleanPin !== expectedPin) {
+      setPinError("Incorrect PIN. Please enter the correct 4-digit PIN.");
+      return;
+    }
+
+    setPinError("");
+    const ownerMember = roster.find(m => m.role === "owner" && m.pin === cleanPin);
     onStartShiftSession({
       shiftId: selectedShiftId,
-      outgoingLead: leadName,
+      outgoingLead: isOwner ? (ownerMember?.name ?? leadName) : leadName,
       incomingLead: shift.incoming,
       crew: selectedCrew,
-      openTab: "report",
+      ownerMode: isOwner,
+      openTab: isOwner ? "roster" : "report",
     });
   };
 
@@ -347,6 +386,36 @@ export default function ShiftLogin({
                       })
                     )}
                   </div>
+                )}
+              </div>
+
+              {/* PIN Input */}
+              <div style={{ maxWidth: "260px" }}>
+                <label className="field-label" htmlFor="staff-pin-input" style={{ display: "block", marginBottom: "6px" }}>
+                  PIN
+                </label>
+                <input
+                  id="staff-pin-input"
+                  type="password"
+                  inputMode="numeric"
+                  className="input input-sm mono"
+                  value={leadPin}
+                  onChange={e => {
+                    const nextVal = e.target.value.replace(/\D/g, "").slice(0, 4);
+                    setLeadPin(nextVal);
+                    if (pinError) setPinError("");
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") handleSignIn();
+                  }}
+                  maxLength={4}
+                  placeholder="••••"
+                  style={{ letterSpacing: "0.25em", fontWeight: 700, fontSize: "16px" }}
+                />
+                {pinError && (
+                  <span style={{ color: "var(--crimson-600)", fontSize: "11.5px", marginTop: "4px", display: "block" }}>
+                    {pinError}
+                  </span>
                 )}
               </div>
             </div>
