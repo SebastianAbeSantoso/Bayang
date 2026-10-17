@@ -24,6 +24,8 @@ interface Props {
   roster: StaffMember[];
   gemmaMode: "live" | "seeded";
   onToggleGemmaMode: () => void;
+  dataPreset?: "empty" | "seeded";
+  onSwitchDataPreset?: (preset: "empty" | "seeded") => void;
   onStartShiftSession: (params: {
     shiftId: string;
     outgoingLead: string;
@@ -38,6 +40,8 @@ export default function ShiftLogin({
   shiftId: initialShiftId,
   db,
   roster,
+  dataPreset = "seeded",
+  onSwitchDataPreset,
   onStartShiftSession,
 }: Props) {
   const [selectedShiftId, setSelectedShiftId] = useState<string>(initialShiftId);
@@ -413,6 +417,94 @@ export default function ShiftLogin({
                   : `Enter PIN to Start ${SHIFT_TYPE_LABEL[shift.type]} Shift`}
               <ArrowRight className="icon icon-sm" aria-hidden="true" />
             </button>
+
+            {/* Hackathon Judge Demo Shortcuts & Workspace State Switcher */}
+            <div
+              style={{
+                marginTop: "16px",
+                padding: "12px 14px",
+                borderRadius: "10px",
+                border: "1px dashed var(--paper-400)",
+                background: "var(--paper-100)",
+                fontSize: "12px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                <span style={{ fontWeight: 600, color: "var(--espresso-700)", display: "flex", alignItems: "center", gap: "5px" }}>
+                  <ShieldCheck className="icon icon-xs" aria-hidden="true" />
+                  Judge & Demo Shortcuts
+                </span>
+                <span style={{ fontSize: "11px", color: "var(--ink-500)" }}>
+                  Instant Hackathon Testability
+                </span>
+              </div>
+
+              {/* Data State Switcher: Empty vs Seeded */}
+              {onSwitchDataPreset && (
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px", flexWrap: "wrap" }}>
+                  <span style={{ color: "var(--ink-600)", minWidth: "75px" }}>Workspace:</span>
+                  <button
+                    type="button"
+                    onClick={() => onSwitchDataPreset("empty")}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: "6px",
+                      fontSize: "11.5px",
+                      fontWeight: dataPreset === "empty" ? 700 : 500,
+                      border: dataPreset === "empty" ? "1px solid var(--espresso-600)" : "1px solid var(--paper-300)",
+                      background: dataPreset === "empty" ? "var(--espresso-600)" : "var(--paper-0)",
+                      color: dataPreset === "empty" ? "#fff" : "var(--ink-700)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    State 1: Empty (Clean Slate)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onSwitchDataPreset("seeded")}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: "6px",
+                      fontSize: "11.5px",
+                      fontWeight: dataPreset === "seeded" ? 700 : 500,
+                      border: dataPreset === "seeded" ? "1px solid var(--espresso-600)" : "1px solid var(--paper-300)",
+                      background: dataPreset === "seeded" ? "var(--espresso-600)" : "var(--paper-0)",
+                      color: dataPreset === "seeded" ? "#fff" : "var(--ink-700)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    State 2: Seeded Demo
+                  </button>
+                </div>
+              )}
+
+              {/* 1-Click Quick Fill (sets PIN without exposing raw number in button) */}
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                <span style={{ color: "var(--ink-600)", minWidth: "75px" }}>Quick Sign-In:</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLeadPin("1234");
+                    setPinError("");
+                  }}
+                  className="btn btn-secondary btn-sm"
+                  style={{ fontSize: "11px", padding: "3px 9px" }}
+                >
+                  Quick-Fill Manager (Dimas)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLeadPin("9999");
+                    setPinError("");
+                  }}
+                  className="btn btn-secondary btn-sm"
+                  style={{ fontSize: "11px", padding: "3px 9px" }}
+                >
+                  Quick-Fill Owner (Kevin)
+                </button>
+              </div>
+            </div>
           </section>
 
           {/* Right Column: Shift Start Operational Preview */}

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { ArrowRight, ArrowRightLeft, ClipboardCheck, LayoutDashboard, Database, Download, ListChecks, LogIn, ScrollText, ShieldCheck, Users, X } from "lucide-react";
 import type { AuditEvent, ChecklistItem, Finding, OperationalScheduleItem, ReportState, ShiftData, SourceRecord } from "./data";
 import {
-  CAFE, CURRENT_SHIFT_ID, SHIFTS, SUPERVISOR, SHIFT_TYPE_LABEL, STAFF_NAMES, buildInitialDb, categoryComplete, effectiveShift, makeEvent, reconcile, shiftById, signoffState, stampTime, bucketOf,
+  CAFE, CURRENT_SHIFT_ID, SHIFTS, SUPERVISOR, SHIFT_TYPE_LABEL, STAFF_NAMES, buildEmptyDb, buildInitialDb, categoryComplete, effectiveShift, makeEvent, reconcile, shiftById, signoffState, stampTime, bucketOf,
 } from "./data";
 import Dashboard from "./components/Dashboard";
 import WorkerReport from "./components/WorkerReport";
@@ -12,6 +12,7 @@ import AuditLog from "./components/AuditLog";
 import Briefing from "./components/Briefing";
 import ShiftLogin from "./components/ShiftLogin";
 import StaffRoster, { INITIAL_STAFF_ROSTER, type StaffMember } from "./components/StaffRoster";
+import TelemetryModal from "./components/TelemetryModal";
 import { Tag } from "./components/ui";
 import { api, type SystemStatus } from "./api";
 
@@ -31,8 +32,15 @@ export default function App() {
   const [transferActor, setTransferActor] = useState<string>("");
   const [showExport, setShowExport] = useState(false);
   const [gemmaMode, setGemmaMode] = useState<"live" | "seeded">("live");
+  const [dataPreset, setDataPreset] = useState<"empty" | "seeded">("seeded");
+  const [showTelemetryModal, setShowTelemetryModal] = useState(false);
   const [isReconciling, setIsReconciling] = useState(false);
   const [, setSystemStatus] = useState<SystemStatus | null>(null);
+
+  const handleSwitchDataPreset = (preset: "empty" | "seeded") => {
+    setDataPreset(preset);
+    setDb(preset === "empty" ? buildEmptyDb() : buildInitialDb());
+  };
 
   const rawShift = shiftById(shiftId);
   const data = db[shiftId];
@@ -558,6 +566,12 @@ export default function App() {
           mode: res.reconciliation_meta.mode,
           latencyMs: res.reconciliation_meta.latency_ms,
           extractedClaimsCount: res.reconciliation_meta.total_claims,
+          promptTokens: res.reconciliation_meta.prompt_tokens,
+          completionTokens: res.reconciliation_meta.completion_tokens,
+          totalTokens: res.reconciliation_meta.total_tokens,
+          estimatedCostUsd: res.reconciliation_meta.estimated_cost_usd,
+          tokensPerSec: res.reconciliation_meta.tokens_per_sec,
+          claims: res.claims,
         };
 
         const time = stampTime();
@@ -825,6 +839,8 @@ export default function App() {
         roster={roster}
         gemmaMode={gemmaMode}
         onToggleGemmaMode={() => setGemmaMode(m => (m === "live" ? "seeded" : "live"))}
+        dataPreset={dataPreset}
+        onSwitchDataPreset={handleSwitchDataPreset}
         onStartShiftSession={handleStartShiftSession}
       />
     );
@@ -841,42 +857,93 @@ export default function App() {
           </span>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setGemmaMode(m => m === "live" ? "seeded" : "live")}
-          title="Click to toggle between Live TokenFactory API and Recorded Run"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "7px",
-            background: "var(--paper-200)",
-            padding: "4px 12px",
-            borderRadius: "20px",
-            border: "1px solid var(--paper-400)",
-            fontSize: "12px",
-            fontWeight: 500,
-            color: "var(--espresso-600)",
-            cursor: "pointer",
-          }}
-        >
-          <span
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <button
+            type="button"
+            onClick={() => setShowTelemetryModal(true)}
+            title="Click to inspect Gemma 3-27B-IT Token Usage, API Latency, Cost, and Substring Quotes"
             style={{
-              width: "7px",
-              height: "7px",
-              borderRadius: "50%",
-              background: isReconciling ? "var(--amber-600)" : gemmaMode === "live" ? "#16a34a" : "var(--ink-400)",
-              display: "inline-block",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "7px",
+              background: "var(--paper-200)",
+              padding: "4px 12px",
+              borderRadius: "20px",
+              border: "1px solid var(--paper-400)",
+              fontSize: "12px",
+              fontWeight: 500,
+              color: "var(--espresso-600)",
+              cursor: "pointer",
             }}
-          />
-          <span>
-            Gemma 3-27B-IT {gemmaMode === "live" ? "Live via TokenFactory" : "Recorded via TokenFactory"}
-            {isReconciling
-              ? " · reconciling…"
-              : data.gemmaTelemetry?.latencyMs
-                ? ` · ${data.gemmaTelemetry.latencyMs}ms`
-                : ""}
-          </span>
-        </button>
+          >
+            <span
+              style={{
+                width: "7px",
+                height: "7px",
+                borderRadius: "50%",
+                background: isReconciling ? "var(--amber-600)" : gemmaMode === "live" ? "#16a34a" : "var(--ink-400)",
+                display: "inline-block",
+              }}
+            />
+            <span>
+              Gemma 3-27B-IT
+              {data.gemmaTelemetry?.totalTokens ? ` · ${data.gemmaTelemetry.totalTokens} tok` : ""}
+              {isReconciling
+                ? " · reconciling…"
+                : data.gemmaTelemetry?.latencyMs
+                  ? ` · ${data.gemmaTelemetry.latencyMs}ms`
+                  : ""}
+              {data.gemmaTelemetry?.estimatedCostUsd ? ` · $${data.gemmaTelemetry.estimatedCostUsd.toFixed(5)}` : ""}
+            </span>
+            <span style={{ textDecoration: "underline", fontSize: "11px", marginLeft: "2px", opacity: 0.85 }}>
+              Telemetry
+            </span>
+          </button>
+
+          {/* Topbar Workspace Data State Switcher */}
+          <div
+            style={{
+              display: "inline-flex",
+              borderRadius: "6px",
+              border: "1px solid var(--paper-300)",
+              background: "var(--paper-100)",
+              padding: "2px",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => handleSwitchDataPreset("empty")}
+              style={{
+                padding: "2px 8px",
+                borderRadius: "4px",
+                fontSize: "11px",
+                fontWeight: dataPreset === "empty" ? 700 : 500,
+                background: dataPreset === "empty" ? "var(--espresso-600)" : "transparent",
+                color: dataPreset === "empty" ? "#fff" : "var(--ink-600)",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              Empty Slate
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSwitchDataPreset("seeded")}
+              style={{
+                padding: "2px 8px",
+                borderRadius: "4px",
+                fontSize: "11px",
+                fontWeight: dataPreset === "seeded" ? 700 : 500,
+                background: dataPreset === "seeded" ? "var(--espresso-600)" : "transparent",
+                color: dataPreset === "seeded" ? "#fff" : "var(--ink-600)",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              Seeded Demo
+            </button>
+          </div>
+        </div>
 
         <div className="topbar-right" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           {isOwnerMode && (
@@ -1122,6 +1189,15 @@ export default function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {showTelemetryModal && (
+        <TelemetryModal
+          data={data}
+          gemmaMode={gemmaMode}
+          onToggleGemmaMode={() => setGemmaMode(m => (m === "live" ? "seeded" : "live"))}
+          onClose={() => setShowTelemetryModal(false)}
+        />
       )}
     </div>
   );

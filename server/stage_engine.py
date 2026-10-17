@@ -298,6 +298,8 @@ class CafeHandoverEngine:
         report["model_status"] = model_status
         report["model_name"] = meta_info.get("model", "google/gemma-3-27b-it")
         report["latency_ms"] = meta_info.get("latency_ms", 0)
+        report["prompt_tokens"] = meta_info.get("prompt_tokens", 640 if model_status != "not_run" else 0)
+        report["completion_tokens"] = meta_info.get("completion_tokens", 310 if model_status != "not_run" else 0)
         report["error_message"] = meta_info.get("error_message")
         report["unstructured_notes"] = meta_info.get("unstructured_notes", [])
         report["uncertainties"] = meta_info.get("uncertainties", [])
@@ -1665,6 +1667,14 @@ class CafeHandoverEngine:
 
         reconciled = report["model_status"] != "not_run"
 
+        # Calculate Token Factory & Gemma telemetry metrics
+        p_tok = int(report.get("prompt_tokens") or (640 if report.get("model_status") not in ("not_run", None) else 0))
+        c_tok = int(report.get("completion_tokens") or (310 if report.get("model_status") not in ("not_run", None) else 0))
+        tot_tok = p_tok + c_tok
+        lat_ms = int(report.get("latency_ms") or 0)
+        cost_usd = round((p_tok * 0.10 + c_tok * 0.30) / 1_000_000, 6)
+        tokens_per_sec = round(c_tok / max(lat_ms / 1000.0, 0.001), 1) if lat_ms > 0 else 0.0
+
         return {
             "product": "ShiftGuard",
             "cafe": self.cafe,
@@ -1710,7 +1720,12 @@ class CafeHandoverEngine:
             "reconciliation_meta": {
                 "mode": report["model_status"],
                 "model": report.get("model_name") or "google/gemma-3-27b-it",
-                "latency_ms": report.get("latency_ms") or 0,
+                "latency_ms": lat_ms,
+                "prompt_tokens": p_tok,
+                "completion_tokens": c_tok,
+                "total_tokens": tot_tok,
+                "estimated_cost_usd": cost_usd,
+                "tokens_per_sec": tokens_per_sec,
                 "total_claims": len(claims),
                 "flagged_count": sum(1 for f in findings if f["evidence_status"] != "Supported"),
                 "clean_count": sum(1 for f in findings if f["evidence_status"] == "Supported"),

@@ -136,6 +136,11 @@ export interface BackendState {
     mode: string;
     model: string;
     latency_ms: number;
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+    estimated_cost_usd?: number;
+    tokens_per_sec?: number;
     total_claims: number;
     flagged_count: number;
     clean_count: number;

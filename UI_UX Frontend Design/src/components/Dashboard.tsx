@@ -1,7 +1,7 @@
 import React from "react";
 import { ArrowRight, CircleCheck } from "lucide-react";
 import type { Shift, ShiftData } from "../data";
-import { CAFE, SHIFT_TYPE_LABEL, allChecks, bucketOf, categoryComplete, shiftStatus, signoffState } from "../data";
+import { CAFE, SHIFT_TYPE_LABEL, allChecks, bucketOf, categoryComplete, computeShiftMetrics, shiftStatus, signoffState } from "../data";
 import ShiftSelector from "./ShiftSelector";
 import { PageHeader, StatusDot, Tag } from "./ui";
 
@@ -31,6 +31,7 @@ export default function Dashboard({
   const data = db[shiftId];
   const st = shiftStatus(shift, data);
   const so = signoffState(data);
+  const metrics = computeShiftMetrics(data);
   const checks = allChecks(data);
   const count = (b: string) => checks.filter(x => bucketOf(x.check) === b).length;
   const answered = (["equipment", "stock", "cleaning", "cash", "customer"] as const).filter(c => categoryComplete(data.report, c, data.checklist)).length;
@@ -51,6 +52,106 @@ export default function Dashboard({
           Report completed at {data.submittedAt} by {shift.outgoing}. The reconciliation checks are below; resolve blockers before transferring to the next shift.
         </p>
       )}
+
+      {/* Grounded Shift Operational Metrics Strip */}
+      <section
+        style={{
+          background: "var(--paper-100)",
+          border: "1px solid var(--paper-300)",
+          borderRadius: "10px",
+          padding: "14px 16px",
+          marginBottom: "16px",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+          <span className="section-label" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            Measured Shift Events (Operational Ground Truth)
+          </span>
+          <span style={{ fontSize: "11px", color: "var(--ink-500)", fontFamily: "var(--font-mono)" }}>
+            Shift ID: {shiftId}
+          </span>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4, 1fr)",
+            gap: "10px",
+          }}
+        >
+          {/* 1. Supply Waste & Low Stock */}
+          <div
+            style={{
+              padding: "10px 12px",
+              borderRadius: "8px",
+              border: "1px solid var(--paper-300)",
+              background: "#fff",
+            }}
+          >
+            <div style={{ fontSize: "11px", color: "var(--ink-500)" }}>Supply Waste & Stock</div>
+            <div style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--ink-900)", marginTop: "2px" }}>
+              {metrics.wasteSummary}
+            </div>
+            <div style={{ fontSize: "11px", color: "var(--ink-500)", marginTop: "2px" }}>
+              {metrics.wasteDetail}
+            </div>
+          </div>
+
+          {/* 2. Machine Fixing */}
+          <div
+            style={{
+              padding: "10px 12px",
+              borderRadius: "8px",
+              border: "1px solid var(--paper-300)",
+              background: "#fff",
+            }}
+          >
+            <div style={{ fontSize: "11px", color: "var(--ink-500)" }}>Machine Fixing</div>
+            <div style={{ fontSize: "13.5px", fontWeight: 700, color: metrics.machineIssuesCount > 0 ? "var(--amber-700)" : "var(--ink-900)", marginTop: "2px" }}>
+              {metrics.machineIssuesCount > 0 ? `${metrics.machineIssuesCount} Issue Flagged` : "0 Machine Issues"}
+            </div>
+            <div style={{ fontSize: "11px", color: "var(--ink-500)", marginTop: "2px" }}>
+              {metrics.machineDetail}
+            </div>
+          </div>
+
+          {/* 3. Closing Checklist */}
+          <div
+            style={{
+              padding: "10px 12px",
+              borderRadius: "8px",
+              border: "1px solid var(--paper-300)",
+              background: "#fff",
+            }}
+          >
+            <div style={{ fontSize: "11px", color: "var(--ink-500)" }}>Closing Checklist</div>
+            <div style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--ink-900)", marginTop: "2px" }}>
+              {metrics.tasksDone} / {metrics.tasksTotal} Completed
+            </div>
+            <div style={{ fontSize: "11px", color: "var(--ink-500)", marginTop: "2px" }}>
+              {metrics.tasksDetail}
+            </div>
+          </div>
+
+          {/* 4. Scheduled Items */}
+          <div
+            style={{
+              padding: "10px 12px",
+              borderRadius: "8px",
+              border: "1px solid var(--paper-300)",
+              background: "#fff",
+            }}
+          >
+            <div style={{ fontSize: "11px", color: "var(--ink-500)" }}>Scheduled Items</div>
+            <div style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--ink-900)", marginTop: "2px" }}>
+              {metrics.schedulesCount > 0 ? `${metrics.schedulesCount} Active Schedules` : "0 Schedules"}
+            </div>
+            <div style={{ fontSize: "11px", color: "var(--ink-500)", marginTop: "2px" }}>
+              {metrics.schedulesDetail}
+            </div>
+          </div>
+        </div>
+      </section>
 
       <div className="dash-grid">
         <section className="dash-card">

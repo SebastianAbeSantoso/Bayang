@@ -199,6 +199,21 @@ export interface ShiftData {
     mode: string;
     latencyMs: number;
     extractedClaimsCount: number;
+    promptTokens?: number;
+    completionTokens?: number;
+    totalTokens?: number;
+    estimatedCostUsd?: number;
+    tokensPerSec?: number;
+    claims?: Array<{
+      claim_id: string;
+      claim_type: string;
+      entity: string;
+      action: string;
+      quantity?: number;
+      unit?: string;
+      verbatim_quote: string;
+      quote_valid: boolean;
+    }>;
   };
 }
 
@@ -742,6 +757,38 @@ function historical(shift: Shift): ShiftData {
   return base;
 }
 
+export function buildEmptyDb(): Record<string, ShiftData> {
+  const db: Record<string, ShiftData> = {};
+  for (const s of SHIFTS) {
+    db[s.id] = {
+      report: EMPTY_REPORT,
+      submitted: false,
+      checklist: checklistFor(false),
+      findings: [],
+      records: recordsFor(s),
+      schedules: [],
+      audit: [],
+      signedOff: false,
+      acknowledged: false,
+      signedIn: false,
+      endHourReached: false,
+      gemmaTelemetry: {
+        model: "google/gemma-3-27b-it",
+        mode: "standby",
+        latencyMs: 0,
+        extractedClaimsCount: 0,
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+        estimatedCostUsd: 0,
+        tokensPerSec: 0,
+        claims: [],
+      },
+    };
+  }
+  return db;
+}
+
 export function buildInitialDb(): Record<string, ShiftData> {
   const db: Record<string, ShiftData> = {};
   for (const s of SHIFTS) {
@@ -773,6 +820,55 @@ export function buildInitialDb(): Record<string, ShiftData> {
         acknowledged: false,
         signedIn: false,
         endHourReached: true,
+        gemmaTelemetry: {
+          model: "google/gemma-3-27b-it",
+          mode: "seeded_demo_snapshot",
+          latencyMs: 892,
+          extractedClaimsCount: 4,
+          promptTokens: 640,
+          completionTokens: 310,
+          totalTokens: 950,
+          estimatedCostUsd: 0.000157,
+          tokensPerSec: 347.5,
+          claims: [
+            {
+              claim_id: "CLM-01",
+              claim_type: "equipment_issue",
+              entity: "Grinder #1 (Mahlkönig E65S)",
+              action: "jammed for 20 minutes",
+              quantity: 20,
+              unit: "minutes",
+              verbatim_quote: "grinder macet 20 menit pas jam 17",
+              quote_valid: true,
+            },
+            {
+              claim_id: "CLM-02",
+              claim_type: "remake_waste",
+              entity: "House Blend beans",
+              action: "wasted during recalibration",
+              quantity: 200,
+              unit: "g",
+              verbatim_quote: "buang beans 200g house blend",
+              quote_valid: true,
+            },
+            {
+              claim_id: "CLM-03",
+              claim_type: "stock_action",
+              entity: "Ice cubes",
+              action: "depleted",
+              verbatim_quote: "es batu abis dari jam 18",
+              quote_valid: true,
+            },
+            {
+              claim_id: "CLM-04",
+              claim_type: "task_completion",
+              entity: "Right steam wand",
+              action: "deep cleaning skipped",
+              verbatim_quote: "gak sempet deep clean steam wand kanan",
+              quote_valid: true,
+            },
+          ],
+        },
         audit: [
           { id: "A-AFT-1", shiftId: s.id, date: s.date, time: "16:02:11", actor: s.outgoing, actorKind: "human", type: "shift", action: "Shift opened", explanation: "Afternoon shift roster active." },
           { id: "A-AFT-2", shiftId: s.id, date: s.date, time: "18:15:40", actor: "Supplier import", actorKind: "system", type: "record", action: "Supplier order recorded", sourceRef: "PO-4481", explanation: "Arctic Ice Co. confirmed 5 bags for 13 Oct, 10:00." },
@@ -783,6 +879,67 @@ export function buildInitialDb(): Record<string, ShiftData> {
     }
   }
   return db;
+}
+
+export interface GroundedShiftMetrics {
+  wasteSummary: string;
+  wasteDetail: string;
+  machineIssuesCount: number;
+  machineDetail: string;
+  tasksDone: number;
+  tasksTotal: number;
+  tasksDetail: string;
+  schedulesCount: number;
+  schedulesDetail: string;
+  cashStatus: string;
+}
+
+export function computeShiftMetrics(data: ShiftData): GroundedShiftMetrics {
+  const r = data.report;
+  
+  // Waste & Stock
+  let wasteSummary = "0 waste logged";
+  let wasteDetail = "Stock nominal";
+  if (r.stock.waste && Number(r.stock.wasteQty) > 0) {
+    wasteSummary = `${r.stock.wasteQty}${r.stock.wasteUnit} ${r.stock.wasteItem}`;
+    wasteDetail = r.stock.low && r.stock.lowItems.length > 0 ? `Low: ${r.stock.lowItems.join(", ")}` : "Waste unposted in ledger";
+  } else if (r.stock.low && r.stock.lowItems.length > 0) {
+    wasteSummary = `Low stock: ${r.stock.lowItems.join(", ")}`;
+    wasteDetail = "PO order in transit";
+  }
+
+  // Machine issues
+  const machineEntries = r.equipment.status === "attention" ? (r.equipment.entries ?? []).filter(e => e.issue !== "") : [];
+  const machineIssuesCount = machineEntries.length;
+  const machineDetail = machineIssuesCount > 0 ? machineEntries.map(e => e.item.split(" (")[0]).join(", ") : "All equipment nominal";
+
+  // Checklist
+  const mandatoryTasks = data.checklist.filter(t => t.mandatory);
+  const tasksDone = mandatoryTasks.filter(t => t.done).length;
+  const tasksTotal = mandatoryTasks.length;
+  const skippedTasks = mandatoryTasks.filter(t => t.notDone).length;
+  const tasksDetail = skippedTasks > 0 ? `${skippedTasks} skipped with reason` : tasksDone === tasksTotal && tasksTotal > 0 ? "All required tasks verified" : `${tasksTotal - tasksDone} pending`;
+
+  // Schedules
+  const schedulesCount = data.schedules.length;
+  const schedulesCompleted = data.schedules.filter(s => s.status === "completed").length;
+  const schedulesDetail = schedulesCount > 0 ? `${schedulesCompleted} of ${schedulesCount} verified` : "No active schedules";
+
+  // Cash status
+  const cashStatus = r.cash.status === "balanced" ? "Balanced" : r.cash.status === "variance" ? "Variance flagged" : "Unchecked";
+
+  return {
+    wasteSummary,
+    wasteDetail,
+    machineIssuesCount,
+    machineDetail,
+    tasksDone,
+    tasksTotal,
+    tasksDetail,
+    schedulesCount,
+    schedulesDetail,
+    cashStatus,
+  };
 }
 
 // ---------- Derived state ---------------------------------------------------
